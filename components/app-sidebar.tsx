@@ -50,6 +50,10 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { NotificationBell } from "@/components/notification-bell";
 
+/* =========================
+   Role & Nav Types
+========================= */
+
 type Role =
   | "admin"
   | "manager"
@@ -64,16 +68,26 @@ type Role =
 type NavLeaf = {
   title: string;
   url: string;
-  roles?: Role[];
+  /** permission id from DB (Permission.id) */
+  permission?: string;
 };
 
 type NavGroup = {
   title: string;
-  roles?: Role[];
   children: NavLeaf[];
 };
 
 type NavItem = NavLeaf | NavGroup;
+
+type RolePermResponse = {
+  success: boolean;
+  role?: string;
+  permissions: { id: string; name: string; description?: string | null }[];
+};
+
+/* =========================
+   Icons Map
+========================= */
 
 const ICONS: Record<string, React.ReactNode> = {
   Dashboard: <LayoutDashboard className="h-4 w-4" />,
@@ -102,7 +116,9 @@ const ICONS: Record<string, React.ReactNode> = {
   Chat: <MessageCircleMore className="h-4 w-4" />,
 };
 
-// --- Helpers: role base paths --------------------------------
+/* =========================
+   Helpers: role base paths
+========================= */
 
 const basePath: Record<Role, string> = {
   admin: "/admin",
@@ -118,206 +134,193 @@ const basePath: Record<Role, string> = {
 
 const p = (role: Role, suffix = "") => `${basePath[role]}${suffix}`;
 
-// --- Fetcher --------------------------------------------------
+/* =========================
+   Fetcher
+========================= */
 
 const fetcher = (u: string) =>
   fetch(u, { cache: "no-store" }).then((r) =>
     r.ok ? r.json() : Promise.reject(r.status)
   );
 
-// --- Nav model (single source of truth) -----------------------
+/* =========================
+   Nav model (single source)
+   — Each leaf has permission
+   — NO role filtering (Option B)
+========================= */
 
 function buildNav(role: Role): NavItem[] {
+  const r = role;
   return [
     // Dashboard
     {
       title: "Dashboard",
-      url: p(role, ""),
-      roles: [
-        "admin",
-        "agent",
-        "qc",
-        "am",
-        "am_ceo",
-        "manager",
-        "data_entry",
-        "client",
-      ],
+      url: p(r, ""),
+      permission: "view_dashboard",
     },
 
     // Chat
     {
       title: "Chat",
-      url: p(role, "/chat"),
-      roles: [
-        "admin",
-        "qc",
-        "agent",
-        "am",
-        "am_ceo",
-        "manager",
-        "data_entry",
-        "client",
-      ],
+      url: p(r, "/chat"),
+      permission: "view_chat",
     },
 
-    // Clients (admin, manager, am, data_entry)
+    // Clients
     {
       title: "Clients",
-      roles: ["admin", "manager", "am", "data_entry"],
       children: [
         {
           title: "All Clients",
-          url: p(role, "/clients"),
-          roles: ["admin", "manager", "am", "data_entry"],
+          url: p(r, "/clients"),
+          permission: "view_clients_list",
         },
         {
           title: "Add Client",
-          url: p(role, "/clients/onboarding"),
-          roles: ["admin", "manager", "am", "data_entry"],
+          url: p(r, "/clients/onboarding"),
+          permission: "view_clients_create",
         },
       ],
     },
 
-    // AM Clients (am_ceo)
+    // AM Clients
     {
       title: "AM Clients",
-      roles: ["am_ceo"],
       children: [
         {
           title: "All AM Clients",
-          url: p(role, "/clients"),
-          roles: ["am_ceo"],
+          url: p(r, "/clients"),
+          permission: "view_am_clients_list",
         },
       ],
     },
 
-    // Packages & Templates (admin, manager, data_entry)
+    // Packages
     {
       title: "Packages",
-      roles: ["admin", "manager", "data_entry"],
       children: [
         {
           title: "All Package",
-          url: p(role, "/packages"),
-          roles: ["admin", "manager", "data_entry"],
+          url: p(r, "/packages"),
+          permission: "view_packages_list",
         },
       ],
     },
 
-    // Distribution (admin, manager)
+    // Distribution
     {
       title: "Distribution",
-      roles: ["admin", "manager"],
       children: [
         {
           title: "Clients to Agents",
-          url: p(role, "/distribution/client-agent"),
-          roles: ["admin", "manager"],
+          url: p(r, "/distribution/client-agent"),
+          permission: "view_distribution_client_agent",
         },
       ],
     },
 
-    // Tasks (admin/manager group; agent standalones; qc review)
+    // Tasks (group)
     {
       title: "Tasks",
-      roles: ["admin", "manager"],
       children: [
         {
           title: "All Tasks",
-          url: p(role, "/tasks"),
-          roles: ["admin", "manager"],
+          url: p(r, "/tasks"),
+          permission: "view_tasks_list",
         },
         {
           title: "Tasks History",
-          url: p(role, "/taskHistory"),
-          roles: ["admin", "manager"],
+          url: p(r, "/taskHistory"),
+          permission: "view_tasks_history",
         },
       ],
     },
-    { title: "Tasks", url: p("agent", "/agent_tasks"), roles: ["agent"] },
+
+    // Agent tasks (kept original target so others can jump to agent area if permitted)
+    {
+      title: "Tasks",
+      url: p("agent", "/agent_tasks"),
+      permission: "view_agent_tasks",
+    },
     {
       title: "Tasks History",
       url: p("agent", "/taskHistory"),
-      roles: ["agent"],
+      permission: "view_agent_tasks_history",
     },
-    { title: "QC Review", url: p("qc", "/tasks"), roles: ["qc"] },
 
-    // Agents (admin, manager)
+    // QC review (kept original target)
+    {
+      title: "QC Review",
+      url: p("qc", "/tasks"),
+      permission: "view_qc_review",
+    },
+
+    // Agents
     {
       title: "Agents",
-      roles: ["admin", "manager"],
       children: [
         {
           title: "All Agents",
-          url: p(role, "/agents"),
-          roles: ["admin", "manager"],
+          url: p(r, "/agents"),
+          permission: "view_agents_list",
         },
         {
           title: "Add Agent",
-          url: p(role, "/agents/create"),
-          roles: ["admin", "manager"],
+          url: p(r, "/agents/create"),
+          permission: "view_agents_create",
         },
       ],
     },
 
-    // Team / QC / Permissions / Users / Activity (admin, manager)
+    // Team / QC dashboards / Role Permissions / Users / Activity
     {
       title: "Team Management",
-      url: p(role, "/teams"),
-      roles: ["admin", "manager"],
+      url: p(r, "/teams"),
+      permission: "view_teams_manage",
     },
     {
       title: "QC",
-      roles: ["admin", "manager"],
       children: [
         {
           title: "QC Dashboard",
-          url: p(role, "/qc/qc-dashboard"),
-          roles: ["admin", "manager"],
+          url: p(r, "/qc/qc-dashboard"),
+          permission: "view_qc_dashboard",
         },
         {
           title: "QC Review",
-          url: p(role, "/qc/qc-review"),
-          roles: ["admin", "manager"],
+          url: p(r, "/qc/qc-review"),
+          permission: "view_qc_review",
         },
       ],
     },
     {
       title: "Role Permissions",
-      url: p(role, "/role-permissions"),
-      roles: ["admin"],
+      url: p(r, "/role-permissions"),
+      permission: "view_role_permissions",
     },
     {
       title: "User Management",
-      url: p(role, "/user"),
-      roles: ["admin", "manager"],
+      url: p(r, "/user"),
+      permission: "view_user_management",
     },
     {
       title: "Activity Logs",
-      url: p(role, "/activity"),
-      roles: ["admin", "manager"],
+      url: p(r, "/activity"),
+      permission: "view_activity_logs",
     },
 
-    // Notifications (all)
+    // Notifications
     {
       title: "Notifications",
-      url: p(role, "/notifications"),
-      roles: [
-        "admin",
-        "manager",
-        "qc",
-        "agent",
-        "am",
-        "am_ceo",
-        "data_entry",
-        "client",
-      ],
+      url: p(r, "/notifications"),
+      permission: "view_notifications",
     },
   ];
 }
 
-// --- Small utils ---------------------------------------------
+/* =========================
+   Small utils
+========================= */
 
 function isGroup(item: NavItem): item is NavGroup {
   return (item as NavGroup).children !== undefined;
@@ -325,7 +328,6 @@ function isGroup(item: NavItem): item is NavGroup {
 
 function useActive(pathname: string) {
   const baseRoots = React.useMemo(() => new Set(Object.values(basePath)), []);
-
   return React.useCallback(
     (url: string) => {
       if (baseRoots.has(url) || url === "/" || url.endsWith("/dashboard")) {
@@ -343,22 +345,30 @@ function useActive(pathname: string) {
   );
 }
 
-// role-based filter (groups & children)
-function filterNavByRole(items: NavItem[], role: Role): NavItem[] {
-  const has = (rs?: Role[]) => !rs || rs.includes(role);
+/** ✅ Option B: ONLY permission-based filtering */
+function filterNavByAccess(
+  items: NavItem[],
+  permissionSet: Set<string> | null
+): NavItem[] {
+  const hasPerm = (perm?: string) =>
+    // permissionSet === null ⇒ data not loaded yet ⇒ pass-through
+    !perm || !permissionSet || permissionSet.has(perm);
 
   return items
     .map((it) => {
       if (isGroup(it)) {
-        if (!has(it.roles)) return null;
-        const filteredChildren = it.children.filter((c) => has(c.roles));
-        if (filteredChildren.length === 0) return null;
-        return { ...it, children: filteredChildren } as NavGroup;
+        const kids = it.children.filter((c) => hasPerm(c.permission));
+        if (kids.length === 0) return null;
+        return { ...it, children: kids } as NavGroup;
       }
-      return has(it.roles) ? it : null;
+      return hasPerm(it.permission) ? it : null;
     })
     .filter(Boolean) as NavItem[];
 }
+
+/* =========================
+   Component
+========================= */
 
 export function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -402,11 +412,24 @@ export function AppSidebar({ className }: { className?: string }) {
     me?.impersonation?.realAdmin?.email ||
     null;
 
+  // 🔐 Load role permissions → build permission set
+  const { data: rolePermData } = useSWR<RolePermResponse>(
+    role ? `/api/role-permissions/${role}` : null,
+    fetcher,
+    { refreshInterval: 60_000, revalidateOnFocus: true }
+  );
+  const permissionSet = React.useMemo<Set<string> | null>(() => {
+    const list = rolePermData?.permissions ?? [];
+    return rolePermData ? new Set(list.map((p) => p.id)) : null;
+  }, [rolePermData]);
+
   const active = useActive(pathname);
   const nav = React.useMemo(() => buildNav(role), [role]);
+
+  /** FINAL: visible navigation — permission only */
   const visibleNav = React.useMemo(
-    () => filterNavByRole(nav, role),
-    [nav, role]
+    () => filterNavByAccess(nav, permissionSet),
+    [nav, permissionSet]
   );
 
   // Auto behaviors
@@ -598,7 +621,9 @@ export function AppSidebar({ className }: { className?: string }) {
   );
 }
 
-// --- Pieces ---------------------------------------------------
+/* =========================
+   Pieces
+========================= */
 
 function GroupItem({
   item,

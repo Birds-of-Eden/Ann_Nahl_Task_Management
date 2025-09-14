@@ -1,4 +1,4 @@
-// app/admin/role-permissions/page.tsx
+// app/[role]/role-permissions/page.tsx
 
 "use client";
 
@@ -29,19 +29,28 @@ export default function RolePermissionPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [permLoading, setPermLoading] = useState(false);
 
-  const [selectedRole, setSelectedRole] = useState<{ id: string; permissions: string[] } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<{
+    id: string;
+    permissions: string[];
+  } | null>(null);
 
   // UI state
   const [search, setSearch] = useState("");
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [formRole, setFormRole] = useState<{ name: string; description?: string }>({
+  const [formRole, setFormRole] = useState<{
+    name: string;
+    description?: string;
+  }>({
     name: "",
     description: "",
   });
   const [submittingRole, setSubmittingRole] = useState(false);
 
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; role: Role | null }>({ open: false, role: null });
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    role: Role | null;
+  }>({ open: false, role: null });
 
   // ---------------- Loaders ----------------
   const loadRoles = async () => {
@@ -79,9 +88,12 @@ export default function RolePermissionPage() {
 
   const loadRolePermissions = async (roleId: string) => {
     try {
-      const res = await fetch(`/api/role-permissions/${roleId}`, { cache: "no-store" });
+      const res = await fetch(`/api/role-permissions/${roleId}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to load role permissions");
+      if (!res.ok)
+        throw new Error(data?.error || "Failed to load role permissions");
       setSelectedRole({
         id: roleId,
         permissions: (data.permissions || []).map((p: any) => p.id),
@@ -113,7 +125,10 @@ export default function RolePermissionPage() {
         const res = await fetch(`/api/roles/${editingRole.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: formRole.name, description: formRole.description }),
+          body: JSON.stringify({
+            name: formRole.name,
+            description: formRole.description,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to update role");
@@ -124,7 +139,10 @@ export default function RolePermissionPage() {
         const res = await fetch("/api/roles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: formRole.name, description: formRole.description }),
+          body: JSON.stringify({
+            name: formRole.name,
+            description: formRole.description,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to create role");
@@ -140,12 +158,15 @@ export default function RolePermissionPage() {
     }
   };
 
-  const confirmDeleteRole = (role: Role) => setConfirmDelete({ open: true, role });
+  const confirmDeleteRole = (role: Role) =>
+    setConfirmDelete({ open: true, role });
 
   const doDeleteRole = async () => {
     if (!confirmDelete.role) return;
     try {
-      const res = await fetch(`/api/roles/${confirmDelete.role.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/roles/${confirmDelete.role.id}`, {
+        method: "DELETE",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to delete role");
       toast.success("Role deleted");
@@ -196,7 +217,9 @@ export default function RolePermissionPage() {
   const filteredRoles = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return roles;
-    return roles.filter((r) => r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q));
+    return roles.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
+    );
   }, [roles, search]);
 
   const selectedRoleMeta = useMemo(
@@ -239,18 +262,25 @@ export default function RolePermissionPage() {
 
           <ul className="divide-y max-h-[60vh] overflow-auto">
             {filteredRoles.map((role) => (
-              <li key={role.id} className="flex items-center justify-between p-3 hover:bg-slate-50">
+              <li
+                key={role.id}
+                className="flex items-center justify-between p-3 hover:bg-slate-50"
+              >
                 <button
                   className={cn(
                     "text-left flex-1",
-                    selectedRole?.id === role.id ? "font-semibold text-emerald-700" : "text-slate-800"
+                    selectedRole?.id === role.id
+                      ? "font-semibold text-emerald-700"
+                      : "text-slate-800"
                   )}
                   onClick={() => loadRolePermissions(role.id)}
                   title="Select to manage permissions"
                 >
                   <div className="text-sm">{role.name.toUpperCase()}</div>
                   {!!role._count?.users && (
-                    <div className="text-[11px] text-slate-500">{role._count.users} user(s)</div>
+                    <div className="text-[11px] text-slate-500">
+                      {role._count.users} user(s)
+                    </div>
                   )}
                 </button>
 
@@ -283,32 +313,48 @@ export default function RolePermissionPage() {
 
             {selectedRole ? (
               <div className="text-sm text-slate-600">
-                Managing: <span className="font-semibold">{selectedRoleMeta?.name || selectedRole.id}</span>
+                Managing:{" "}
+                <span className="font-semibold">
+                  {selectedRoleMeta?.name || selectedRole.id}
+                </span>
               </div>
             ) : (
-              <div className="text-sm text-slate-400">Select a role to manage</div>
+              <div className="text-sm text-slate-400">
+                Select a role to manage
+              </div>
             )}
           </div>
 
           <div className="p-4">
-            {!selectedRole && <p className="text-sm text-slate-500">Select a role to manage permissions.</p>}
+            {!selectedRole && (
+              <p className="text-sm text-slate-500">
+                Select a role to manage permissions.
+              </p>
+            )}
 
             {selectedRole && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                 {permissions.map((p) => {
                   const checked = selectedRole.permissions.includes(p.id);
                   return (
-                    <label key={p.id} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-slate-50">
+                    <label
+                      key={p.id}
+                      className="flex items-center gap-3 rounded-lg border p-3 hover:bg-slate-50"
+                    >
                       <input
                         type="checkbox"
                         className="h-4 w-4"
                         checked={checked}
-                        onChange={(e) => togglePermission(p.id, e.target.checked)}
+                        onChange={(e) =>
+                          togglePermission(p.id, e.target.checked)
+                        }
                       />
                       <div>
                         <div className="text-sm font-medium">{p.name}</div>
                         {p.description ? (
-                          <div className="text-xs text-slate-500">{p.description}</div>
+                          <div className="text-xs text-slate-500">
+                            {p.description}
+                          </div>
                         ) : null}
                       </div>
                     </label>
@@ -325,8 +371,13 @@ export default function RolePermissionPage() {
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-lg">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">{editingRole ? "Edit Role" : "Create Role"}</h3>
-              <button onClick={() => setShowRoleModal(false)} className="text-slate-500 hover:text-slate-700">
+              <h3 className="font-semibold">
+                {editingRole ? "Edit Role" : "Create Role"}
+              </h3>
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="text-slate-500 hover:text-slate-700"
+              >
                 ✕
               </button>
             </div>
@@ -336,7 +387,9 @@ export default function RolePermissionPage() {
                 <label className="block text-sm mb-1">Name</label>
                 <input
                   value={formRole.name}
-                  onChange={(e) => setFormRole((s) => ({ ...s, name: e.target.value }))}
+                  onChange={(e) =>
+                    setFormRole((s) => ({ ...s, name: e.target.value }))
+                  }
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300"
                   placeholder="e.g. Admin"
                   required
@@ -346,7 +399,9 @@ export default function RolePermissionPage() {
                 <label className="block text-sm mb-1">Description</label>
                 <textarea
                   value={formRole.description}
-                  onChange={(e) => setFormRole((s) => ({ ...s, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormRole((s) => ({ ...s, description: e.target.value }))
+                  }
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300"
                   rows={3}
                   placeholder="Optional description"
@@ -366,7 +421,11 @@ export default function RolePermissionPage() {
                   disabled={submittingRole}
                   className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {submittingRole ? "Saving…" : editingRole ? "Save Changes" : "Create Role"}
+                  {submittingRole
+                    ? "Saving…"
+                    : editingRole
+                    ? "Save Changes"
+                    : "Create Role"}
                 </button>
               </div>
             </form>

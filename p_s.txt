@@ -1,0 +1,477 @@
+Folder PATH listing for volume Others
+Volume serial number is 349E-64A4
+E:\ECCSEO\TASK_M_FINAL_TEST\TASK-MANAGEMENT-ANN-NAHL\APP
+¦   favicon.ico
+¦   globals.css
+¦   layout.tsx
+¦   page.tsx
+¦   
++---(main)
+¦   +---auth
+¦       +---sign-in
+¦       ¦       login-form.tsx
+¦       ¦       page.tsx
+¦       ¦       
+¦       +---sign-up
+¦               page.tsx
+¦               signup-form.tsx
+¦               
++---api
+¦   +---activity
+¦   ¦       route.ts
+¦   ¦       
+¦   +---agents
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---assign-team
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---list
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---am
+¦   ¦   +---notifications
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---mark-all-read
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---mark-read
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---unread-count
+¦   ¦               route.ts
+¦   ¦               
+¦   +---assignments
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---agents
+¦   ¦               route.ts
+¦   ¦               
+¦   +---auth
+¦   ¦   +---get-session
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---me
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---sign-in
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---sign-out
+¦   ¦           route.ts
+¦   ¦           
+¦   +---chat
+¦   ¦   +---channels
+¦   ¦   ¦   +---auth
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---conversations
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       ¦   route.ts
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---messages
+¦   ¦   ¦       ¦   ¦   route.ts
+¦   ¦   ¦       ¦   ¦   
+¦   ¦   ¦       ¦   +---search
+¦   ¦   ¦       ¦           route.ts
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---participants
+¦   ¦   ¦       ¦       route.ts
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---read
+¦   ¦   ¦       ¦       route.ts
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---typing
+¦   ¦   ¦               route.ts
+¦   ¦   ¦               
+¦   ¦   +---dm
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---messages
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       +---delivered
+¦   ¦   ¦       ¦       route.ts
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---forward
+¦   ¦   ¦       ¦       route.ts
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---reactions
+¦   ¦   ¦               route.ts
+¦   ¦   ¦               
+¦   ¦   +---roster
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---team
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---unread-count
+¦   ¦           route.ts
+¦   ¦           
+¦   +---check-routes
+¦   ¦       route.ts
+¦   ¦       
+¦   +---clients
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---summary
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---assign-package
+¦   ¦               route.ts
+¦   ¦               
+¦   +---dashboard
+¦   ¦   +---stats
+¦   ¦           route.ts
+¦   ¦           
+¦   +---dev
+¦   ¦   +---backfill-last-seen
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---last-seen
+¦   ¦           route.ts
+¦   ¦           
+¦   +---drive
+¦   ¦   +---list
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---media
+¦   ¦           route.ts
+¦   ¦           
+¦   +---impersonate
+¦   ¦   +---start
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---stop
+¦   ¦           route.ts
+¦   ¦           
+¦   +---notifications
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---mark-all-read
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---mark-read
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---unread-count
+¦   ¦           route.ts
+¦   ¦           
+¦   +---onbord-clients
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---packages
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---templates
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---permissions
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---presence
+¦   ¦   +---heartbeat
+¦   ¦           route.ts
+¦   ¦           
+¦   +---role-permissions
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[roleId]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---roles
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---permissions
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---routes
+¦   ¦   +---sync
+¦   +---social-medias
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---task-categories
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---tasks
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---agents
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---load
+¦   ¦   ¦   ¦       route.ts
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---[agentId]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---client
+¦   ¦   ¦   +---[clientId]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---clients
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---agents
+¦   ¦   ¦       +---[agentId]
+¦   ¦   ¦               route.ts
+¦   ¦   ¦               
+¦   ¦   +---create-posting-tasks
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---created
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---distribute
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---smart
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---history
+¦   ¦   ¦   +---[agentId]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---reassign
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---approve
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---pause
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---reassign
+¦   ¦               route.ts
+¦   ¦               
+¦   +---teams
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---list
+¦   ¦           route.ts
+¦   ¦           
+¦   +---template-site-assets
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---templates
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---assign
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---team-members
+¦   ¦           ¦   route.ts
+¦   ¦           ¦   
+¦   ¦           +---[agentId]
+¦   ¦                   route.ts
+¦   ¦                   
+¦   +---test
+¦   ¦       route.ts
+¦   ¦       
+¦   +---user
+¦   ¦   +---permissions
+¦   +---users
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---assign-team
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---stats
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---utils
+¦   ¦   +---validate-url
+¦   ¦           route.ts
+¦   ¦           
+¦   +---zisanpackages
+¦       ¦   route.ts
+¦       ¦   
+¦       +---name
+¦       ¦   +---[name]
+¦       ¦           route.ts
+¦       ¦           
+¦       +---[id]
+¦           ¦   route.ts
+¦           ¦   
+¦           +---templates
+¦                   route.ts
+¦                   
++---not-authorized
++---[role]
+    ¦   layout.tsx
+    ¦   page.tsx
+    ¦   
+    +---activity
+    ¦       page.tsx
+    ¦       
+    +---agents
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---create
+    ¦   ¦       page.tsx
+    ¦   ¦       
+    ¦   +---[id]
+    ¦       ¦   page.tsx
+    ¦       ¦   
+    ¦       +---edit
+    ¦               page.tsx
+    ¦               
+    +---agent_tasks
+    ¦       page.tsx
+    ¦       
+    +---am_clients
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---[clientId]
+    ¦       ¦   page.tsx
+    ¦       ¦   
+    ¦       +---tasks
+    ¦               page.tsx
+    ¦               
+    +---chat
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---[id]
+    ¦           page.tsx
+    ¦           
+    +---clients
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---onboarding
+    ¦   ¦       page.tsx
+    ¦   ¦       
+    ¦   +---[clientId]
+    ¦       ¦   page.tsx
+    ¦       ¦   
+    ¦       +---tasks
+    ¦               page.tsx
+    ¦               
+    +---distribution
+    ¦   +---agent-overview
+    ¦   ¦       loading.tsx
+    ¦   ¦       page.tsx
+    ¦   ¦       
+    ¦   +---client-agent
+    ¦       ¦   loading.tsx
+    ¦       ¦   page.tsx
+    ¦       ¦   
+    ¦       +---client
+    ¦       ¦   +---[clientId]
+    ¦       ¦           page.tsx
+    ¦       ¦           
+    ¦       +---tasks
+    ¦       ¦       page.tsx
+    ¦       ¦       
+    ¦       +---[clientId]
+    ¦               page.tsx
+    ¦               
+    +---notifications
+    ¦       page.tsx
+    ¦       
+    +---onboarding
+    ¦       page.tsx
+    ¦       
+    +---packages
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---[package]
+    ¦       +---templates
+    ¦           ¦   page.tsx
+    ¦           ¦   
+    ¦           +---[templateId]
+    ¦                   page.tsx
+    ¦                   
+    +---permissions
+    ¦       page.tsx
+    ¦       
+    +---qc
+    ¦   +---qc-dashboard
+    ¦   ¦       page.tsx
+    ¦   ¦       
+    ¦   +---qc-review
+    ¦           page.tsx
+    ¦           
+    +---qc_tasks
+    ¦       page.tsx
+    ¦       QCReview.tsx
+    ¦       
+    +---role-permissions
+    ¦       page.tsx
+    ¦       
+    +---taskHistory
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---[agentId]
+    ¦           page.tsx
+    ¦           
+    +---tasks
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---tasks-categories
+    ¦           page.tsx
+    ¦           
+    +---teams
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---create
+    ¦           page.tsx
+    ¦           
+    +---templates
+    ¦   ¦   page.tsx
+    ¦   ¦   
+    ¦   +---new
+    ¦   ¦       page.tsx
+    ¦   ¦       
+    ¦   +---[id]
+    ¦           page.tsx
+    ¦           
+    +---test
+    ¦       page.tsx
+    ¦       
+    +---user
+            page.tsx
+            user-table.tsx
+            UserFormDialog.tsx
+            
