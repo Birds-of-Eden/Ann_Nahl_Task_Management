@@ -149,6 +149,12 @@ async function seedPermissions() {
       name: "view_activity_logs",
       description: "Activity Logs",
     },
+
+    {
+      id: "data_entry_dashboard",
+      name: "data_entry_dashboard",
+      description: "Access Data Entry dashboard link",
+    },
   ];
 
   for (const p of permissions) {

@@ -4,25 +4,39 @@ import { NextRequest, NextResponse } from "next/server";
 // Public (unauthenticated) API endpoints — keep minimal
 const PUBLIC_API_ROUTES = new Set<string>([
   "/api/auth/sign-in",
-  "/api/auth/get-session", // optional: you can remove if you want this guarded too
+  "/api/auth/get-session", // keep or remove as you wish
 ]);
 
-export function middleware(req: NextRequest) {
-  const { pathname, origin, host } = req.nextUrl;
+// All protected app roots (no trailing slash)
+const PROTECTED_BASES = [
+  "/admin",
+  "/agent",
+  "/manager",
+  "/qc",
+  "/am",
+  "/am_ceo",
+  "/client",
+  "/data_entry",
+];
 
-  // ----------  A) Protect ALL API routes  ----------
+export function middleware(req: NextRequest) {
+  const { pathname, origin } = req.nextUrl;
+
+  // ---------- A) Protect ALL API routes ----------
   if (pathname.startsWith("/api/")) {
+    // 0) Always let CORS preflight through
+    if (req.method === "OPTIONS") {
+      return NextResponse.next();
+    }
+
     // 1) Allow listed public endpoints
     if (PUBLIC_API_ROUTES.has(pathname)) {
       return NextResponse.next();
     }
 
-    // DEVELOPMENT: relax cross-origin checks on LAN to avoid 403 while testing.
-    // We still enforce auth below.
     const isDev = process.env.NODE_ENV !== "production";
 
-    // 2) Same-origin enforcement (blocks "outside" fetches)
-    //    If Origin header is present, it MUST equal our origin.
+    // 2) Same-origin enforcement (optional: relax in dev)
     const requestOrigin = req.headers.get("origin");
     if (!isDev && requestOrigin && requestOrigin !== origin) {
       return new NextResponse(
@@ -34,7 +48,6 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    //    If Referer is present, it MUST start with our origin.
     const referer = req.headers.get("referer");
     if (!isDev && referer && !referer.startsWith(origin)) {
       return new NextResponse(
@@ -55,29 +68,18 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    // 4) (Optional) Let OPTIONS preflight through if you use CORS internally
-    if (req.method === "OPTIONS") {
-      return NextResponse.next();
-    }
-
     return NextResponse.next();
   }
 
-  // ----------  B) Guard App Pages (your original logic) ----------
+  // ---------- B) Guard App Pages ----------
   const token = req.cookies.get("session-token")?.value;
 
-  // Only for protected app sections
-  const needsAuth =
-    pathname.startsWith("/admin/") ||
-    pathname.startsWith("/agent/") ||
-    pathname.startsWith("/manager/") ||
-    pathname.startsWith("/qc/") ||
-    pathname.startsWith("/am/") ||
-    pathname.startsWith("/client/") ||
-    pathname.startsWith("/data_entry/");
+  // exact base or base + "/..."
+  const needsAuth = PROTECTED_BASES.some(
+    (base) => pathname === base || pathname.startsWith(base + "/")
+  );
 
   if (needsAuth && !token) {
-    // Redirect unauthenticated users to sign-in page
     return NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
 
