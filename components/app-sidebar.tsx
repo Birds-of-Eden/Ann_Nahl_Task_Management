@@ -219,34 +219,6 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Tasks (group)
-    {
-      title: "Tasks",
-      children: [
-        {
-          title: "All Tasks",
-          url: p(r, "/tasks"),
-          permission: "view_tasks_list",
-        },
-        {
-          title: "Tasks History",
-          url: p(r, "/taskHistory"),
-          permission: "view_tasks_history",
-        },
-      ],
-    },
-
-    // Agent tasks (kept original target so others can jump to agent area if permitted)
-    {
-      title: "Tasks",
-      url: p("agent", "/agent_tasks"),
-      permission: "view_agent_tasks",
-    },
-    {
-      title: "Tasks History",
-      url: p("agent", "/taskHistory"),
-      permission: "view_agent_tasks_history",
-    },
 
     // QC review (kept original target)
     {
