@@ -163,7 +163,12 @@ export function PackageCards() {
 
   const handleSeeTemplates = (pkg: Package) => {
     const role = user?.role?.toLowerCase();
-    const basePath = role === 'admin' ? 'admin' : role === 'manager' ? 'manager' : 'data_entry';
+    const basePath =
+      role === "admin"
+        ? "admin"
+        : role === "manager"
+        ? "manager"
+        : "data_entry";
     router.push(`/${basePath}/packages/id-${pkg.id}/templates`);
   };
 
@@ -256,6 +261,9 @@ export function PackageCards() {
     );
   };
 
+  // NEW: create permission
+  const canCreate = hasPermissionClient(user?.permissions, "package_create");
+
   return (
     <div className="space-y-8">
       {/* Header Section */}
@@ -268,13 +276,15 @@ export function PackageCards() {
             Manage your packages and track their performance
           </p>
         </div>
-        <Button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-8"
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Add Package
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-8"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Add Package
+          </Button>
+        )}
       </div>
 
       {/* Statistics Overview */}

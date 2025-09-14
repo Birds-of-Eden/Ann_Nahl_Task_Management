@@ -512,7 +512,9 @@ export function AppSidebar({ className }: { className?: string }) {
             >
               {visibleNav.map((item) => (
                 <MobileItem
-                  key={item.title}
+                  key={
+                    isGroup(item) ? `group:${item.title}` : `leaf:${item.url}`
+                  } // 🔁
                   item={item}
                   active={active}
                   role={role}
@@ -584,7 +586,7 @@ export function AppSidebar({ className }: { className?: string }) {
             {visibleNav.map((item) =>
               isGroup(item) ? (
                 <GroupItem
-                  key={item.title}
+                  key={`group:${item.title}`} // 🔁 title-এর সাথে prefix
                   item={item}
                   active={active}
                   expanded={expanded}
@@ -592,7 +594,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 />
               ) : (
                 <LeafItem
-                  key={item.title}
+                  key={`leaf:${item.url}`} // 🔁 leaf-এ url ইউজ করো
                   item={item}
                   active={active}
                   chatUnread={chatUnread}
@@ -699,7 +701,11 @@ function GroupItem({
             className="ml-6 space-y-1"
           >
             {item.children.map((child) => (
-              <LeafItem key={child.title} item={child} active={active} />
+              <LeafItem
+                key={`leaf:${child.url}`}
+                item={child}
+                active={active}
+              /> // 🔁
             ))}
           </motion.div>
         )}
@@ -798,8 +804,12 @@ function MobileItem({
             className="bg-white"
           >
             <div className="px-3 py-2 space-y-1">
-              {item.children.map((c) => (
-                <LeafItem key={c.title} item={c} active={active} />
+              {item.children.map((child) => (
+                <LeafItem
+                  key={`leaf:${child.url}`}
+                  item={child}
+                  active={active}
+                /> // 🔁
               ))}
             </div>
           </motion.div>

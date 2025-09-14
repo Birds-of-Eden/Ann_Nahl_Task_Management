@@ -1,51 +1,54 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FileText, Eye, Package, ListChecks } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getInitialsFromName, nameToColor } from "@/utils/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  FileText,
-  Eye,
-  Package,
-  ListChecks,
-} from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getInitialsFromName, nameToColor } from "@/utils/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { toast } from "sonner"
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { toast } from "sonner";
 
-import type { Client, TaskStatusCounts } from "@/types/client"
-import { useUserSession } from "@/lib/hooks/use-user-session"
+import type { Client, TaskStatusCounts } from "@/types/client";
+import { useUserSession } from "@/lib/hooks/use-user-session";
+import { hasPermissionClient } from "@/lib/permissions-client";
+import { useAuth } from "@/context/auth-context";
 
 interface ClientCardProps {
-  clientId: string
-  onViewDetails?: () => void
+  clientId: string;
+  onViewDetails?: () => void;
 }
 
 export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
-  const [client, setClient] = useState<Client | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
-  const { user: session } = useUserSession()
+  const { user } = useAuth();
+  const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { user: session } = useUserSession();
 
   // Fetch full client details from API
   useEffect(() => {
     const fetchClient = async () => {
       try {
-        const response = await fetch(`/api/clients/${clientId}`)
-        if (!response.ok) throw new Error("Failed to fetch client")
-        const data: Client = await response.json()
-        setClient(data)
+        const response = await fetch(`/api/clients/${clientId}`);
+        if (!response.ok) throw new Error("Failed to fetch client");
+        const data: Client = await response.json();
+        setClient(data);
       } catch (error) {
-        console.error("Error fetching client:", error)
-        toast.error("Failed to load client details.")
+        console.error("Error fetching client:", error);
+        toast.error("Failed to load client details.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchClient()
-  }, [clientId])
+    };
+    fetchClient();
+  }, [clientId]);
 
   // Normalize task statuses and compute counts dynamically
   const normalizeStatus = (raw?: string | null) => {
@@ -53,31 +56,62 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
       .toString()
       .trim()
       .toLowerCase()
-      .replace(/[\-\s]+/g, "_")
-    if (["done", "complete", "completed", "finished", "qc_approved", "approved"].includes(s)) return "completed"
-    if (["in_progress", "in-progress", "progress", "doing", "working"].includes(s)) return "in_progress"
-    if (["overdue", "late"].includes(s)) return "overdue"
-    if (["pending", "todo", "not_started", "on_hold", "paused", "backlog"].includes(s)) return "pending"
-    if (["cancelled", "canceled"].includes(s)) return "cancelled"
-    return s || "pending"
-  }
+      .replace(/[\-\s]+/g, "_");
+    if (
+      [
+        "done",
+        "complete",
+        "completed",
+        "finished",
+        "qc_approved",
+        "approved",
+      ].includes(s)
+    )
+      return "completed";
+    if (
+      ["in_progress", "in-progress", "progress", "doing", "working"].includes(s)
+    )
+      return "in_progress";
+    if (["overdue", "late"].includes(s)) return "overdue";
+    if (
+      [
+        "pending",
+        "todo",
+        "not_started",
+        "on_hold",
+        "paused",
+        "backlog",
+      ].includes(s)
+    )
+      return "pending";
+    if (["cancelled", "canceled"].includes(s)) return "cancelled";
+    return s || "pending";
+  };
 
-  const getTaskStatusCounts = (tasks: Client["tasks"] = []): TaskStatusCounts => {
-    const counts: TaskStatusCounts = { pending: 0, in_progress: 0, completed: 0, overdue: 0, cancelled: 0 }
+  const getTaskStatusCounts = (
+    tasks: Client["tasks"] = []
+  ): TaskStatusCounts => {
+    const counts: TaskStatusCounts = {
+      pending: 0,
+      in_progress: 0,
+      completed: 0,
+      overdue: 0,
+      cancelled: 0,
+    };
     for (const t of tasks) {
-      const s = normalizeStatus((t as any).status)
-      if (s in counts) (counts as any)[s]++
-      else counts.pending++
+      const s = normalizeStatus((t as any).status);
+      if (s in counts) (counts as any)[s]++;
+      else counts.pending++;
     }
-    return counts
-  }
+    return counts;
+  };
 
   if (loading) {
     return (
       <Card className="p-6 flex items-center justify-center">
         <div className="animate-spin h-6 w-6 border-2 border-gray-300 border-t-cyan-500 rounded-full"></div>
       </Card>
-    )
+    );
   }
 
   if (!client) {
@@ -85,89 +119,105 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
       <Card className="p-6 text-center text-gray-500">
         Failed to load client data
       </Card>
-    )
+    );
   }
 
-  const taskCounts = getTaskStatusCounts(client.tasks)
-  const totalTasks = client.tasks?.length || 0
-  const derivedProgress = totalTasks ? Math.round((taskCounts.completed / totalTasks) * 100) : 0
+  const taskCounts = getTaskStatusCounts(client.tasks);
+  const totalTasks = client.tasks?.length || 0;
+  const derivedProgress = totalTasks
+    ? Math.round((taskCounts.completed / totalTasks) * 100)
+    : 0;
   // This Month Progress (mirrors logic from clientsID/client-dashboard.tsx)
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1) // exclusive
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1); // exclusive
 
   const parseDate = (v?: string | Date | null) => {
-    if (!v) return null
-    const d = new Date(v)
-    return isNaN(d.getTime()) ? null : d
-  }
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
 
   // Prefer createdAt; fallback to startDate; then dueDate
   const getBestDate = (task: any): Date | null => {
-    return parseDate(task?.createdAt) || parseDate((task as any)?.startDate) || parseDate(task?.dueDate)
-  }
+    return (
+      parseDate(task?.createdAt) ||
+      parseDate((task as any)?.startDate) ||
+      parseDate(task?.dueDate)
+    );
+  };
 
   const inThisMonth = (task: any) => {
-    const d = getBestDate(task)
-    if (!d) return false
-    return d >= monthStart && d < monthEnd
-  }
+    const d = getBestDate(task);
+    if (!d) return false;
+    return d >= monthStart && d < monthEnd;
+  };
 
-  const tasksThisMonth = (client.tasks ?? []).filter(inThisMonth)
-  const totalThisMonth = tasksThisMonth.length
+  const tasksThisMonth = (client.tasks ?? []).filter(inThisMonth);
+  const totalThisMonth = tasksThisMonth.length;
 
   const rawStatus = (raw?: string | null) =>
-    (raw ?? "").toString().trim().toLowerCase().replace(/[\-\s]+/g, "_")
+    (raw ?? "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[\-\s]+/g, "_");
 
-  let completedThisMonth = 0
-  let approvedThisMonth = 0
+  let completedThisMonth = 0;
+  let approvedThisMonth = 0;
 
   for (const t of tasksThisMonth) {
-    const sRaw = rawStatus((t as any)?.status)
-    const sNorm = normalizeStatus((t as any)?.status)
-    const completedAt = parseDate((t as any)?.completedAt)
-    const dueDate = parseDate((t as any)?.dueDate)
+    const sRaw = rawStatus((t as any)?.status);
+    const sNorm = normalizeStatus((t as any)?.status);
+    const completedAt = parseDate((t as any)?.completedAt);
+    const dueDate = parseDate((t as any)?.dueDate);
 
     const isCompleted =
-      (completedAt ? completedAt >= monthStart && completedAt < monthEnd : false) ||
-      sNorm === "completed"
+      (completedAt
+        ? completedAt >= monthStart && completedAt < monthEnd
+        : false) || sNorm === "completed";
 
-    const isApproved = sRaw === "qc_approved" || sRaw === "approved"
+    const isApproved = sRaw === "qc_approved" || sRaw === "approved";
 
     const isPending =
       sNorm === "pending" ||
-      (!isCompleted && !isApproved && (!!dueDate ? dueDate >= monthStart && dueDate < monthEnd : true))
+      (!isCompleted &&
+        !isApproved &&
+        (!!dueDate ? dueDate >= monthStart && dueDate < monthEnd : true));
 
-    if (isCompleted) completedThisMonth++
-    if (isApproved) approvedThisMonth++
+    if (isCompleted) completedThisMonth++;
+    if (isApproved) approvedThisMonth++;
     // isPending is computed for parity with dashboard logic but not displayed
-    void isPending
+    void isPending;
   }
 
   const derivedProgressThisMonth = totalThisMonth
-    ? Math.round(((completedThisMonth + approvedThisMonth) / totalThisMonth) * 100)
-    : 0
+    ? Math.round(
+        ((completedThisMonth + approvedThisMonth) / totalThisMonth) * 100
+      )
+    : 0;
 
   // Clamp progress values for display
-  const displayOverall = Math.min(100, Math.max(0, derivedProgress))
-  const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth))
+  const displayOverall = Math.min(100, Math.max(0, derivedProgress));
+  const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth));
 
   // Dynamic route segment based on user role (e.g., am, admin, qc)
-  const roleRaw = (session as any)?.user?.role?.name ?? (session as any)?.user?.role
-  const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined
-  const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin"
+  const roleRaw =
+    (session as any)?.user?.role?.name ?? (session as any)?.user?.role;
+  const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined;
+  const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
   const handleViewDetails = () => {
     if (onViewDetails) {
-      onViewDetails()
+      onViewDetails();
     } else {
-      router.push(`/data_entry/clients/${clientId}`)
+      router.push(`/data_entry/clients/${clientId}`);
     }
-  }
+  };
 
   const handleViewTasks = () => {
-    router.push(`/data_entry/clients/${clientId}/tasks`)
-  }
+    router.push(`/data_entry/clients/${clientId}/tasks`);
+  };
 
   return (
     <Card className="overflow-hidden rounded-xl shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-xl hover:scale-[1.01] bg-white">
@@ -176,10 +226,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 border-4 border-white shadow-md">
-              <AvatarImage
-                src={client.avatar || undefined}
-                alt={client.name}
-              />
+              <AvatarImage src={client.avatar || undefined} alt={client.name} />
               <AvatarFallback
                 className="text-white text-2xl font-bold"
                 style={{ backgroundColor: nameToColor(client.name) }}
@@ -199,8 +246,8 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
                 client.status === "active"
                   ? "bg-emerald-100 text-emerald-800 text-sm font-medium px-3 py-1.5 rounded-full"
                   : client.status === "inactive"
-                    ? "bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1.5 rounded-full"
-                    : "bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5 rounded-full"
+                  ? "bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1.5 rounded-full"
+                  : "bg-amber-100 text-amber-800 text-sm font-medium px-3 py-1.5 rounded-full"
               }
             >
               {client.status || "Pending"}
@@ -218,7 +265,12 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
 
       {/* Content */}
       <CardContent className="p-2 space-y-5">
-        <div className="pl-2"><span className="font-medium text-gray-800">Account Manager:</span> <span className="font-bold text-gray-800">{client.accountManager?.name}</span></div>
+        <div className="pl-2">
+          <span className="font-medium text-gray-800">Account Manager:</span>{" "}
+          <span className="font-bold text-gray-800">
+            {client.accountManager?.name}
+          </span>
+        </div>
         {/* Progress */}
         <div className="p-2">
           <div className="flex items-center justify-between text-sm mb-2 gap-2">
@@ -268,16 +320,24 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
               <div className="font-medium text-gray-800">{totalTasks}</div>
 
               <div className="text-gray-600">Completed:</div>
-              <div className="font-medium text-emerald-700">{taskCounts.completed}</div>
+              <div className="font-medium text-emerald-700">
+                {taskCounts.completed}
+              </div>
 
               <div className="text-gray-600">In Progress:</div>
-              <div className="font-medium text-blue-700">{taskCounts.in_progress}</div>
+              <div className="font-medium text-blue-700">
+                {taskCounts.in_progress}
+              </div>
 
               <div className="text-gray-600">Pending:</div>
-              <div className="font-medium text-amber-700">{taskCounts.pending}</div>
+              <div className="font-medium text-amber-700">
+                {taskCounts.pending}
+              </div>
 
               <div className="text-gray-600">Overdue:</div>
-              <div className="font-medium text-red-700">{taskCounts.overdue}</div>
+              <div className="font-medium text-red-700">
+                {taskCounts.overdue}
+              </div>
             </div>
           ) : (
             <p className="text-gray-500 text-sm">No tasks assigned</p>
@@ -288,26 +348,32 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
       {/* Footer */}
       <CardFooter className="border-t border-gray-100 gap-4 p-4 bg-gray-50">
         <div className="flex gap-2 w-full">
-          <Button
-            className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-            onClick={handleViewDetails}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Details
-          </Button>
-        </div>
-        {(session?.role === 'Admin' || session?.role === 'Manager' || session?.role === 'data_entry') && (
-          <div className="flex gap-2 w-full">
+          {hasPermissionClient(user?.permissions, "client_view") && (
             <Button
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-              onClick={handleViewTasks}
+              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              onClick={handleViewDetails}
             >
-              <ListChecks className="h-4 w-4 mr-2" />
-              View Tasks
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
             </Button>
+          )}
+        </div>
+        {(session?.role === "Admin" ||
+          session?.role === "Manager" ||
+          session?.role === "data_entry") && (
+          <div className="flex gap-2 w-full">
+            {hasPermissionClient(user?.permissions, "task_view") && (
+              <Button
+                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+                onClick={handleViewTasks}
+              >
+                <ListChecks className="h-4 w-4 mr-2" />
+                View Tasks
+              </Button>
+            )}
           </div>
         )}
       </CardFooter>
     </Card>
-  )
+  );
 }

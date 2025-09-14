@@ -59,6 +59,8 @@ import ImpersonateButton from "@/components/users/ImpersonateButton";
 
 import UserFormDialog from "./UserFormDialog";
 import type { UserInterface, UserStats, Role, UserStatus } from "@/types/user";
+import { hasPermissionClient } from "@/lib/permissions-client";
+import { useAuth } from "@/context/auth-context";
 
 export default function UsersPage() {
   const { user: currentUser, loading: sessionLoading } = useUserSession();
@@ -92,6 +94,7 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserInterface | null>(null);
   const [editUser, setEditUser] = useState<UserInterface | null>(null);
+  const { user } = useAuth();
 
   // Fetch users with pagination
   const fetchUsers = useCallback(async () => {
@@ -524,32 +527,43 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditUser(user);
-                          setOpenEditDialog(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setOpenViewDialog(true);
-                        }}
-                      >
-                        View
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteConfirmation(user.id)}
-                      >
-                        Delete
-                      </Button>
+                      {hasPermissionClient(user?.permissions, "user_edit") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditUser(user);
+                            setOpenEditDialog(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
+
+                      {hasPermissionClient(user?.permissions, "user_view") && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setOpenViewDialog(true);
+                          }}
+                        >
+                          View
+                        </Button>
+                      )}
+
+                      {hasPermissionClient(
+                        user?.permissions,
+                        "user_delete"
+                      ) && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openDeleteConfirmation(user.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
 
                       <ImpersonateButton
                         targetUserId={user.id}
