@@ -19,7 +19,7 @@ const PROTECTED_BASES = [
   "/data_entry",
 ];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname, origin } = req.nextUrl;
 
   // ---------- A) Protect ALL API routes ----------
@@ -68,19 +68,78 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    return NextResponse.next();
+    // 4) Validate session server-side by calling internal get-session route.
+    // This ensures the token exists in DB and is not expired.
+    try {
+      const sessionUrl = new URL("/api/auth/get-session", req.url);
+      // Forward cookies so server can read session-token
+      const sessionRes = await fetch(sessionUrl.toString(), {
+        method: "GET",
+        headers: { cookie: req.headers.get("cookie") || "" },
+        cache: "no-store",
+      });
+
+      if (!sessionRes.ok) {
+        return new NextResponse(
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return NextResponse.next();
+    } catch (err) {
+      console.error("Middleware session validation error:", err);
+      return new NextResponse(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
   }
 
   // ---------- B) Guard App Pages ----------
+  // If route is a protected base, validate session and also enforce role matching
   const token = req.cookies.get("session-token")?.value;
 
-  // exact base or base + "/..."
   const needsAuth = PROTECTED_BASES.some(
     (base) => pathname === base || pathname.startsWith(base + "/")
   );
 
-  if (needsAuth && !token) {
-    return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+  if (needsAuth) {
+    // If no token, send to sign-in immediately
+    if (!token) {
+      return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+    }
+
+    // Validate session and get user info from internal API
+    try {
+      const sessionUrl = new URL("/api/auth/get-session", req.url);
+      const sessionRes = await fetch(sessionUrl.toString(), {
+        method: "GET",
+        headers: { cookie: req.headers.get("cookie") || "" },
+        cache: "no-store",
+      });
+
+      if (!sessionRes.ok) {
+        return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+      }
+
+      const json = await sessionRes.json();
+      const userRole = (json?.user?.role || "client").toLowerCase();
+
+      // extract first segment of pathname (e.g. /agent/... -> agent)
+      const seg = pathname.split("/")[1] || "";
+      if (seg && PROTECTED_BASES.map((b) => b.replace("/", "")).includes(seg)) {
+        // if user not admin and trying to access different role area, redirect
+        if (userRole !== "admin" && seg !== userRole) {
+          return NextResponse.redirect(new URL(`/${userRole}`, req.url));
+        }
+      }
+
+      return NextResponse.next();
+    } catch (err) {
+      console.error("Middleware page session validation error:", err);
+      return NextResponse.redirect(new URL("/auth/sign-in", req.url));
+    }
   }
 
   return NextResponse.next();
