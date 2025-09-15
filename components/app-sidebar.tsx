@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import useSWR, { useSWRConfig } from "swr";
+import useSWR from "swr";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -51,7 +51,7 @@ import { useUserSession } from "@/lib/hooks/use-user-session";
 import { NotificationBell } from "@/components/notification-bell";
 
 /* =========================
-   Types
+   Role & Nav Types
 ========================= */
 
 type Role =
@@ -68,7 +68,7 @@ type Role =
 type NavLeaf = {
   title: string;
   url: string;
-  /** DB Permission.id */
+  /** permission id from DB (Permission.id) */
   permission?: string;
 };
 
@@ -86,12 +86,11 @@ type RolePermResponse = {
 };
 
 /* =========================
-   Icons
+   Icons Map
 ========================= */
 
 const ICONS: Record<string, React.ReactNode> = {
   Dashboard: <LayoutDashboard className="h-4 w-4" />,
-  "Data Entry Dashboard": <LayoutDashboard className="h-4 w-4" />,
   Clients: <Users className="h-4 w-4" />,
   "All Clients": <Users className="h-4 w-4" />,
   "Add Client": <UserPlus className="h-4 w-4" />,
@@ -115,18 +114,10 @@ const ICONS: Record<string, React.ReactNode> = {
   Projects: <Folder className="h-4 w-4" />,
   Notifications: <BellRing className="h-4 w-4" />,
   Chat: <MessageCircleMore className="h-4 w-4" />,
-  "My Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Admin Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Agent Chat": <MessageCircleMore className="h-4 w-4" />,
-  "AM Chat": <MessageCircleMore className="h-4 w-4" />,
-  "AM CEO Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Client Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Data Entry Chat": <MessageCircleMore className="h-4 w-4" />,
-  "QC Chat": <MessageCircleMore className="h-4 w-4" />,
 };
 
 /* =========================
-   Role base paths
+   Helpers: role base paths
 ========================= */
 
 const basePath: Record<Role, string> = {
@@ -138,7 +129,7 @@ const basePath: Record<Role, string> = {
   am_ceo: "/am_ceo",
   data_entry: "/data_entry",
   client: "/client",
-  user: "/client",
+  user: "/client", // sensible default
 };
 
 const p = (role: Role, suffix = "") => `${basePath[role]}${suffix}`;
@@ -153,54 +144,26 @@ const fetcher = (u: string) =>
   );
 
 /* =========================
-   Nav model (permission-only)
+   Nav model (single source)
+   — Each leaf has permission
+   — NO role filtering (Option B)
 ========================= */
 
 function buildNav(role: Role): NavItem[] {
   const r = role;
-
   return [
-    // Dashboards
-    { title: "Dashboard", url: p(r, ""), permission: "view_dashboard" },
+    // Dashboard
     {
-      title: "Data Entry Dashboard",
-      url: p("data_entry", ""),
-      permission: "data_entry_dashboard",
+      title: "Dashboard",
+      url: p(r, ""),
+      permission: "view_dashboard",
     },
 
-    // Chat (group, including role-specific chat links)
+    // Chat
     {
       title: "Chat",
-      children: [
-        { title: "My Chat", url: p(r, "/chat"), permission: "view_chat" },
-        {
-          title: "Admin Chat",
-          url: p("admin", "/chat"),
-          permission: "chat_admin",
-        },
-        {
-          title: "Agent Chat",
-          url: p("agent", "/chat"),
-          permission: "chat_agent",
-        },
-        { title: "AM Chat", url: p("am", "/chat"), permission: "chat_am" },
-        {
-          title: "AM CEO Chat",
-          url: p("am_ceo", "/chat"),
-          permission: "chat_am_ceo",
-        },
-        {
-          title: "Client Chat",
-          url: p("client", "/chat"),
-          permission: "chat_client",
-        },
-        {
-          title: "Data Entry Chat",
-          url: p("data_entry", "/chat"),
-          permission: "chat_data_entry",
-        },
-        { title: "QC Chat", url: p("qc", "/chat"), permission: "chat_qc" },
-      ],
+      url: p(r, "/chat"),
+      permission: "view_chat",
     },
 
     // Clients
@@ -256,7 +219,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Tasks group
+    // Tasks (group)
     {
       title: "Tasks",
       children: [
@@ -273,7 +236,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Agent tasks quick-links (cross-area deep-links)
+    // Agent tasks (kept original target so others can jump to agent area if permitted)
     {
       title: "Tasks",
       url: p("agent", "/agent_tasks"),
@@ -285,7 +248,7 @@ function buildNav(role: Role): NavItem[] {
       permission: "view_agent_tasks_history",
     },
 
-    // QC review quick-link
+    // QC review (kept original target)
     {
       title: "QC Review",
       url: p("qc", "/tasks"),
@@ -309,7 +272,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Team / QC / Role-perms / Users / Activity
+    // Team / QC dashboards / Role Permissions / Users / Activity
     {
       title: "Team Management",
       url: p(r, "/teams"),
@@ -356,7 +319,7 @@ function buildNav(role: Role): NavItem[] {
 }
 
 /* =========================
-   Utils
+   Small utils
 ========================= */
 
 function isGroup(item: NavItem): item is NavGroup {
@@ -382,15 +345,14 @@ function useActive(pathname: string) {
   );
 }
 
-/** Permission-only filter — permissionSet null হলে deny (skeleton দেখাবো) */
+/** ✅ Option B: ONLY permission-based filtering */
 function filterNavByAccess(
   items: NavItem[],
   permissionSet: Set<string> | null
 ): NavItem[] {
-  const hasPerm = (perm?: string) => {
-    if (!perm) return true;
-    return !!permissionSet && permissionSet.has(perm);
-  };
+  const hasPerm = (perm?: string) =>
+    // permissionSet === null ⇒ data not loaded yet ⇒ pass-through
+    !perm || !permissionSet || permissionSet.has(perm);
 
   return items
     .map((it) => {
@@ -415,11 +377,10 @@ export function AppSidebar({ className }: { className?: string }) {
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   const router = useRouter();
 
-  const { cache, mutate } = useSWRConfig();
-
   const { user } = useUserSession();
   const role: Role = (user?.role as Role) ?? "user";
 
+  // Chat unread badge
   const { data: unreadData } = useSWR<{ count: number }>(
     "/api/chat/unread-count",
     fetcher,
@@ -427,6 +388,7 @@ export function AppSidebar({ className }: { className?: string }) {
   );
   const chatUnread = unreadData?.count ?? 0;
 
+  // Impersonation state
   type MeResponse = {
     user?: {
       id?: string;
@@ -450,25 +412,21 @@ export function AppSidebar({ className }: { className?: string }) {
     me?.impersonation?.realAdmin?.email ||
     null;
 
-  // Permissions (role + user.id to avoid stale)
-  const permKey = user?.id
-    ? `/api/role-permissions/${role}?uid=${user.id}`
-    : null;
-  const { data: rolePermData } = useSWR<RolePermResponse>(permKey, fetcher, {
-    revalidateOnMount: true,
-    revalidateOnFocus: true,
-    keepPreviousData: false,
-    dedupingInterval: 0,
-  });
+  // 🔐 Load role permissions → build permission set
+  const { data: rolePermData } = useSWR<RolePermResponse>(
+    role ? `/api/role-permissions/${role}` : null,
+    fetcher,
+    { refreshInterval: 60_000, revalidateOnFocus: true }
+  );
   const permissionSet = React.useMemo<Set<string> | null>(() => {
     const list = rolePermData?.permissions ?? [];
     return rolePermData ? new Set(list.map((p) => p.id)) : null;
   }, [rolePermData]);
 
-  const isPermLoading = permissionSet === null && !!user?.id;
-
   const active = useActive(pathname);
   const nav = React.useMemo(() => buildNav(role), [role]);
+
+  /** FINAL: visible navigation — permission only */
   const visibleNav = React.useMemo(
     () => filterNavByAccess(nav, permissionSet),
     [nav, permissionSet]
@@ -489,11 +447,6 @@ export function AppSidebar({ className }: { className?: string }) {
     setExpanded((prev) => ({ ...prev, ...next }));
   }, [visibleNav, active]);
 
-  // Reset expanded when user/role changes
-  React.useEffect(() => {
-    setExpanded({});
-  }, [user?.id, role]);
-
   // Actions
   const handleSignOut = async () => {
     try {
@@ -502,15 +455,7 @@ export function AppSidebar({ className }: { className?: string }) {
     try {
       localStorage.removeItem("chat:open");
     } catch {}
-
-    // SWR cache flush to prevent stale flash
-    try {
-      (cache as any)?.clear?.();
-    } catch {}
-    mutate(() => true, undefined, { revalidate: false });
-
     router.push("/auth/sign-in");
-    router.refresh();
   };
 
   const handleExitImpersonation = async () => {
@@ -520,6 +465,7 @@ export function AppSidebar({ className }: { className?: string }) {
     router.refresh();
   };
 
+  // Orientation: mobile = top bar; desktop = sidebar
   return (
     <div className="relative">
       {/* Mobile Top Bar */}
@@ -564,24 +510,16 @@ export function AppSidebar({ className }: { className?: string }) {
               className="px-2 pb-2"
               aria-label="Mobile navigation"
             >
-              {isPermLoading ? (
-                <SidebarSkeleton />
-              ) : (
-                visibleNav.map((item) => (
-                  <MobileItem
-                    key={
-                      isGroup(item)
-                        ? `group:${item.title}`
-                        : `leaf:${(item as NavLeaf).url}`
-                    }
-                    item={item}
-                    active={active}
-                    role={role}
-                    expanded={expanded}
-                    setExpanded={setExpanded}
-                  />
-                ))
-              )}
+              {visibleNav.map((item, idx) => (
+                <MobileItem
+                  key={`${item.title}-${idx}`}
+                  item={item}
+                  active={active}
+                  role={role}
+                  expanded={expanded}
+                  setExpanded={setExpanded}
+                />
+              ))}
             </motion.nav>
           )}
         </AnimatePresence>
@@ -643,26 +581,22 @@ export function AppSidebar({ className }: { className?: string }) {
         {/* Nav */}
         <div className="flex-1 overflow-y-auto p-2">
           <div className="space-y-1">
-            {isPermLoading ? (
-              <SidebarSkeleton />
-            ) : (
-              visibleNav.map((item) =>
-                isGroup(item) ? (
-                  <GroupItem
-                    key={`group:${item.title}`}
-                    item={item}
-                    active={active}
-                    expanded={expanded}
-                    setExpanded={setExpanded}
-                  />
-                ) : (
-                  <LeafItem
-                    key={`leaf:${(item as NavLeaf).url}`}
-                    item={item as NavLeaf}
-                    active={active}
-                    chatUnread={chatUnread}
-                  />
-                )
+            {visibleNav.map((item, idx) =>
+              isGroup(item) ? (
+                <GroupItem
+                  key={`${item.title}-${idx}`}
+                  item={item}
+                  active={active}
+                  expanded={expanded}
+                  setExpanded={setExpanded}
+                />
+              ) : (
+                <LeafItem
+                  key={`${item.title}-${idx}`}
+                  item={item}
+                  active={active}
+                  chatUnread={chatUnread}
+                />
               )
             )}
           </div>
@@ -764,9 +698,9 @@ function GroupItem({
             transition={{ duration: 0.2 }}
             className="ml-6 space-y-1"
           >
-            {item.children.map((child) => (
+            {item.children.map((child, cidx) => (
               <LeafItem
-                key={`leaf:${child.url}`}
+                key={`${child.title}-${cidx}`}
                 item={child}
                 active={active}
               />
@@ -807,7 +741,7 @@ function LeafItem({
         {ICONS[item.title] ?? <FileText className="h-4 w-4" />}
       </div>
       <span className="text-sm font-medium text-gray-700">{item.title}</span>
-      {item.title === "My Chat" && Number(chatUnread) > 0 && (
+      {item.title === "Chat" && Number(chatUnread) > 0 && (
         <span className="ml-auto inline-flex items-center justify-center text-xs px-2 py-0.5 rounded-full bg-emerald-600 text-white">
           {chatUnread}
         </span>
@@ -868,8 +802,8 @@ function MobileItem({
             className="bg-white"
           >
             <div className="px-3 py-2 space-y-1">
-              {item.children.map((c) => (
-                <LeafItem key={`leaf:${c.url}`} item={c} active={active} />
+              {item.children.map((c, cidx) => (
+                <LeafItem key={`${c.title}-${cidx}`} item={c} active={active} />
               ))}
             </div>
           </motion.div>
@@ -971,20 +905,6 @@ function SidebarFooter({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
-  );
-}
-
-/* =========================
-   Loading Skeleton
-========================= */
-
-function SidebarSkeleton() {
-  return (
-    <div className="space-y-2 p-2">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="h-8 bg-gray-100 rounded-md animate-pulse" />
-      ))}
     </div>
   );
 }
