@@ -527,43 +527,34 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {hasPermissionClient(user?.permissions, "user_edit") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditUser(user);
-                            setOpenEditDialog(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditUser(user);
+                          setOpenEditDialog(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
 
-                      {hasPermissionClient(user?.permissions, "user_view") && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setOpenViewDialog(true);
-                          }}
-                        >
-                          View
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setOpenViewDialog(true);
+                        }}
+                      >
+                        View
+                      </Button>
 
-                      {hasPermissionClient(
-                        user?.permissions,
-                        "user_delete"
-                      ) && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => openDeleteConfirmation(user.id)}
-                        >
-                          Delete
-                        </Button>
-                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => openDeleteConfirmation(user.id)}
+                      >
+                        Delete
+                      </Button>
 
                       <ImpersonateButton
                         targetUserId={user.id}

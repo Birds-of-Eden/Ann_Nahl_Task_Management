@@ -150,10 +150,53 @@ async function seedPermissions() {
       description: "Activity Logs",
     },
 
+    // New chat + data-entry dashboard permissions
+    {
+      id: "chat_admin",
+      name: "chat_admin",
+      description: "Access Admin chat link",
+    },
+    {
+      id: "chat_agent",
+      name: "chat_agent",
+      description: "Access Agent chat link",
+    },
+    { id: "chat_am", name: "chat_am", description: "Access AM chat link" },
+    {
+      id: "chat_am_ceo",
+      name: "chat_am_ceo",
+      description: "Access AM CEO chat link",
+    },
+    {
+      id: "chat_client",
+      name: "chat_client",
+      description: "Access Client chat link",
+    },
+    {
+      id: "chat_data_entry",
+      name: "chat_data_entry",
+      description: "Access Data Entry chat link",
+    },
+    { id: "chat_qc", name: "chat_qc", description: "Access QC chat link" },
     {
       id: "data_entry_dashboard",
       name: "data_entry_dashboard",
       description: "Access Data Entry dashboard link",
+    },
+    {
+      id: "user_edit",
+      name: "user_edit",
+      description: "Can edit users",
+    },
+    {
+      id: "user_view",
+      name: "user_view",
+      description: "Can view users",
+    },
+    {
+      id: "user_delete",
+      name: "user_delete",
+      description: "Can delete users",
     },
   ];
 
