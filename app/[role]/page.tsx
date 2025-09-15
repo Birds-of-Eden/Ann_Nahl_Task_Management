@@ -9,6 +9,7 @@ import { AMDashboard } from "@/components/account_manager/amDashboard";
 import QCDashboard from "@/components/QCDashboard";
 import { AgentDashboard } from "@/components/agent-dashboard";
 import ClientSelfDashboard from "@/components/client-self-dashboard"; // নিচে ৩ নম্বর ফাইল
+import ClientsPage from "./data_entry_dashboard/page";
 
 type Role =
   | "admin"
@@ -60,11 +61,7 @@ export default async function RoleBasedPage({
       return <AMCeoDashboard />;
 
     case "data_entry":
-      return (
-        <div className="flex justify-center text-2xl font-bold text-gray-600">
-          Data Entry Dashboard
-        </div>
-      );
+      return <ClientsPage/>
 
     case "client":
     default:
