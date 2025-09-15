@@ -303,11 +303,11 @@ function buildNav(role: Role): NavItem[] {
     },
 
     // QC review quick-link
-    {
-      title: "QC Review",
-      url: p("qc", "/tasks"),
-      permission: "view_qc_review",
-    },
+    // {
+    //   title: "QC Review",
+    //   url: p("qc", "/tasks"),
+    //   permission: "view_qc_review",
+    // },
 
     // Agents
     {
