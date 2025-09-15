@@ -220,13 +220,24 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // AM Clients
+    // AM CEO Clients
     {
       title: "AM Clients",
       children: [
         {
           title: "All AM Clients",
-          url: p(r, "/clients"),
+          url: p(r, "/am_ceo_clients"),
+          permission: "view_am_ceo_clients_list",
+        },
+      ],
+    },
+    // AM Clients
+    {
+      title: "AM Clients",
+      children: [
+        {
+          title: "AM Clients",
+          url: p(r, "/am_clients"),
           permission: "view_am_clients_list",
         },
       ],
