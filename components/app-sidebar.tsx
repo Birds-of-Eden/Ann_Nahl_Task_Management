@@ -663,24 +663,29 @@ export function AppSidebar({ className }: { className?: string }) {
             {isPermLoading ? (
               <SidebarSkeleton />
             ) : (
-              visibleNav.map((item) =>
-                isGroup(item) ? (
-                  <GroupItem
-                    key={`group:${item.title}`}
-                    item={item}
-                    active={active}
-                    expanded={expanded}
-                    setExpanded={setExpanded}
-                  />
-                ) : (
+              visibleNav.map((item, idx) => {
+                if (isGroup(item)) {
+                  const childKeys = item.children.map((c) => c.url).join("|");
+                  return (
+                    <GroupItem
+                      key={`group:${item.title}:${childKeys}:${idx}`}
+                      item={item}
+                      active={active}
+                      expanded={expanded}
+                      setExpanded={setExpanded}
+                    />
+                  );
+                }
+                const leaf = item as NavLeaf;
+                return (
                   <LeafItem
-                    key={`leaf:${(item as NavLeaf).url}`}
-                    item={item as NavLeaf}
+                    key={`leaf:${leaf.url}:${idx}`}
+                    item={leaf}
                     active={active}
                     chatUnread={chatUnread}
                   />
-                )
-              )
+                );
+              })
             )}
           </div>
         </div>
