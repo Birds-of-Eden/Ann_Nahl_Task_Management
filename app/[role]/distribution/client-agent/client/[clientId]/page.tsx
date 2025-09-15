@@ -1,3 +1,5 @@
+// app/[role]/distribution/client-agent/client/[clientId]/page.tsx
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -403,7 +405,7 @@ export default function CreatePostingTasksPage() {
     setLoadingExistingTasks(true);
     try {
       const res = await fetch(
-        `/api/tasks?clientId=${clientId}&categories=Social Activity,Blog Posting`,
+        `/api/tasks?clientId=${clientId}&categories=Social Activity,Blog Posting,Social Communication`,
         {
           cache: "no-store",
         }
@@ -599,9 +601,7 @@ export default function CreatePostingTasksPage() {
       <div className="container mx-auto p-6 lg:p-8">
         <div className="mb-6">
           <Button
-            onClick={() =>
-              router.push(`/admin/distribution/client-agent`)
-            }
+            onClick={() => router.push(`/admin/distribution/client-agent`)}
             variant="outline"
             className="flex items-center gap-2"
           >

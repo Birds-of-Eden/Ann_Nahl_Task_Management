@@ -422,6 +422,7 @@ model Task {
   qcReview              Json?
   qcTotalScore          Int?             @default(0)
   pauseReasons          Json?            @default("[]")
+  socialCommunications Json? @default("[]") // 👈 NEW
 
   assignment            Assignment?        @relation(fields: [assignmentId], references: [id])
   client                Client?            @relation(fields: [clientId], references: [id])

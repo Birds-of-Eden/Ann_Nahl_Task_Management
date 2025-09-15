@@ -103,6 +103,13 @@ async function seedPermissions() {
       description: "Agent → Tasks",
     },
     {
+      id: "view_social_activities",
+      name: "view_social_activities",
+      description: "Agent → Social Activities",
+    },
+    //view_social_activities
+
+    {
       id: "view_agent_tasks_history",
       name: "view_agent_tasks_history",
       description: "Agent → Tasks History",
