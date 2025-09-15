@@ -223,10 +223,10 @@ function buildNav(role: Role): NavItem[] {
     // AM Clients
     // AM CEO Clients
     {
-      title: "AM Clients",
+      title: "Clients",
       children: [
         {
-          title: "All AM Clients",
+          title: "Clients",
           url: p(r, "/am_ceo_clients"),
           permission: "view_am_ceo_clients_list",
         },
@@ -234,10 +234,10 @@ function buildNav(role: Role): NavItem[] {
     },
     // AM Clients
     {
-      title: "AM Clients",
+      title: "Clients",
       children: [
         {
-          title: "AM Clients",
+          title: "Clients",
           url: p(r, "/am_clients"),
           permission: "view_am_clients_list",
         },
@@ -584,20 +584,32 @@ export function AppSidebar({ className }: { className?: string }) {
               {isPermLoading ? (
                 <SidebarSkeleton />
               ) : (
-                visibleNav.map((item) => (
-                  <MobileItem
-                    key={
-                      isGroup(item)
-                        ? `group:${item.title}`
-                        : `leaf:${(item as NavLeaf).url}`
-                    }
-                    item={item}
-                    active={active}
-                    role={role}
-                    expanded={expanded}
-                    setExpanded={setExpanded}
-                  />
-                ))
+                visibleNav.map((item, idx) => {
+                  if (isGroup(item)) {
+                    const childKeys = item.children.map((c) => c.url).join("|");
+                    return (
+                      <MobileItem
+                        key={`group:${item.title}:${childKeys}:${idx}`}
+                        item={item}
+                        active={active}
+                        role={role}
+                        expanded={expanded}
+                        setExpanded={setExpanded}
+                      />
+                    );
+                  }
+                  const leaf = item as NavLeaf;
+                  return (
+                    <MobileItem
+                      key={`leaf:${leaf.url}:${idx}`}
+                      item={leaf}
+                      active={active}
+                      role={role}
+                      expanded={expanded}
+                      setExpanded={setExpanded}
+                    />
+                  );
+                })
               )}
             </motion.nav>
           )}
