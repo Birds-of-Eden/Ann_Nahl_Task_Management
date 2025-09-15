@@ -172,34 +172,34 @@ function buildNav(role: Role): NavItem[] {
     {
       title: "Chat",
       children: [
-        { title: "Chat", url: p(r, "/chat"), permission: "view_chat" },
+        // { title: "Chat", url: p(r, "/chat"), permission: "view_chat" },
         {
           title: "Chat",
-          url: p("admin", "/chat_admin"),
+          url: p("admin", "/chat/chat_admin"),
           permission: "chat_admin",
         },
         {
           title: "Chat",
-          url: p("agent", "/chat_agent"),
+          url: p("agent", "/chat/chat_agent"),
           permission: "chat_agent",
         },
-        { title: "Chat", url: p("am", "/chat_am"), permission: "chat_am" },
+        { title: "Chat", url: p("am", "/chat/chat_am"), permission: "chat_am" },
         {
           title: "Chat",
-          url: p("am_ceo", "/chat_am_ceo"),
+          url: p("am_ceo", "/chat/chat_am_ceo"),
           permission: "chat_am_ceo",
         },
         {
           title: "Chat",
-          url: p("client", "/chat_client"),
+          url: p("client", "/chat/chat_client"),
           permission: "chat_client",
         },
         {
           title: "Chat",
-          url: p("data_entry", "/chat_data_entry"),
+          url: p("data_entry", "/chat/chat_data_entry"),
           permission: "chat_data_entry",
         },
-        { title: "Chat", url: p("qc", "/chat_qc"), permission: "chat_qc" },
+        { title: "Chat", url: p("qc", "/chat/chat_qc"), permission: "chat_qc" },
       ],
     },
 
@@ -220,6 +220,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
+    // AM Clients
     // AM CEO Clients
     {
       title: "AM Clients",
@@ -294,6 +295,11 @@ function buildNav(role: Role): NavItem[] {
       title: "Tasks History",
       url: p("agent", "/taskHistory"),
       permission: "view_agent_tasks_history",
+    },
+    {
+      title: "Social Activity",
+      url: p("agent", "/social-activity"),
+      permission: "view_social_activities",
     },
 
     // QC review quick-link
