@@ -74,7 +74,6 @@ export async function signOut() {
     console.error("signOut error:", e);
     return false;
   }
-
 }
 
 export default { signUp, signOut };
