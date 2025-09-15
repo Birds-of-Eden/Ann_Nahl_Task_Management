@@ -74,6 +74,13 @@ async function seedPermissions() {
       name: "view_am_clients_list",
       description: "AM Clients → All",
     },
+    {
+      id: "view_am_ceo_clients_list",
+      name: "view_am_ceo_clients_list",
+      description: "AM Ceo Clients → All",
+    },
+
+    //view_am_ceo_clients_list
 
     {
       id: "view_packages_list",
