@@ -75,6 +75,11 @@ async function seedPermissions() {
       description: "AM Clients → All",
     },
     {
+      id: "view_am_clients_create",
+      name: "view_am_clients_create",
+      description: "AM Clients Create → Add Client",
+    },
+    {
       id: "view_am_ceo_clients_list",
       name: "view_am_ceo_clients_list",
       description: "AM Ceo Clients → All",

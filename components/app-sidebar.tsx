@@ -244,7 +244,7 @@ function buildNav(role: Role): NavItem[] {
          {
           title: "Add Client",
           url: p(r, "/clients/onboarding"),
-          permission: "view_clients_create",
+          permission: "view_am_clients_create",
         },
       ],
     },
