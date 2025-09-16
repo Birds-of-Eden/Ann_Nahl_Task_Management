@@ -169,39 +169,34 @@ function buildNav(role: Role): NavItem[] {
     },
 
     // Chat (group, including role-specific chat links)
+
     {
       title: "Chat",
-      children: [
-        // { title: "Chat", url: p(r, "/chat"), permission: "view_chat" },
-        {
-          title: "Chat",
-          url: p("admin", "/chat/chat_admin"),
-          permission: "chat_admin",
-        },
-        {
-          title: "Chat",
-          url: p("agent", "/chat/chat_agent"),
-          permission: "chat_agent",
-        },
-        { title: "Chat", url: p("am", "/chat/chat_am"), permission: "chat_am" },
-        {
-          title: "Chat",
-          url: p("am_ceo", "/chat/chat_am_ceo"),
-          permission: "chat_am_ceo",
-        },
-        {
-          title: "Chat",
-          url: p("client", "/chat/chat_client"),
-          permission: "chat_client",
-        },
-        {
-          title: "Chat",
-          url: p("data_entry", "/chat/chat_data_entry"),
-          permission: "chat_data_entry",
-        },
-        { title: "Chat", url: p("qc", "/chat/chat_qc"), permission: "chat_qc" },
-      ],
+      url: p("admin", "/chat/chat_admin"),
+      permission: "chat_admin",
     },
+    {
+      title: "Chat",
+      url: p("agent", "/chat/chat_agent"),
+      permission: "chat_agent",
+    },
+    { title: "Chat", url: p("am", "/chat/chat_am"), permission: "chat_am" },
+    {
+      title: "Chat",
+      url: p("am_ceo", "/chat/chat_am_ceo"),
+      permission: "chat_am_ceo",
+    },
+    {
+      title: "Chat",
+      url: p("client", "/chat/chat_client"),
+      permission: "chat_client",
+    },
+    {
+      title: "Chat",
+      url: p("data_entry", "/chat/chat_data_entry"),
+      permission: "chat_data_entry",
+    },
+    { title: "Chat", url: p("qc", "/chat/chat_qc"), permission: "chat_qc" },
 
     // Clients
     {
