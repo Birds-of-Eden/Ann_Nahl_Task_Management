@@ -168,6 +168,12 @@ function buildNav(role: Role): NavItem[] {
       permission: "data_entry_dashboard",
     },
 
+    {
+      title: "Add Client",
+      url: p(r, "/data_entry_dashboard/clients/onboarding"),
+      permission: "data_entry_clients_create",
+    },
+
     // Chat (group, including role-specific chat links)
 
     {

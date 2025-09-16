@@ -1,3 +1,5 @@
+// app/[role]/data_entry_dashboard/page.tsx
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -61,7 +63,8 @@ export default function ClientsPage() {
       const url = new URL("/api/clients", window.location.origin);
       if (isAM && currentUserId) url.searchParams.set("amId", currentUserId);
       // data_entry (or any non-AM) should only see clients assigned to them
-      if (!isAM && currentUserId) url.searchParams.set("assignedAgentId", currentUserId);
+      if (!isAM && currentUserId)
+        url.searchParams.set("assignedAgentId", currentUserId);
 
       const response = await fetch(url.toString(), { cache: "no-store" });
       if (!response.ok) throw new Error("Failed to fetch clients");
@@ -126,11 +129,11 @@ export default function ClientsPage() {
 
   // Navigate to details
   const handleViewClientDetails = (client: Client) => {
-    router.push(`/data_entry/clients/${client.id}`);
+    router.push(`/data_entry_dashboard/clients/${client.id}`);
   };
 
   const handleAddNewClient = () => {
-    router.push("/data_entry/clients/onboarding");
+    router.push("/data_entry_dashboard/clients/onboarding");
   };
 
   // Build account manager options safely

@@ -76,6 +76,13 @@ const PERMS = [
     name: "chat_data_entry",
     description: "Access Data Entry chat link",
   },
+
+  {
+    id: "data_entry_clients_create",
+    name: "data_entry_clients_create",
+    description: "Access data_entry_clients_create",
+  },
+
   { id: "chat_qc", name: "chat_qc", description: "Access QC chat link" },
 
   // Notifications
@@ -346,6 +353,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_packages_list",
     "view_notifications",
     "chat_data_entry",
+    "data_entry_clients_create",
   ],
 
   client: ["view_dashboard", "view_notifications", "chat_client"],
