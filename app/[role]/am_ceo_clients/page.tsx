@@ -135,12 +135,12 @@ export default function ClientsPage() {
 
   // Navigate to details
   const handleViewClientDetails = (client: Client) => {
-    router.push(`/am/clients/${client.id}`);
+    router.push(`/am_ceo/clients/${client.id}`);
   };
 
-  const handleAddNewClient = () => {
-    router.push("/am/clients/onboarding");
-  };
+  // const handleAddNewClient = () => {
+  //   router.push("/am/clients/onboarding");
+  // };
 
   // Account manager options build (AM হলে নিজেরটাই থাকবে)
   const accountManagers = useMemo(
@@ -224,7 +224,6 @@ export default function ClientsPage() {
           currentUserRole={currentUserRole} // e.g. "am"
           viewMode={viewMode}
           setViewMode={setViewMode}
-          onAddNewClient={handleAddNewClient}
         />
         <ClientStatusSummary clients={clients} />
       </div>
