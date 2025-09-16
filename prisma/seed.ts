@@ -439,13 +439,7 @@ const USERS: SeedUser[] = [
     password: "admin123",
     roleName: "admin",
   },
-  {
-    id: "user-manager",
-    name: "Manager User",
-    email: "manager@example.com",
-    password: "manager123",
-    roleName: "manager",
-  },
+
   {
     id: "user-agent",
     name: "Agent User",
@@ -453,6 +447,7 @@ const USERS: SeedUser[] = [
     password: "agent123",
     roleName: "agent",
   },
+
   {
     id: "user-qc",
     name: "QC User",
@@ -460,6 +455,15 @@ const USERS: SeedUser[] = [
     password: "qc123",
     roleName: "qc",
   },
+
+  {
+    id: "user-manager",
+    name: "Manager User",
+    email: "manager@example.com",
+    password: "manager123",
+    roleName: "manager",
+  },
+
   {
     id: "user-am",
     name: "AM User",
