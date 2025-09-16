@@ -308,11 +308,11 @@ function buildNav(role: Role): NavItem[] {
     },
 
     // QC review quick-link
-    // {
-    //   title: "QC Review",
-    //   url: p("qc", "/tasks"),
-    //   permission: "view_qc_review",
-    // },
+    {
+      title: "QC Review",
+      url: p(r, "/qc/qc-review"),
+      permission: "view_qc_review",
+    },
 
     // Agents
     {
@@ -337,21 +337,21 @@ function buildNav(role: Role): NavItem[] {
       url: p(r, "/teams"),
       permission: "view_teams_manage",
     },
-    {
-      title: "QC",
-      children: [
-        {
-          title: "QC Dashboard",
-          url: p(r, "/qc/qc-dashboard"),
-          permission: "view_qc_dashboard",
-        },
-        {
-          title: "QC Review",
-          url: p(r, "/qc/qc-review"),
-          permission: "view_qc_review",
-        },
-      ],
-    },
+    // {
+    //   title: "QC",
+    //   children: [
+    //     {
+    //       title: "QC Dashboard",
+    //       url: p(r, "/qc/qc-dashboard"),
+    //       permission: "view_qc_dashboard",
+    //     },
+    //     {
+    //       title: "QC Review",
+    //       url: p(r, "/qc/qc-review"),
+    //       permission: "view_qc_review",
+    //     },
+    //   ],
+    // },
     {
       title: "Role Permissions",
       url: p(r, "/role-permissions"),

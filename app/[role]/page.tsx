@@ -1,15 +1,18 @@
 // app/[role]/page.tsx
 import { getAuthUser } from "@/lib/getAuthUser";
 import { redirect } from "next/navigation";
+import { headers, cookies } from "next/headers";
+import { unstable_noStore as noStore } from "next/cache";
 
-// Role dashboards
 import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
 import { AMCeoDashboard } from "@/components/am_ceo/amCeoDashboard";
 import { AMDashboard } from "@/components/account_manager/amDashboard";
 import QCDashboard from "@/components/QCDashboard";
 import { AgentDashboard } from "@/components/agent-dashboard";
-import ClientSelfDashboard from "@/components/client-self-dashboard"; // নিচে ৩ নম্বর ফাইল
+import ClientSelfDashboard from "@/components/client-self-dashboard";
 import ClientsPage from "./data_entry_dashboard/page";
+
+export const dynamic = "force-dynamic";
 
 type Role =
   | "admin"
@@ -20,6 +23,32 @@ type Role =
   | "am_ceo"
   | "data_entry"
   | "client";
+
+async function fetchQcTasks() {
+  noStore();
+
+  const h = headers();
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return [];
+
+  const baseUrl = `${proto}://${host}`;
+  const cookieHeader = cookies()
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+
+  try {
+    const res = await fetch(`${baseUrl}/api/tasks`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
 
 export default async function RoleBasedPage({
   params,
@@ -33,10 +62,8 @@ export default async function RoleBasedPage({
 
   switch (role) {
     case "admin":
-      return <AdminDashboard />;
-
     case "manager":
-      return <AdminDashboard />; // চাইলে আলাদা ManagerDashboard ব্যবহার করতে পারেন
+      return <AdminDashboard />;
 
     case "agent":
       if (!user.id) {
@@ -50,9 +77,10 @@ export default async function RoleBasedPage({
       }
       return <AgentDashboard agentId={user.id} />;
 
-    case "qc":
-      // QCDashboard নিজে ডেটা ফেচ করলে empty pass করুন, না হলে এখানে সার্ভার থেকে ফেচ করে props দিন
-      return <QCDashboard tasks={[]} />;
+    case "qc": {
+      const tasks = await fetchQcTasks(); // ⬅️ আসল ফেচ এখানেই
+      return <QCDashboard tasks={tasks} />;
+    }
 
     case "am":
       return <AMDashboard />;
@@ -61,7 +89,7 @@ export default async function RoleBasedPage({
       return <AMCeoDashboard />;
 
     case "data_entry":
-      return <ClientsPage/>
+      return <ClientsPage />;
 
     case "client":
     default:
