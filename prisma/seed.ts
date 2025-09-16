@@ -37,66 +37,206 @@ async function seedRoles() {
 ========================================= */
 const PERMS = [
   // Dashboards
-  { id: "view_dashboard", name: "view_dashboard", description: "Sidebar: Dashboard" },
-  { id: "data_entry_dashboard", name: "data_entry_dashboard", description: "Sidebar: Data Entry Dashboard" },
+  {
+    id: "view_dashboard",
+    name: "view_dashboard",
+    description: "Sidebar: Dashboard",
+  },
+  {
+    id: "data_entry_dashboard",
+    name: "data_entry_dashboard",
+    description: "Sidebar: Data Entry Dashboard",
+  },
 
   // Chat (role-specific links used by sidebar)
   { id: "view_chat", name: "view_chat", description: "Sidebar: Chat" },
-  { id: "chat_admin", name: "chat_admin", description: "Access Admin chat link" },
-  { id: "chat_agent", name: "chat_agent", description: "Access Agent chat link" },
+  {
+    id: "chat_admin",
+    name: "chat_admin",
+    description: "Access Admin chat link",
+  },
+  {
+    id: "chat_agent",
+    name: "chat_agent",
+    description: "Access Agent chat link",
+  },
   { id: "chat_am", name: "chat_am", description: "Access AM chat link" },
-  { id: "chat_am_ceo", name: "chat_am_ceo", description: "Access AM CEO chat link" },
-  { id: "chat_client", name: "chat_client", description: "Access Client chat link" },
-  { id: "chat_data_entry", name: "chat_data_entry", description: "Access Data Entry chat link" },
+  {
+    id: "chat_am_ceo",
+    name: "chat_am_ceo",
+    description: "Access AM CEO chat link",
+  },
+  {
+    id: "chat_client",
+    name: "chat_client",
+    description: "Access Client chat link",
+  },
+  {
+    id: "chat_data_entry",
+    name: "chat_data_entry",
+    description: "Access Data Entry chat link",
+  },
   { id: "chat_qc", name: "chat_qc", description: "Access QC chat link" },
 
   // Notifications
-  { id: "view_notifications", name: "view_notifications", description: "Sidebar: Notifications" },
+  {
+    id: "view_notifications",
+    name: "view_notifications",
+    description: "Sidebar: Notifications",
+  },
 
   // Clients
-  { id: "view_clients_list", name: "view_clients_list", description: "Clients → All Clients" },
-  { id: "view_clients_create", name: "view_clients_create", description: "Clients → Add Client" },
-  { id: "view_am_clients_list", name: "view_am_clients_list", description: "AM Clients → All" },
-  { id: "view_am_ceo_clients_list", name: "view_am_ceo_clients_list", description: "AM CEO Clients → All" },
-  { id: "view_am_clients_create", name: "view_am_clients_create", description: "AM Clients Create → Add Client" },
+  {
+    id: "view_clients_list",
+    name: "view_clients_list",
+    description: "Clients → All Clients",
+  },
+  {
+    id: "view_clients_create",
+    name: "view_clients_create",
+    description: "Clients → Add Client",
+  },
+  {
+    id: "view_am_clients_list",
+    name: "view_am_clients_list",
+    description: "AM Clients → All",
+  },
+  {
+    id: "view_am_ceo_clients_list",
+    name: "view_am_ceo_clients_list",
+    description: "AM CEO Clients → All",
+  },
+  {
+    id: "view_am_clients_create",
+    name: "view_am_clients_create",
+    description: "AM Clients Create → Add Client",
+  },
 
   // Packages / Distribution
-  { id: "view_packages_list", name: "view_packages_list", description: "Packages → All Package" },
-  { id: "package_create", name: "package_create", description: "Can package create" },
-  { id: "package_edit", name: "package_edit", description: "Can edit packages" },
-  { id: "package_delete", name: "package_delete", description: "Can delete packages" },
-  { id: "view_distribution_client_agent", name: "view_distribution_client_agent", description: "Distribution → Clients to Agents" },
+  {
+    id: "view_packages_list",
+    name: "view_packages_list",
+    description: "Packages → All Package",
+  },
+  {
+    id: "package_create",
+    name: "package_create",
+    description: "Can package create",
+  },
+  {
+    id: "package_edit",
+    name: "package_edit",
+    description: "Can edit packages",
+  },
+  {
+    id: "package_delete",
+    name: "package_delete",
+    description: "Can delete packages",
+  },
+  {
+    id: "view_distribution_client_agent",
+    name: "view_distribution_client_agent",
+    description: "Distribution → Clients to Agents",
+  },
 
   // Tasks
-  { id: "view_tasks_list", name: "view_tasks_list", description: "Tasks → All Tasks" },
-  { id: "view_tasks_history", name: "view_tasks_history", description: "Tasks → Tasks History" },
-  { id: "view_agent_tasks", name: "view_agent_tasks", description: "Agent → Tasks" },
-  { id: "view_agent_tasks_history", name: "view_agent_tasks_history", description: "Agent → Tasks History" },
-  { id: "view_social_activities", name: "view_social_activities", description: "Agent → Social Activities" },
+  {
+    id: "view_tasks_list",
+    name: "view_tasks_list",
+    description: "Tasks → All Tasks",
+  },
+  {
+    id: "view_tasks_history",
+    name: "view_tasks_history",
+    description: "Tasks → Tasks History",
+  },
+  {
+    id: "view_agent_tasks",
+    name: "view_agent_tasks",
+    description: "Agent → Tasks",
+  },
+  {
+    id: "view_agent_tasks_history",
+    name: "view_agent_tasks_history",
+    description: "Agent → Tasks History",
+  },
+  {
+    id: "view_social_activities",
+    name: "view_social_activities",
+    description: "Agent → Social Activities",
+  },
 
   // QC
-  { id: "view_qc_dashboard", name: "view_qc_dashboard", description: "QC → Dashboard" },
+  {
+    id: "view_qc_dashboard",
+    name: "view_qc_dashboard",
+    description: "QC → Dashboard",
+  },
   { id: "view_qc_review", name: "view_qc_review", description: "QC → Review" },
 
   // Agents
-  { id: "view_agents_list", name: "view_agents_list", description: "Agents → All Agents" },
-  { id: "view_agents_create", name: "view_agents_create", description: "Agents → Add Agent" },
+  {
+    id: "view_agents_list",
+    name: "view_agents_list",
+    description: "Agents → All Agents",
+  },
+  {
+    id: "view_agents_create",
+    name: "view_agents_create",
+    description: "Agents → Add Agent",
+  },
 
   // Admin/Manager
-  { id: "view_teams_manage", name: "view_teams_manage", description: "Team Management" },
-  { id: "view_role_permissions", name: "view_role_permissions", description: "Role Permissions" },
-  { id: "view_user_management", name: "view_user_management", description: "User Management" },
-  { id: "view_activity_logs", name: "view_activity_logs", description: "Activity Logs" },
+  {
+    id: "view_teams_manage",
+    name: "view_teams_manage",
+    description: "Team Management",
+  },
+  {
+    id: "view_role_permissions",
+    name: "view_role_permissions",
+    description: "Role Permissions",
+  },
+  {
+    id: "view_user_management",
+    name: "view_user_management",
+    description: "User Management",
+  },
+  {
+    id: "view_activity_logs",
+    name: "view_activity_logs",
+    description: "Activity Logs",
+  },
 
   // Utility / system
-  { id: "template_edit", name: "template_edit", description: "Can edit templates" },
-  { id: "template_delete", name: "template_delete", description: "Can delete templates" },
+  {
+    id: "template_edit",
+    name: "template_edit",
+    description: "Can edit templates",
+  },
+  {
+    id: "template_delete",
+    name: "template_delete",
+    description: "Can delete templates",
+  },
 
   // Clients (card views)
-  { id: "client_card_task_view", name: "client_card_task_view", description: "Client Card → Task View" },
-  { id: "client_card_client_view", name: "client_card_client_view", description: "Client Card → Client View" },
+  {
+    id: "client_card_task_view",
+    name: "client_card_task_view",
+    description: "Client Card → Task View",
+  },
+  {
+    id: "client_card_client_view",
+    name: "client_card_client_view",
+    description: "Client Card → Client View",
+  },
 
-  { id: "user_impersonate", name: "user_impersonate", description: "Can impersonate another user" },
+  {
+    id: "user_impersonate",
+    name: "user_impersonate",
+    description: "Can impersonate another user",
+  },
   { id: "user_edit", name: "user_edit", description: "Can edit users" },
   { id: "user_view", name: "user_view", description: "Can view users" },
   { id: "user_delete", name: "user_delete", description: "Can delete users" },
@@ -234,12 +374,36 @@ async function assignRolePermissions() {
 ========================================= */
 const TEAMS = [
   { id: "asset-team", name: "Asset Team", description: "Asset Team" },
-  { id: "backlinks-team", name: "Backlinks Team", description: "Backlinks Team" },
-  { id: "content-studio-team", name: "Content Studio Team", description: "Content Studio Team" },
-  { id: "content-writing", name: "Content Writing", description: "Content Writing" },
-  { id: "developer-team", name: "Developer Team", description: "Developer Team" },
-  { id: "graphics-design-team", name: "Graphics Design Team", description: "Graphics Design Team" },
-  { id: "monitoring-team", name: "Monitoring Team", description: "Monitoring Team" },
+  {
+    id: "backlinks-team",
+    name: "Backlinks Team",
+    description: "Backlinks Team",
+  },
+  {
+    id: "content-studio-team",
+    name: "Content Studio Team",
+    description: "Content Studio Team",
+  },
+  {
+    id: "content-writing",
+    name: "Content Writing",
+    description: "Content Writing",
+  },
+  {
+    id: "developer-team",
+    name: "Developer Team",
+    description: "Developer Team",
+  },
+  {
+    id: "graphics-design-team",
+    name: "Graphics Design Team",
+    description: "Graphics Design Team",
+  },
+  {
+    id: "monitoring-team",
+    name: "Monitoring Team",
+    description: "Monitoring Team",
+  },
   { id: "qc-team", name: "QC Team", description: "QC Team" },
   { id: "social-team", name: "Social Team", description: "Social Team" },
 ];
@@ -268,15 +432,55 @@ type SeedUser = {
 };
 
 const USERS: SeedUser[] = [
-  { id: "user-admin", name: "Admin User", email: "admin@example.com", password: "admin123", roleName: "admin" },
-  { id: "user-manager", name: "Manager User", email: "manager@example.com", password: "manager123", roleName: "manager" },
-  { id: "user-agent", name: "Agent User", email: "agent@example.com", password: "agent123", roleName: "agent" },
-  { id: "user-qc", name: "QC User", email: "qc@example.com", password: "qc123", roleName: "qc" },
-  { id: "user-am", name: "AM User", email: "am@example.com", password: "am123", roleName: "am" },
-  { id: "user-am-ceo", name: "AM CEO User", email: "am_ceo@example.com", password: "amceo123", roleName: "am_ceo" },
-  { id: "user-data-entry", name: "Data Entry User", email: "dataentry@example.com", password: "dataentry123", roleName: "data_entry" },
-  { id: "user-client", name: "Client User", email: "client@example.com", password: "client123", roleName: "client" },
-  { id: "user-general", name: "General User", email: "user@example.com", password: "user123", roleName: "user" },
+  {
+    id: "user-admin",
+    name: "Admin User",
+    email: "admin@example.com",
+    password: "admin123",
+    roleName: "admin",
+  },
+  {
+    id: "user-manager",
+    name: "Manager User",
+    email: "manager@example.com",
+    password: "manager123",
+    roleName: "manager",
+  },
+  {
+    id: "user-agent",
+    name: "Agent User",
+    email: "agent@example.com",
+    password: "agent123",
+    roleName: "agent",
+  },
+  {
+    id: "user-qc",
+    name: "QC User",
+    email: "qc@example.com",
+    password: "qc123",
+    roleName: "qc",
+  },
+  {
+    id: "user-am",
+    name: "AM User",
+    email: "am@example.com",
+    password: "am123",
+    roleName: "am",
+  },
+  {
+    id: "user-am-ceo",
+    name: "AM CEO User",
+    email: "am_ceo@example.com",
+    password: "amceo123",
+    roleName: "am_ceo",
+  },
+  {
+    id: "user-data-entry",
+    name: "Data Entry User",
+    email: "dataentry@example.com",
+    password: "dataentry123",
+    roleName: "data_entry",
+  },
 ];
 
 // NOTE: This assumes your Prisma `Account` model has these fields:
