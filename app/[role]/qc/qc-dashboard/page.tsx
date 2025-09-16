@@ -1,14 +1,12 @@
+// app/[role]/qc/qc-dashboard/page.tsx
 import QCDashboard from "@/components/QCDashboard";
 import { headers, cookies } from "next/headers";
 import { unstable_noStore as noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-function getBaseUrl() {
-  const h = headers();
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  if (!host) return ""; // should not happen in Next runtime
+// keep helpers pure (no dynamic APIs inside)
+function buildBaseUrl(proto: string, host: string) {
   return `${proto}://${host}`;
 }
 
@@ -17,10 +15,16 @@ export default async function Page() {
   let tasks: any[] = [];
 
   try {
-    const baseUrl = getBaseUrl();
+    // ✅ await dynamic APIs
+    const h = await headers();
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
 
-    // forward cookies so auth/session works if your /api/tasks needs it
-    const cookieHeader = cookies()
+    const baseUrl = host ? buildBaseUrl(proto, host) : "";
+
+    // ✅ cookies() is async now
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore
       .getAll()
       .map((c) => `${c.name}=${c.value}`)
       .join("; ");
@@ -28,7 +32,7 @@ export default async function Page() {
     const res = await fetch(`${baseUrl}/api/tasks`, {
       cache: "no-store",
       headers: cookieHeader ? { cookie: cookieHeader } : {},
-      // next: { revalidate: 0 } // optional
+      // next: { revalidate: 0 }
     });
 
     if (res.ok) {

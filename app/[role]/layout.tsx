@@ -38,12 +38,14 @@ export default async function UnifiedLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { role: string };
+  params: Promise<{ role: string }>;
 }) {
   const user = await getAuthUser();
   if (!user) redirect("/auth/sign-in");
 
-  const segment = params.role as Role;
+  const { role } = await params;
+  const segment = role as Role;
+
   if (!ALLOWED.includes(segment)) redirect("/");
 
   // চাইলে cross-area guard দিন (উদাহরণ: অ্যাডমিন ছাড়া কেউ নিজের area ছাড়া ঢুকতে পারবে না)
