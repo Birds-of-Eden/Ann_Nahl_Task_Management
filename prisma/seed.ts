@@ -209,29 +209,6 @@ const PERMS = [
     name: "template_delete",
     description: "Can delete templates",
   },
-  // Package management permissions
-  {
-    id: "package_edit",
-    name: "package_edit",
-    description: "Can edit packages",
-  },
-  {
-    id: "package_delete",
-    name: "package_delete",
-    description: "Can delete packages",
-  },
-  // Clients (card views)
-  {
-    id: "client_card_task_view",
-    name: "client_card_task_view",
-    description: "Client Card → Task View",
-  },
-  {
-    id: "client_card_client_view",
-    name: "client_card_client_view",
-    description: "Client Card → Client View",
-  },
-
   {
     id: "user_impersonate",
     name: "user_impersonate",
@@ -263,8 +240,6 @@ async function seedPermissions() {
 const ADMIN_PERMS: string[] = [
   "chat_admin",
   "package_create",
-  "package_edit",
-  "package_delete",
   "template_edit",
   "template_delete",
   "user_delete",
@@ -384,11 +359,6 @@ const TEAMS = [
     description: "Backlinks Team",
   },
   {
-    id: "completedcom-",
-    name: "Completed.com",
-    description: "Completed.com Team Description",
-  },
-  {
     id: "content-studio-team",
     name: "Content Studio Team",
     description: "Content Studio Team",
@@ -406,30 +376,15 @@ const TEAMS = [
   {
     id: "graphics-design-team",
     name: "Graphics Design Team",
-    description: "Graphics Design Team Description",
+    description: "Graphics Design Team",
   },
   {
     id: "monitoring-team",
     name: "Monitoring Team",
-    description: "Monitoring Team Description",
+    description: "Monitoring Team",
   },
-  { id: "qc-team", name: "QC Team", description: "QC Team Description" },
-  {
-    id: "review-removal-team",
-    name: "Review Removal Team",
-    description: "Review Removal Team Description",
-  },
+  { id: "qc-team", name: "QC Team", description: "QC Team" },
   { id: "social-team", name: "Social Team", description: "Social Team" },
-  {
-    id: "summary-report-team",
-    name: "Summary Report Team",
-    description: "Summary Report Team",
-  },
-  {
-    id: "youtube-video-optimizer-",
-    name: "Youtube Video Optimizer",
-    description: "Youtube Video Optimizer Team Description",
-  },
 ];
 
 async function seedTeams() {
@@ -476,41 +431,6 @@ const USERS = [
     password: "qc123",
     roleName: "qc",
   },
-  {
-    id: "user-am",
-    name: "AM User",
-    email: "am@example.com",
-    password: "am123",
-    roleName: "am",
-  },
-  {
-    id: "user-am-ceo",
-    name: "AM CEO User",
-    email: "am_ceo@example.com",
-    password: "amceo123",
-    roleName: "am_ceo",
-  },
-  {
-    id: "user-data-entry",
-    name: "Data Entry User",
-    email: "dataentry@example.com",
-    password: "dataentry123",
-    roleName: "data_entry",
-  },
-  {
-    id: "user-client",
-    name: "Client User",
-    email: "client@example.com",
-    password: "client123",
-    roleName: "client",
-  },
-  {
-    id: "user-general",
-    name: "General User",
-    email: "user@example.com",
-    password: "user123",
-    roleName: "user",
-  },
 ];
 
 async function seedUsers() {
@@ -521,71 +441,31 @@ async function seedUsers() {
     const hashed = await bcrypt.hash(u.password, 10);
     const [firstName, lastName = ""] = u.name.split(" ");
 
-    await prisma.$transaction(async (tx) => {
-      // 1) upsert user
-      const user = await tx.user.upsert({
-        where: { email: u.email },
-        update: {
-          name: u.name,
-          passwordHash: hashed,
-          roleId: role.id,
-          status: "active",
-          firstName,
-          lastName,
-          emailVerified: true,
-          updatedAt: new Date(),
-        },
-        create: {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          passwordHash: hashed,
-          emailVerified: true,
-          roleId: role.id,
-          status: "active",
-          firstName,
-          lastName,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-
-      // 2) upsert credentials account (needed for login)
-      const existing = await tx.account.findFirst({
-        where: { userId: user.id, providerId: "credentials" },
-      });
-
-      if (existing) {
-        await tx.account.update({
-          where: { id: existing.id },
-          data: {
-            // 👇 আপনার schema অনুযায়ী রাখুন
-            accountId: u.email, // বা `user.id` / fixed value — যা আপনার auth expects
-            password: hashed, // যদি Account টেবিলে password রাখেন
-            accessToken: `seed-token-${u.roleName}`,
-            refreshToken: `seed-refresh-${u.roleName}`,
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        await tx.account.create({
-          data: {
-            // 👇 আপনার schema অনুযায়ী রাখুন
-            id: `account-${u.roleName}`, // ফিক্সড হলে unique constraint মাথায় রাখুন
-            accountId: u.email, // অনেক সময় email-ই রাখা সুবিধা
-            providerId: "credentials",
-            userId: user.id,
-            password: hashed, // যদি দরকার হয়
-            accessToken: `seed-token-${u.roleName}`,
-            refreshToken: `seed-refresh-${u.roleName}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
-      }
-
-      console.log(`👤 User + Account ready: ${u.email} (${u.roleName})`);
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        name: u.name,
+        passwordHash: hashed,
+        roleId: role.id,
+        status: "active",
+        firstName,
+        lastName,
+        emailVerified: true,
+      },
+      create: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        passwordHash: hashed,
+        emailVerified: true,
+        roleId: role.id,
+        status: "active",
+        firstName,
+        lastName,
+      },
     });
+
+    console.log(`👤 User ready: ${u.email} (${u.roleName})`);
   }
 }
 
