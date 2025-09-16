@@ -521,31 +521,71 @@ async function seedUsers() {
     const hashed = await bcrypt.hash(u.password, 10);
     const [firstName, lastName = ""] = u.name.split(" ");
 
-    await prisma.user.upsert({
-      where: { email: u.email },
-      update: {
-        name: u.name,
-        passwordHash: hashed,
-        roleId: role.id,
-        status: "active",
-        firstName,
-        lastName,
-        emailVerified: true,
-      },
-      create: {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        passwordHash: hashed,
-        emailVerified: true,
-        roleId: role.id,
-        status: "active",
-        firstName,
-        lastName,
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      // 1) upsert user
+      const user = await tx.user.upsert({
+        where: { email: u.email },
+        update: {
+          name: u.name,
+          passwordHash: hashed,
+          roleId: role.id,
+          status: "active",
+          firstName,
+          lastName,
+          emailVerified: true,
+          updatedAt: new Date(),
+        },
+        create: {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          passwordHash: hashed,
+          emailVerified: true,
+          roleId: role.id,
+          status: "active",
+          firstName,
+          lastName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
 
-    console.log(`👤 User ready: ${u.email} (${u.roleName})`);
+      // 2) upsert credentials account (needed for login)
+      const existing = await tx.account.findFirst({
+        where: { userId: user.id, providerId: "credentials" },
+      });
+
+      if (existing) {
+        await tx.account.update({
+          where: { id: existing.id },
+          data: {
+            // 👇 আপনার schema অনুযায়ী রাখুন
+            accountId: u.email, // বা `user.id` / fixed value — যা আপনার auth expects
+            password: hashed, // যদি Account টেবিলে password রাখেন
+            accessToken: `seed-token-${u.roleName}`,
+            refreshToken: `seed-refresh-${u.roleName}`,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await tx.account.create({
+          data: {
+            // 👇 আপনার schema অনুযায়ী রাখুন
+            id: `account-${u.roleName}`, // ফিক্সড হলে unique constraint মাথায় রাখুন
+            accountId: u.email, // অনেক সময় email-ই রাখা সুবিধা
+            providerId: "credentials",
+            userId: user.id,
+            password: hashed, // যদি দরকার হয়
+            accessToken: `seed-token-${u.roleName}`,
+            refreshToken: `seed-refresh-${u.roleName}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
+      console.log(`👤 User + Account ready: ${u.email} (${u.roleName})`);
+    });
   }
 }
 
