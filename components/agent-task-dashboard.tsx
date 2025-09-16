@@ -131,14 +131,18 @@ function pickCounts(c: ClientData): TaskCounts {
 }
 
 function pickProgress(c: ClientData): number {
-  // Prefer overall saved progress; else agentProgress; else compute from counts
-  if (typeof c.progress === "number") return c.progress;
+  // Always use agent-specific progress or compute from agent's task counts
   if (typeof c.agentProgress === "number") return c.agentProgress;
-
+  
   const counts = pickCounts(c);
-  return counts.total > 0
-    ? Math.round((counts.completed / counts.total) * 100)
-    : 0;
+  if (counts.total > 0) {
+    // Consider both completed and qc_approved tasks as completed for progress
+    const completedCount = counts.completed + counts.qc_approved;
+    return Math.round((completedCount / counts.total) * 100);
+  }
+  
+  // Fallback to overall progress only if no agent-specific tasks exist
+  return typeof c.progress === "number" ? c.progress : 0;
 }
 
 function classNames(...xs: Array<string | false | null | undefined>) {
@@ -572,7 +576,7 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
 
           {/* Clients Display */}
           {viewMode === "card" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredClients.length === 0 ? (
                 <EmptyClients />
               ) : (
