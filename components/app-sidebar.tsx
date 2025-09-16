@@ -241,7 +241,7 @@ function buildNav(role: Role): NavItem[] {
           url: p(r, "/am_clients"),
           permission: "view_am_clients_list",
         },
-         {
+        {
           title: "Add Client",
           url: p(r, "/clients/onboarding"),
           permission: "view_am_clients_create",
@@ -690,6 +690,7 @@ export function AppSidebar({ className }: { className?: string }) {
                       active={active}
                       expanded={expanded}
                       setExpanded={setExpanded}
+                      chatUnread={chatUnread}
                     />
                   );
                 }
@@ -735,11 +736,13 @@ function GroupItem({
   active,
   expanded,
   setExpanded,
+  chatUnread,
 }: {
   item: NavGroup;
   active: (url: string) => boolean;
   expanded: Record<string, boolean>;
   setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  chatUnread?: number;
 }) {
   const isActive = item.children.some((c) => active(c.url));
   const open = !!expanded[item.title];
@@ -808,6 +811,7 @@ function GroupItem({
                 key={`leaf:${child.url}`}
                 item={child}
                 active={active}
+                chatUnread={chatUnread}
               />
             ))}
           </motion.div>
@@ -827,6 +831,10 @@ function LeafItem({
   chatUnread?: number;
 }) {
   const isActive = active(item.url);
+
+  const isChatLink =
+    item.title.toLowerCase().includes("chat") || item.url.includes("/chat");
+
   return (
     <Link
       href={item.url}
@@ -846,7 +854,8 @@ function LeafItem({
         {ICONS[item.title] ?? <FileText className="h-4 w-4" />}
       </div>
       <span className="text-sm font-medium text-gray-700">{item.title}</span>
-      {item.title === "My Chat" && Number(chatUnread) > 0 && (
+
+      {isChatLink && Number(chatUnread) > 0 && (
         <span className="ml-auto inline-flex items-center justify-center text-xs px-2 py-0.5 rounded-full bg-emerald-600 text-white">
           {chatUnread}
         </span>
@@ -861,14 +870,17 @@ function MobileItem({
   role,
   expanded,
   setExpanded,
+  chatUnread,
 }: {
   item: NavItem;
   active: (url: string) => boolean;
   role: Role;
   expanded: Record<string, boolean>;
   setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  chatUnread?: number;
 }) {
-  if (!isGroup(item)) return <LeafItem item={item} active={active} />;
+  if (!isGroup(item))
+    return <LeafItem item={item} active={active} chatUnread={chatUnread} />;
   const open = !!expanded[item.title];
   const isActive = item.children.some((c) => active(c.url));
   return (
@@ -908,7 +920,12 @@ function MobileItem({
           >
             <div className="px-3 py-2 space-y-1">
               {item.children.map((c) => (
-                <LeafItem key={`leaf:${c.url}`} item={c} active={active} />
+                <LeafItem
+                  key={`leaf:${c.url}`}
+                  item={c}
+                  active={active}
+                  chatUnread={chatUnread}
+                />
               ))}
             </div>
           </motion.div>

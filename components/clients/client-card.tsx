@@ -1,3 +1,5 @@
+// app/components/clients/client-card.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -127,6 +129,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   const derivedProgress = totalTasks
     ? Math.round((taskCounts.completed / totalTasks) * 100)
     : 0;
+
   // This Month Progress (mirrors logic from clientsID/client-dashboard.tsx)
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -187,7 +190,6 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
 
     if (isCompleted) completedThisMonth++;
     if (isApproved) approvedThisMonth++;
-    // isPending is computed for parity with dashboard logic but not displayed
     void isPending;
   }
 
@@ -201,22 +203,27 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   const displayOverall = Math.min(100, Math.max(0, derivedProgress));
   const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth));
 
-  // Dynamic route segment based on user role (e.g., am, admin, qc)
+  // -------- Role normalization (FIX) --------
+  // Try multiple shapes: session.user.role.name, session.user.role, or session.role
   const roleRaw =
-    (session as any)?.user?.role?.name ?? (session as any)?.user?.role;
+    (session as any)?.user?.role?.name ??
+    (session as any)?.user?.role ??
+    (session as any)?.role;
   const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined;
+
+  // Use normalized role for dynamic segment (and actually use it in router.push)
   const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
     } else {
-      router.push(`/data_entry/clients/${clientId}`);
+      router.push(`/${segment}/clients/${clientId}`);
     }
   };
 
   const handleViewTasks = () => {
-    router.push(`/data_entry/clients/${clientId}/tasks`);
+    router.push(`/${segment}/clients/${clientId}/tasks`);
   };
 
   return (
@@ -271,6 +278,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
             {client.accountManager?.name}
           </span>
         </div>
+
         {/* Progress */}
         <div className="p-2">
           <div className="flex items-center justify-between text-sm mb-2 gap-2">
@@ -282,7 +290,6 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
             </span>
           </div>
 
-          {/* Overall progress bar */}
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-2">
             <div
               className="h-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
@@ -299,7 +306,6 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
             </span>
           </div>
 
-          {/* This month progress bar (optional — keep if you want a second bar) */}
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
             <div
               className="h-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
@@ -348,7 +354,10 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
       {/* Footer */}
       <CardFooter className="border-t border-gray-100 gap-4 p-4 bg-gray-50">
         <div className="flex gap-2 w-full">
-          {hasPermissionClient(user?.permissions, "client_view") && (
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_client_view"
+          ) && (
             <Button
               className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
               onClick={handleViewDetails}
@@ -358,21 +367,20 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
             </Button>
           )}
         </div>
-        {(session?.role === "Admin" ||
-          session?.role === "Manager" ||
-          session?.role === "data_entry") && (
-          <div className="flex gap-2 w-full">
-            {hasPermissionClient(user?.permissions, "task_view") && (
-              <Button
-                className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-                onClick={handleViewTasks}
-              >
-                <ListChecks className="h-4 w-4 mr-2" />
-                View Tasks
-              </Button>
-            )}
-          </div>
-        )}
+
+        {/* FIXED: use normalized role (lowercased) instead of session?.role === "Admin" */}
+
+        <div className="flex gap-2 w-full">
+          {hasPermissionClient(user?.permissions, "client_card_task_view") && (
+            <Button
+              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              onClick={handleViewTasks}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              View Tasks
+            </Button>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );
