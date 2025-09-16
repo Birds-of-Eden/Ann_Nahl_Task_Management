@@ -209,6 +209,29 @@ const PERMS = [
     name: "template_delete",
     description: "Can delete templates",
   },
+  // Package management permissions
+  {
+    id: "package_edit",
+    name: "package_edit",
+    description: "Can edit packages",
+  },
+  {
+    id: "package_delete",
+    name: "package_delete",
+    description: "Can delete packages",
+  },
+  // Clients (card views)
+  {
+    id: "client_card_task_view",
+    name: "client_card_task_view",
+    description: "Client Card → Task View",
+  },
+  {
+    id: "client_card_client_view",
+    name: "client_card_client_view",
+    description: "Client Card → Client View",
+  },
+
   {
     id: "user_impersonate",
     name: "user_impersonate",
@@ -240,6 +263,8 @@ async function seedPermissions() {
 const ADMIN_PERMS: string[] = [
   "chat_admin",
   "package_create",
+  "package_edit",
+  "package_delete",
   "template_edit",
   "template_delete",
   "user_delete",
@@ -430,6 +455,41 @@ const USERS = [
     email: "qc@example.com",
     password: "qc123",
     roleName: "qc",
+  },
+  {
+    id: "user-am",
+    name: "AM User",
+    email: "am@example.com",
+    password: "am123",
+    roleName: "am",
+  },
+  {
+    id: "user-am-ceo",
+    name: "AM CEO User",
+    email: "am_ceo@example.com",
+    password: "amceo123",
+    roleName: "am_ceo",
+  },
+  {
+    id: "user-data-entry",
+    name: "Data Entry User",
+    email: "dataentry@example.com",
+    password: "dataentry123",
+    roleName: "data_entry",
+  },
+  {
+    id: "user-client",
+    name: "Client User",
+    email: "client@example.com",
+    password: "client123",
+    roleName: "client",
+  },
+  {
+    id: "user-general",
+    name: "General User",
+    email: "user@example.com",
+    password: "user123",
+    roleName: "user",
   },
 ];
 

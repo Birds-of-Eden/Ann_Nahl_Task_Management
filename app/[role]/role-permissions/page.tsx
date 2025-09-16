@@ -4,8 +4,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { Toaster, toast } from "sonner"; // ✅ Sonner
-import { cn } from "@/lib/utils"; // optional helper; remove if you don't have it
+import { Toaster, toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  Search,
+  Plus,
+  Edit,
+  Users,
+  Shield,
+  CheckSquare,
+  Square,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  X,
+} from "lucide-react";
 
 type Role = {
   id: string;
@@ -18,6 +32,14 @@ type Permission = {
   id: string;
   name: string;
   description?: string | null;
+  category?: string;
+};
+
+type PermissionCategory = {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
 };
 
 export default function RolePermissionPage() {
@@ -51,6 +73,145 @@ export default function RolePermissionPage() {
     open: boolean;
     role: Role | null;
   }>({ open: false, role: null });
+
+  const [expandedCategories, setExpandedCategories] = useState<
+    Record<string, boolean>
+  >({});
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  // Permission categories with icons and descriptions
+  const permissionCategories: PermissionCategory[] = [
+    {
+      id: "dashboard",
+      name: "Dashboards",
+      description: "Access to various dashboard views",
+      icon: (
+        <div className="w-5 h-5 bg-blue-100 rounded-md flex items-center justify-center text-blue-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "chat",
+      name: "Chat",
+      description: "Access to chat features and specific chat links",
+      icon: (
+        <div className="w-5 h-5 bg-purple-100 rounded-md flex items-center justify-center text-purple-600">
+          <Users size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "clients",
+      name: "Clients",
+      description: "Client management and viewing permissions",
+      icon: (
+        <div className="w-5 h-5 bg-green-100 rounded-md flex items-center justify-center text-green-600">
+          <Users size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "packages",
+      name: "Packages",
+      description: "Package management and distribution",
+      icon: (
+        <div className="w-5 h-5 bg-yellow-100 rounded-md flex items-center justify-center text-yellow-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "tasks",
+      name: "Tasks",
+      description: "Task management and viewing",
+      icon: (
+        <div className="w-5 h-5 bg-orange-100 rounded-md flex items-center justify-center text-orange-600">
+          <CheckSquare size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "qc",
+      name: "Quality Control",
+      description: "Quality control dashboard and review",
+      icon: (
+        <div className="w-5 h-5 bg-red-100 rounded-md flex items-center justify-center text-red-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "agents",
+      name: "Agents",
+      description: "Agent management and viewing",
+      icon: (
+        <div className="w-5 h-5 bg-indigo-100 rounded-md flex items-center justify-center text-indigo-600">
+          <Users size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "admin",
+      name: "Admin/Management",
+      description: "Administrative and management features",
+      icon: (
+        <div className="w-5 h-5 bg-gray-100 rounded-md flex items-center justify-center text-gray-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "system",
+      name: "System",
+      description: "System utilities and user management",
+      icon: (
+        <div className="w-5 h-5 bg-pink-100 rounded-md flex items-center justify-center text-pink-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+  ];
+
+  // Categorize permissions
+  const categorizedPermissions = useMemo(() => {
+    const categorized: Record<string, Permission[]> = {};
+
+    // Initialize categories
+    permissionCategories.forEach((cat) => {
+      categorized[cat.id] = [];
+    });
+
+    // Add uncategorized section
+    categorized["uncategorized"] = [];
+
+    // Categorize each permission
+    permissions.forEach((permission) => {
+      let foundCategory = false;
+
+      // Check which category the permission belongs to
+      for (const category of permissionCategories) {
+        if (
+          permission.id.includes(category.id) ||
+          (permission.description &&
+            permission.description
+              .toLowerCase()
+              .includes(category.name.toLowerCase()))
+        ) {
+          categorized[category.id].push(permission);
+          foundCategory = true;
+          break;
+        }
+      }
+
+      // If no category found, add to uncategorized
+      if (!foundCategory) {
+        categorized["uncategorized"].push(permission);
+      }
+    });
+
+    return categorized;
+  }, [permissions]);
 
   // ---------------- Loaders ----------------
   const loadRoles = async () => {
@@ -227,139 +388,326 @@ export default function RolePermissionPage() {
     [roles, selectedRole?.id]
   );
 
+  // Toggle category expansion
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [categoryId]: !prev[categoryId],
+    }));
+  };
+
+  // Filter permissions by category
+  const filteredPermissions = useMemo(() => {
+    if (filterCategory === "all") {
+      return categorizedPermissions;
+    }
+
+    return {
+      [filterCategory]: categorizedPermissions[filterCategory] || [],
+    };
+  }, [categorizedPermissions, filterCategory]);
+
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-50 min-h-screen">
       <Toaster position="top-right" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          Role & Permissions Management
+        </h1>
+        <p className="text-gray-600">
+          Manage user roles and their permissions across the system
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* ---------- Left: Role List ---------- */}
-        <section className="lg:col-span-1 rounded-2xl border bg-white shadow-sm">
+        <section className="lg:col-span-1 rounded-xl border bg-white shadow-sm">
           <div className="p-4 border-b flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-lg">Roles</h2>
-              <p className="text-sm text-muted-foreground">
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Users size={18} className="text-blue-500" />
+                Roles
+              </h2>
+              <p className="text-sm text-gray-500">
                 {rolesLoading ? "Loading…" : `${roles.length} total`}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={openCreateRole}
-                className="px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
               >
-                + New
+                <Plus size={16} />
+                <span>New</span>
               </button>
             </div>
           </div>
 
           <div className="p-4 border-b">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search roles…"
-              className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300"
-            />
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search roles…"
+                className="w-full rounded-lg border pl-10 pr-3 py-2 outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
           </div>
 
-          <ul className="divide-y max-h-[60vh] overflow-auto">
+          <ul className="divide-y max-h-[70vh] overflow-auto">
             {filteredRoles.map((role) => (
               <li
                 key={role.id}
-                className="flex items-center justify-between p-3 hover:bg-slate-50"
+                className={cn(
+                  "p-4 transition-colors",
+                  selectedRole?.id === role.id
+                    ? "bg-blue-50 border-l-4 border-l-blue-500"
+                    : "hover:bg-gray-50"
+                )}
               >
-                <button
-                  className={cn(
-                    "text-left flex-1",
-                    selectedRole?.id === role.id
-                      ? "font-semibold text-emerald-700"
-                      : "text-slate-800"
-                  )}
-                  onClick={() => loadRolePermissions(role.id)}
-                  title="Select to manage permissions"
-                >
-                  <div className="text-sm">{role.name.toUpperCase()}</div>
-                  {!!role._count?.users && (
-                    <div className="text-[11px] text-slate-500">
-                      {role._count.users} user(s)
-                    </div>
-                  )}
-                </button>
-
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
                   <button
-                    onClick={() => openEditRole(role)}
-                    className="px-2 py-1 text-sm rounded-md border hover:bg-slate-100"
+                    className="text-left flex-1"
+                    onClick={() => loadRolePermissions(role.id)}
+                    title="Select to manage permissions"
                   >
-                    Edit
+                    <div
+                      className={cn(
+                        "text-sm font-medium",
+                        selectedRole?.id === role.id
+                          ? "text-blue-700"
+                          : "text-gray-800"
+                      )}
+                    >
+                      {role.name.toUpperCase()}
+                    </div>
+                    {role.description && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {role.description}
+                      </div>
+                    )}
+                    {!!role._count?.users && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {role._count.users} user(s)
+                      </div>
+                    )}
                   </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEditRole(role)}
+                      className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                      title="Edit role"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      onClick={() => confirmDeleteRole(role)}
+                      className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50"
+                      title="Delete role"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
 
             {!rolesLoading && filteredRoles.length === 0 && (
-              <li className="p-4 text-sm text-slate-500">No roles found.</li>
+              <li className="p-4 text-sm text-gray-500 text-center">
+                No roles found.
+              </li>
             )}
           </ul>
         </section>
 
         {/* ---------- Right: Permission Manager ---------- */}
-        <section className="lg:col-span-2 rounded-2xl border bg-white shadow-sm">
+        <section className="lg:col-span-3 rounded-xl border bg-white shadow-sm">
           <div className="p-4 border-b flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-lg">Permissions</h2>
-              <p className="text-sm text-muted-foreground">
-                {permLoading ? "Loading…" : `${permissions.length} available`}
+              <h2 className="font-semibold text-lg flex items-center gap-2">
+                <Shield size={18} className="text-blue-500" />
+                Permissions
+              </h2>
+              <p className="text-sm text-gray-500">
+                {permLoading
+                  ? "Loading…"
+                  : `${permissions.length} available permissions`}
               </p>
             </div>
 
             {selectedRole ? (
-              <div className="text-sm text-slate-600">
-                Managing:{" "}
-                <span className="font-semibold">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  Managing permissions for:
+                </span>
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                   {selectedRoleMeta?.name || selectedRole.id}
                 </span>
               </div>
             ) : (
-              <div className="text-sm text-slate-400">
-                Select a role to manage
+              <div className="text-sm text-gray-400 flex items-center gap-1">
+                <Shield size={16} />
+                Select a role to manage permissions
               </div>
             )}
           </div>
 
+          {selectedRole && (
+            <div className="p-4 border-b bg-gray-50">
+              <div className="flex items-center gap-3 mb-3">
+                <Filter size={16} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">
+                  Filter by category:
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setFilterCategory("all")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-sm transition-colors",
+                    filterCategory === "all"
+                      ? "bg-blue-100 text-blue-800 border border-blue-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  )}
+                >
+                  All Categories
+                </button>
+
+                {permissionCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setFilterCategory(category.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm transition-colors flex items-center gap-2",
+                      filterCategory === category.id
+                        ? "bg-blue-100 text-blue-800 border border-blue-200"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    )}
+                  >
+                    {category.icon}
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="p-4">
             {!selectedRole && (
-              <p className="text-sm text-slate-500">
-                Select a role to manage permissions.
-              </p>
+              <div className="text-center py-12">
+                <Shield size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">
+                  Select a role to manage its permissions
+                </p>
+              </div>
             )}
 
             {selectedRole && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                {permissions.map((p) => {
-                  const checked = selectedRole.permissions.includes(p.id);
-                  return (
-                    <label
-                      key={p.id}
-                      className="flex items-center gap-3 rounded-lg border p-3 hover:bg-slate-50"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={checked}
-                        onChange={(e) =>
-                          togglePermission(p.id, e.target.checked)
-                        }
-                      />
-                      <div>
-                        <div className="text-sm font-medium">{p.name}</div>
-                        {p.description ? (
-                          <div className="text-xs text-slate-500">
-                            {p.description}
+              <div className="space-y-4">
+                {Object.entries(filteredPermissions).map(
+                  ([categoryId, perms]) => {
+                    if (perms.length === 0) return null;
+
+                    const category = permissionCategories.find(
+                      (c) => c.id === categoryId
+                    ) || {
+                      id: categoryId,
+                      name:
+                        categoryId === "uncategorized"
+                          ? "Other Permissions"
+                          : categoryId,
+                      description: "Uncategorized permissions",
+                      icon: <Shield size={14} />,
+                    };
+
+                    const isExpanded = expandedCategories[categoryId] ?? true;
+
+                    return (
+                      <div
+                        key={categoryId}
+                        className="border rounded-lg overflow-hidden"
+                      >
+                        <button
+                          className="w-full p-4 bg-gray-50 flex items-center justify-between text-left"
+                          onClick={() => toggleCategory(categoryId)}
+                        >
+                          <div className="flex items-center gap-3">
+                            {category.icon}
+                            <div>
+                              <h3 className="font-medium text-gray-800">
+                                {category.name}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {category.description}
+                              </p>
+                            </div>
                           </div>
-                        ) : null}
+                          <div className="text-gray-400">
+                            {isExpanded ? (
+                              <ChevronUp size={20} />
+                            ) : (
+                              <ChevronDown size={20} />
+                            )}
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="p-4 bg-white grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {perms.map((p) => {
+                              const checked = selectedRole.permissions.includes(
+                                p.id
+                              );
+                              return (
+                                <label
+                                  key={p.id}
+                                  className="flex items-start gap-3 rounded-lg border p-3 hover:bg-gray-50 transition-colors"
+                                >
+                                  <div className="mt-0.5">
+                                    {checked ? (
+                                      <CheckSquare
+                                        size={20}
+                                        className="text-blue-600"
+                                      />
+                                    ) : (
+                                      <Square
+                                        size={20}
+                                        className="text-gray-400"
+                                      />
+                                    )}
+                                    <input
+                                      type="checkbox"
+                                      className="hidden"
+                                      checked={checked}
+                                      onChange={(e) =>
+                                        togglePermission(p.id, e.target.checked)
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-800">
+                                      {p.name}
+                                    </div>
+                                    {p.description ? (
+                                      <div className="text-sm text-gray-600 mt-1">
+                                        {p.description}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </label>
-                  );
-                })}
+                    );
+                  }
+                )}
               </div>
             )}
           </div>
@@ -369,49 +717,53 @@ export default function RolePermissionPage() {
       {/* ---------- Modal: Create / Edit Role ---------- */}
       {showRoleModal && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-lg">
+          <div className="w-full max-w-lg rounded-xl bg-white shadow-lg">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">
+              <h3 className="font-semibold flex items-center gap-2">
+                {editingRole ? <Edit size={18} /> : <Plus size={18} />}
                 {editingRole ? "Edit Role" : "Create Role"}
               </h3>
               <button
                 onClick={() => setShowRoleModal(false)}
-                className="text-slate-500 hover:text-slate-700"
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
-            <form onSubmit={submitRole} className="p-4 space-y-3">
-              {/* Role ID removed: now auto-generated on server */}
+            <form onSubmit={submitRole} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm mb-1">Name</label>
+                <label className="block text-sm font-medium mb-1">
+                  Role Name
+                </label>
                 <input
                   value={formRole.name}
                   onChange={(e) =>
                     setFormRole((s) => ({ ...s, name: e.target.value }))
                   }
-                  className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300"
-                  placeholder="e.g. Admin"
+                  className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300"
+                  placeholder="e.g. Administrator"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">
+                  Description
+                </label>
                 <textarea
                   value={formRole.description}
                   onChange={(e) =>
                     setFormRole((s) => ({ ...s, description: e.target.value }))
                   }
-                  className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300"
+                  className="w-full rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300"
                   rows={3}
-                  placeholder="Optional description"
+                  placeholder="Describe this role's purpose and responsibilities"
                 />
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-2 rounded-lg border hover:bg-slate-50"
+                  className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowRoleModal(false)}
                 >
                   Cancel
@@ -419,7 +771,7 @@ export default function RolePermissionPage() {
                 <button
                   type="submit"
                   disabled={submittingRole}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
                 >
                   {submittingRole
                     ? "Saving…"
@@ -429,6 +781,42 @@ export default function RolePermissionPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete.open && confirmDelete.role && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash2 size={24} className="text-red-600" />
+              </div>
+              <h3 className="font-semibold text-lg">Delete Role</h3>
+            </div>
+
+            <p className="text-gray-600 mb-5">
+              Are you sure you want to delete the role{" "}
+              <span className="font-medium">"{confirmDelete.role.name}"</span>?
+              This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDelete({ open: false, role: null })}
+                className="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={doDeleteRole}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-1"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
