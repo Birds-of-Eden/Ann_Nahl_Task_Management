@@ -1,29 +1,41 @@
+// app/api/tasks/history/[agentId]/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET(req: NextRequest, { params }: { params: { agentId: string } }) {
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ agentId: string }> } // 👈 params is a Promise
+) {
   try {
-    const { agentId } = params;
+    const { agentId } = await ctx.params; // 👈 await it
     if (!agentId) {
-      return NextResponse.json({ error: "agentId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "agentId is required" },
+        { status: 400 }
+      );
     }
 
     const url = new URL(req.url);
-    const limit = Math.min(Number(url.searchParams.get("limit") ?? 100) || 100, 500);
-    const dateField = url.searchParams.get("date") === "created" ? "createdAt" : "updatedAt";
+    const limit = Math.min(
+      Number(url.searchParams.get("limit") ?? 100) || 100,
+      500
+    );
+    const dateField =
+      url.searchParams.get("date") === "created" ? "createdAt" : "updatedAt";
 
-    // ✅ status filter: default = qc_approved,completed
-    const statusParam = (url.searchParams.get("status") || "qc_approved,completed")
+    // status filter: default = qc_approved,completed
+    const statusParam = (
+      url.searchParams.get("status") || "qc_approved,completed"
+    )
       .split(",")
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
 
     const allowed = new Set(["qc_approved", "completed"]);
     const statuses = statusParam.filter((s) => allowed.has(s));
-    // যদি অবৈধ বা খালি হয়, ডিফল্টে ফিরো
     const statusIn = statuses.length ? statuses : ["qc_approved", "completed"];
 
-    // ✅ name filter (partial, case-insensitive). q অথবা name যে-কোনোটাই কাজ করবে
+    // name filter (partial, case-insensitive). q or name works
     const q = url.searchParams.get("q") ?? url.searchParams.get("name") ?? "";
 
     const tasks = await prisma.task.findMany({
@@ -39,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: { agentId: str
             }
           : {}),
       },
-      orderBy: { [dateField]: "desc" },
+      orderBy: { [dateField]: "desc" as const },
       take: limit,
       select: {
         id: true,
@@ -48,8 +60,6 @@ export async function GET(req: NextRequest, { params }: { params: { agentId: str
         updatedAt: true,
         createdAt: true,
         client: { select: { name: true } },
-
-        // extra metrics
         performanceRating: true,
         idealDurationMinutes: true,
         actualDurationMinutes: true,
@@ -68,8 +78,10 @@ export async function GET(req: NextRequest, { params }: { params: { agentId: str
       name: t.name ?? "(Untitled Task)",
       clientName: t.client?.name ?? "-",
       status: String(t.status),
-      date: (dateField === "createdAt" ? t.createdAt : t.updatedAt).toISOString(),
-
+      date: (dateField === "createdAt"
+        ? t.createdAt
+        : t.updatedAt
+      ).toISOString(),
       performanceRating: toNum(t.performanceRating),
       idealDurationMinutes: toNum(t.idealDurationMinutes),
       actualDurationMinutes: toNum(t.actualDurationMinutes),
@@ -79,7 +91,10 @@ export async function GET(req: NextRequest, { params }: { params: { agentId: str
   } catch (e: any) {
     console.error("QC history error:", e);
     return NextResponse.json(
-      { error: "Failed to fetch task history", message: e?.message || String(e) },
+      {
+        error: "Failed to fetch task history",
+        message: e?.message || String(e),
+      },
       { status: 500 }
     );
   }
