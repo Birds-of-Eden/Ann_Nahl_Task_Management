@@ -27,13 +27,17 @@ type Role =
 async function fetchQcTasks() {
   noStore();
 
-  const h = headers();
+  // ✅ Next.js 15: Dynamic APIs are async
+  const h = await headers();
   const proto = h.get("x-forwarded-proto") ?? "http";
   const host = h.get("x-forwarded-host") ?? h.get("host");
   if (!host) return [];
 
   const baseUrl = `${proto}://${host}`;
-  const cookieHeader = cookies()
+
+  // ✅ cookies() await করে নিন
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
     .getAll()
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
@@ -78,7 +82,7 @@ export default async function RoleBasedPage({
       return <AgentDashboard agentId={user.id} />;
 
     case "qc": {
-      const tasks = await fetchQcTasks(); // ⬅️ আসল ফেচ এখানেই
+      const tasks = await fetchQcTasks();
       return <QCDashboard tasks={tasks} />;
     }
 
