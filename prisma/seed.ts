@@ -384,6 +384,11 @@ const TEAMS = [
     description: "Backlinks Team",
   },
   {
+    id: "completedcom-",
+    name: "Completed.com",
+    description: "Completed.com Team Description",
+  },
+  {
     id: "content-studio-team",
     name: "Content Studio Team",
     description: "Content Studio Team",
@@ -401,15 +406,30 @@ const TEAMS = [
   {
     id: "graphics-design-team",
     name: "Graphics Design Team",
-    description: "Graphics Design Team",
+    description: "Graphics Design Team Description",
   },
   {
     id: "monitoring-team",
     name: "Monitoring Team",
-    description: "Monitoring Team",
+    description: "Monitoring Team Description",
   },
-  { id: "qc-team", name: "QC Team", description: "QC Team" },
+  { id: "qc-team", name: "QC Team", description: "QC Team Description" },
+  {
+    id: "review-removal-team",
+    name: "Review Removal Team",
+    description: "Review Removal Team Description",
+  },
   { id: "social-team", name: "Social Team", description: "Social Team" },
+  {
+    id: "summary-report-team",
+    name: "Summary Report Team",
+    description: "Summary Report Team",
+  },
+  {
+    id: "youtube-video-optimizer-",
+    name: "Youtube Video Optimizer",
+    description: "Youtube Video Optimizer Team Description",
+  },
 ];
 
 async function seedTeams() {
