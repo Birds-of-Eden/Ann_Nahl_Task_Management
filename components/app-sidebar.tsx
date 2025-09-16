@@ -337,21 +337,6 @@ function buildNav(role: Role): NavItem[] {
       url: p(r, "/teams"),
       permission: "view_teams_manage",
     },
-    // {
-    //   title: "QC",
-    //   children: [
-    //     {
-    //       title: "QC Dashboard",
-    //       url: p(r, "/qc/qc-dashboard"),
-    //       permission: "view_qc_dashboard",
-    //     },
-    //     {
-    //       title: "QC Review",
-    //       url: p(r, "/qc/qc-review"),
-    //       permission: "view_qc_review",
-    //     },
-    //   ],
-    // },
     {
       title: "Role Permissions",
       url: p(r, "/role-permissions"),
@@ -385,22 +370,26 @@ function isGroup(item: NavItem): item is NavGroup {
   return (item as NavGroup).children !== undefined;
 }
 
+// helper: normalize path => ট্রেইলিং স্ল্যাশ/কুয়েরি/হ্যাশ বাদ
+function normalizePath(u: string) {
+  const noQ = u.replace(/[?#].*$/, ""); // strip query/hash
+  return noQ !== "/" ? noQ.replace(/\/+$/, "") : "/"; // strip trailing slash (except root)
+}
+
+/**
+ * Exact-match active checker
+ * -> শুধু সঠিক path মিললে active হবে
+ * -> ফলে parent + child একসাথে active হবে না
+ */
 function useActive(pathname: string) {
-  const baseRoots = React.useMemo(() => new Set(Object.values(basePath)), []);
+  const normPath = React.useMemo(() => normalizePath(pathname), [pathname]);
+
   return React.useCallback(
     (url: string) => {
-      if (baseRoots.has(url) || url === "/" || url.endsWith("/dashboard")) {
-        return pathname === url;
-      }
-      return (
-        pathname === url ||
-        (pathname.startsWith(url) &&
-          (pathname.length === url.length ||
-            pathname[url.length] === "/" ||
-            pathname[url.length] === "?"))
-      );
+      const normUrl = normalizePath(url);
+      return normPath === normUrl;
     },
-    [pathname, baseRoots]
+    [normPath]
   );
 }
 
