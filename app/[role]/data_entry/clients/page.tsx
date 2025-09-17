@@ -129,13 +129,13 @@ export default function ClientsPage() {
 
   // Navigate to details
   const handleViewClientDetails = (client: Client) => {
-    router.push(`/data_entry_dashboard/clients/${client.id}`);
+    router.push(`/data_entry/clients/${client.id}`);
   };
 
   const handleAddNewClient = () => {
     const role = (currentUserRole ?? "").toLowerCase();
     if (role === "data_entry") {
-      router.push(`/${role}/data_entry_dashboard/clients/onboarding`);
+      router.push(`/${role}/data_entry/clients/onboarding`);
     }
   };
 
