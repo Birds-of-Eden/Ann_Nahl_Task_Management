@@ -10,7 +10,7 @@ import { AMDashboard } from "@/components/account_manager/amDashboard";
 import QCDashboard from "@/components/QCDashboard";
 import { AgentDashboard } from "@/components/agent-dashboard";
 import ClientSelfDashboard from "@/components/client-self-dashboard";
-import ClientsPage from "./data_entry_dashboard/clients/page";
+import ClientsPage from "./data_entry/clients/page";
 
 export const dynamic = "force-dynamic";
 

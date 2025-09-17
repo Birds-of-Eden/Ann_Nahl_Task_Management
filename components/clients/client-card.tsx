@@ -217,13 +217,19 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
+    } else if (segment === 'data_entry') {
+      router.push(`/data_entry/clients/${clientId}`);
     } else {
       router.push(`/${segment}/clients/${clientId}`);
     }
   };
 
   const handleViewTasks = () => {
-    router.push(`/${segment}/clients/${clientId}/tasks`);
+    if (segment === 'data_entry') {
+      router.push(`/data_entry/data_entry/clients/${clientId}/tasks`);
+    } else {
+      router.push(`/${segment}/clients/${clientId}/tasks`);
+    }
   };
 
   return (
