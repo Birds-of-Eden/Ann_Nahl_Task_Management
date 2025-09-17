@@ -1,4 +1,4 @@
-// app/data_entry/clients/[clientId]/complete/page.tsx
+// app/data_entry/clients/[clientId]/tasks/page.tsx
 
 import DataEntryCompleteTasksPanel from "@/components/dataentry/DataEntryCompleteTasksPanel";
 

@@ -60,7 +60,7 @@ export default function ClientsPage() {
 
     try {
       setLoading(true);
-      const url = new URL("/api/clients", window.location.origin);
+      const url = new URL("/api/dataentryclient", window.location.origin);
       if (isAM && currentUserId) url.searchParams.set("amId", currentUserId);
       // data_entry (or any non-AM) should only see clients assigned to them
       if (!isAM && currentUserId)
@@ -136,8 +136,6 @@ export default function ClientsPage() {
     const role = (currentUserRole ?? "").toLowerCase();
     if (role === "data_entry") {
       router.push(`/${role}/data_entry_dashboard/clients/onboarding`);
-    } else {
-      router.push(`/admin/clients/onboarding`);
     }
   };
 
