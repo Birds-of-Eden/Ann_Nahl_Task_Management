@@ -96,6 +96,17 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<UserInterface | null>(null);
   const { user } = useAuth();
 
+  // Permissions
+  const canViewUser = hasPermissionClient(user?.permissions, "user_view");
+  const canEditUser = hasPermissionClient(user?.permissions, "user_edit");
+  const canDeleteUser = hasPermissionClient(user?.permissions, "user_delete");
+  const canImpersonate = hasPermissionClient(
+    user?.permissions,
+    "user_impersonate"
+  );
+  const showActions =
+    canViewUser || canEditUser || canDeleteUser || canImpersonate;
+
   // Fetch users with pagination
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -255,12 +266,22 @@ export default function UsersPage() {
   }, [users, searchTerm, statusFilter, categoryFilter, roleFilter]);
 
   const openDeleteConfirmation = (userId: string) => {
+    if (!canDeleteUser) {
+      toast.error("You don't have permission to delete users.");
+      return;
+    }
     setUserToDelete(userId);
     setOpenDeleteDialog(true);
   };
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
+    if (!canDeleteUser) {
+      toast.error("You don't have permission to delete users.");
+      setOpenDeleteDialog(false);
+      setUserToDelete(null);
+      return;
+    }
     try {
       setActionLoading(true);
       const response = await fetch(
@@ -497,7 +518,13 @@ export default function UsersPage() {
               <TableHead className="p-3 text-lg font-medium">Role</TableHead>
               <TableHead className="p-3 text-lg font-medium">Status</TableHead>
               <TableHead className="p-3 text-lg font-medium">Joined</TableHead>
-              <TableHead className="p-3 text-lg font-medium">Actions</TableHead>
+              <TableHead
+                className={`p-3 text-lg font-medium ${
+                  !showActions ? "hidden" : ""
+                }`}
+              >
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -525,41 +552,49 @@ export default function UsersPage() {
                   <TableCell className="p-3 text-left truncate max-w-[250px] text-base">
                     {formatDate(user.createdAt)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={`${!showActions ? "hidden" : ""}`}>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditUser(user);
-                          setOpenEditDialog(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
+                      {canEditUser && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditUser(user);
+                            setOpenEditDialog(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
 
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setOpenViewDialog(true);
-                        }}
-                      >
-                        View
-                      </Button>
+                      {canViewUser && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setOpenViewDialog(true);
+                          }}
+                        >
+                          View
+                        </Button>
+                      )}
 
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteConfirmation(user.id)}
-                      >
-                        Delete
-                      </Button>
+                      {canDeleteUser && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openDeleteConfirmation(user.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
 
-                      <ImpersonateButton
-                        targetUserId={user.id}
-                        targetName={user.name || user.email}
-                      />
+                      {canImpersonate && (
+                        <ImpersonateButton
+                          targetUserId={user.id}
+                          targetName={user.name || user.email}
+                        />
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -627,7 +662,7 @@ export default function UsersPage() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteUser}
-                disabled={actionLoading || sessionLoading}
+                disabled={actionLoading || sessionLoading || !canDeleteUser}
               >
                 {actionLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -639,8 +674,11 @@ export default function UsersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Dialog (unchanged content-wise, just kept modular separation focus on form) */}
-      <Dialog open={openViewDialog} onOpenChange={setOpenViewDialog}>
+      {/* View Dialog */}
+      <Dialog
+        open={openViewDialog && canViewUser}
+        onOpenChange={setOpenViewDialog}
+      >
         <DialogContent className="max-w-2xl rounded-lg">
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold flex items-center gap-2">
@@ -752,13 +790,15 @@ export default function UsersPage() {
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <ImpersonateButton
-                  targetUserId={selectedUser.id}
-                  targetName={selectedUser.name || selectedUser.email}
-                  className="bg-sky-600 hover:bg-sky-700 text-white"
-                />
-              </div>
+              {canImpersonate && (
+                <div className="flex justify-end">
+                  <ImpersonateButton
+                    targetUserId={selectedUser.id}
+                    targetName={selectedUser.name || selectedUser.email}
+                    className="bg-sky-600 hover:bg-sky-700 text-white"
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex justify-center items-center h-32">

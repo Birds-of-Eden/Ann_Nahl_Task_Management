@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Toaster, toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -44,19 +44,39 @@ type PermissionCategory = {
 
 // ✅ Explicit permission → category mapping so they never fall into "Others"
 const PERMISSION_CATEGORY_MAP: Record<string, string> = {
-  // Tasks
+  // ---- Tasks ----
   view_social_activities: "tasks",
 
-  // Admin / Management
+  // ---- Admin / Management ----
   view_role_permissions: "admin",
   view_teams_manage: "admin",
   view_user_management: "admin",
 
-  // System (🔁 moved activity logs here per request)
+  // ---- System ----
   view_activity_logs: "system",
 
-  // Notifications (dedicated category + dedicated route)
+  // ---- Notifications ----
   view_notifications: "notifications",
+
+  // ---- Templates (NEW) ----
+  template_edit: "templates",
+  template_delete: "templates",
+
+  // ---- User Management (NEW) ----
+  user_delete: "user_management",
+  user_edit: "user_management",
+  user_view: "user_management",
+
+  // ---- Impersonation (NEW) ----
+  user_impersonate: "impersonate",
+
+  // ---- Clients specific (NEW) ----
+  client_card_client_view: "clients",
+  client_card_task_view: "clients",
+  client_create: "clients",
+  // also map common client permissions to keep them grouped nicely
+  view_clients_list: "clients",
+  view_clients_create: "clients",
 };
 
 export default function RolePermissionPage() {
@@ -96,6 +116,9 @@ export default function RolePermissionPage() {
   >({});
   const [filterCategory, setFilterCategory] = useState<string>("all");
 
+  // ✅ ensure auto-select runs only once after roles load
+  const hasAutoSelected = useRef(false);
+
   // Categories (with icons)
   const permissionCategories: PermissionCategory[] = [
     {
@@ -134,6 +157,16 @@ export default function RolePermissionPage() {
       description: "Package management and distribution",
       icon: (
         <div className="w-5 h-5 bg-yellow-100 rounded-md flex items-center justify-center text-yellow-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "templates",
+      name: "Templates",
+      description: "Template editing & deletion",
+      icon: (
+        <div className="w-5 h-5 bg-fuchsia-100 rounded-md flex items-center justify-center text-fuchsia-600">
           <Shield size={14} />
         </div>
       ),
@@ -179,9 +212,29 @@ export default function RolePermissionPage() {
       ),
     },
     {
+      id: "user_management",
+      name: "User Management",
+      description: "View, edit and delete user records",
+      icon: (
+        <div className="w-5 h-5 bg-sky-100 rounded-md flex items-center justify-center text-sky-600">
+          <Users size={14} />
+        </div>
+      ),
+    },
+    {
+      id: "impersonate",
+      name: "Impersonation",
+      description: "Assume another user's identity for support",
+      icon: (
+        <div className="w-5 h-5 bg-amber-100 rounded-md flex items-center justify-center text-amber-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
+    {
       id: "system",
       name: "System",
-      description: "System utilities, activity logs, and user management",
+      description: "System utilities and activity logs",
       icon: (
         <div className="w-5 h-5 bg-pink-100 rounded-md flex items-center justify-center text-pink-600">
           <Shield size={14} />
@@ -253,7 +306,7 @@ export default function RolePermissionPage() {
       const res = await fetch("/api/roles", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to load roles");
-      setRoles(data.data || []);
+      setRoles(Array.isArray(data.data) ? data.data : []);
     } catch (e: any) {
       toast.error(e.message || "Failed to load roles");
     } finally {
@@ -267,7 +320,7 @@ export default function RolePermissionPage() {
       const res = await fetch("/api/permissions", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to load permissions");
-      setPermissions(data.data || []);
+      setPermissions(Array.isArray(data.data) ? data.data : []);
     } catch (e: any) {
       toast.error(e.message || "Failed to load permissions");
     } finally {
@@ -297,6 +350,25 @@ export default function RolePermissionPage() {
       toast.error(e.message || "Failed to load role permissions");
     }
   };
+
+  // ✅ Auto-select Admin (or first role) once roles are loaded
+  useEffect(() => {
+    if (hasAutoSelected.current) return;
+    if (!roles || roles.length === 0) return;
+    if (selectedRole) return;
+
+    const adminLike = roles.find(
+      (r) =>
+        r.name?.toLowerCase() === "admin" ||
+        r.id?.toLowerCase() === "admin" ||
+        r.name?.toLowerCase() === "administrator"
+    );
+    const pick = adminLike ?? roles[0];
+    if (pick?.id) {
+      hasAutoSelected.current = true;
+      loadRolePermissions(pick.id);
+    }
+  }, [roles, selectedRole]);
 
   // ---------------- CRUD: Roles ----------------
   const openCreateRole = () => {
