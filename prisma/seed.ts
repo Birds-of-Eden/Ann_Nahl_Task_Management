@@ -277,7 +277,6 @@ const ADMIN_PERMS: string[] = [
   "user_view",
   "user_impersonate",
   "view_activity_logs",
-  "view_agent_tasks",
 
   "view_agents_create",
   "view_agents_list",
@@ -287,10 +286,7 @@ const ADMIN_PERMS: string[] = [
   "view_distribution_client_agent",
   "view_notifications",
   "view_packages_list",
-  "view_qc_dashboard",
-  "view_qc_review",
   "view_role_permissions",
-  "view_tasks_list",
   "view_teams_manage",
   "view_user_management",
 ];
@@ -353,7 +349,6 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_packages_list",
     "view_notifications",
     "chat_data_entry",
-    "data_entry_clients_create",
   ],
 
   client: ["view_dashboard", "view_notifications", "chat_client"],
