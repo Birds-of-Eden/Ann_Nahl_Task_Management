@@ -133,7 +133,12 @@ export default function ClientsPage() {
   };
 
   const handleAddNewClient = () => {
-    router.push("/data_entry_dashboard/clients/onboarding");
+    const role = (currentUserRole ?? "").toLowerCase();
+    if (role === "data_entry") {
+      router.push(`/${role}/data_entry_dashboard/clients/onboarding`);
+    } else {
+      router.push(`/admin/clients/onboarding`);
+    }
   };
 
   // Build account manager options safely
