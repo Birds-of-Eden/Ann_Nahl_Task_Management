@@ -42,6 +42,23 @@ type PermissionCategory = {
   icon: React.ReactNode;
 };
 
+// ✅ Explicit permission → category mapping so they never fall into "Others"
+const PERMISSION_CATEGORY_MAP: Record<string, string> = {
+  // Tasks
+  view_social_activities: "tasks",
+
+  // Admin / Management
+  view_role_permissions: "admin",
+  view_teams_manage: "admin",
+  view_user_management: "admin",
+
+  // System (🔁 moved activity logs here per request)
+  view_activity_logs: "system",
+
+  // Notifications (dedicated category + dedicated route)
+  view_notifications: "notifications",
+};
+
 export default function RolePermissionPage() {
   const { user } = useAuth();
 
@@ -79,7 +96,7 @@ export default function RolePermissionPage() {
   >({});
   const [filterCategory, setFilterCategory] = useState<string>("all");
 
-  // Permission categories with icons and descriptions
+  // Categories (with icons)
   const permissionCategories: PermissionCategory[] = [
     {
       id: "dashboard",
@@ -164,32 +181,48 @@ export default function RolePermissionPage() {
     {
       id: "system",
       name: "System",
-      description: "System utilities and user management",
+      description: "System utilities, activity logs, and user management",
       icon: (
         <div className="w-5 h-5 bg-pink-100 rounded-md flex items-center justify-center text-pink-600">
           <Shield size={14} />
         </div>
       ),
     },
+    // Dedicated Notifications category
+    {
+      id: "notifications",
+      name: "Notifications",
+      description: "In-app notifications related permissions",
+      icon: (
+        <div className="w-5 h-5 bg-teal-100 rounded-md flex items-center justify-center text-teal-600">
+          <Shield size={14} />
+        </div>
+      ),
+    },
   ];
 
-  // Categorize permissions
+  // Categorize permissions (explicit map → heuristic fallback → uncategorized)
   const categorizedPermissions = useMemo(() => {
     const categorized: Record<string, Permission[]> = {};
 
-    // Initialize categories
+    // Initialize known categories
     permissionCategories.forEach((cat) => {
       categorized[cat.id] = [];
     });
 
-    // Add uncategorized section
+    // Fallback bucket
     categorized["uncategorized"] = [];
 
-    // Categorize each permission
     permissions.forEach((permission) => {
-      let foundCategory = false;
+      // 1) Explicit mapping wins
+      const mapped = PERMISSION_CATEGORY_MAP[permission.id];
+      if (mapped && categorized[mapped]) {
+        categorized[mapped].push(permission);
+        return;
+      }
 
-      // Check which category the permission belongs to
+      // 2) Heuristic fallback
+      let foundCategory = false;
       for (const category of permissionCategories) {
         if (
           permission.id.includes(category.id) ||
@@ -204,14 +237,14 @@ export default function RolePermissionPage() {
         }
       }
 
-      // If no category found, add to uncategorized
+      // 3) Uncategorized if nothing matched
       if (!foundCategory) {
         categorized["uncategorized"].push(permission);
       }
     });
 
     return categorized;
-  }, [permissions]);
+  }, [permissions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------- Loaders ----------------
   const loadRoles = async () => {
@@ -245,6 +278,7 @@ export default function RolePermissionPage() {
   useEffect(() => {
     loadRoles();
     loadPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadRolePermissions = async (roleId: string) => {
@@ -331,7 +365,6 @@ export default function RolePermissionPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to delete role");
       toast.success("Role deleted");
-      // If the selected role was deleted, clear
       if (selectedRole?.id === confirmDelete.role.id) setSelectedRole(null);
       await loadRoles();
     } catch (e: any) {
@@ -396,12 +429,9 @@ export default function RolePermissionPage() {
     }));
   };
 
-  // Filter permissions by category
+  // Filter permissions by category (chip filter)
   const filteredPermissions = useMemo(() => {
-    if (filterCategory === "all") {
-      return categorizedPermissions;
-    }
-
+    if (filterCategory === "all") return categorizedPermissions;
     return {
       [filterCategory]: categorizedPermissions[filterCategory] || [],
     };
