@@ -39,6 +39,15 @@ function hasImpersonatePermission(
   return perms.includes("user_impersonate");
 }
 
+// ছোট util: বর্তমান রিকোয়েস্ট HTTPS কিনা
+function getIsSecure(req: NextRequest) {
+  const proto =
+    req.headers.get("x-forwarded-proto") ??
+    (req as any).nextUrl?.protocol?.replace(":", "") ??
+    "http";
+  return proto === "https";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { targetUserId } = await req.json();
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Target user موجود কি না
+    // Target user আছে কি না
     const target = await prisma.user.findUnique({
       where: { id: targetUserId },
     });
@@ -79,9 +88,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // নতুন "impersonated" সেশন: userId = target, impersonatedBy = admin
+    // নতুন impersonated সেশন
     const impersonatedToken = randomUUID();
-    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3h limit (আপনার ইচ্ছামতো)
+    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3h
 
     await prisma.session.create({
       data: {
@@ -96,7 +105,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Audit log (ঐচ্ছিক কিন্তু ভাল)
+    // Audit log
     await prisma.activityLog.create({
       data: {
         id: randomUUID(),
@@ -117,19 +126,21 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
+    const isSecure = getIsSecure(req);
+
     // মূল এডমিন টোকেন সেফ রাখতে আলাদা কুকি
     res.cookies.set("impersonation-origin", adminToken!, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       path: "/",
       maxAge: 3 * 60 * 60, // 3h
     });
 
-    // ব্রাউজারে এখন থেকে টার্গেট ইউজারের সেশন চলবে
+    // ব্রাউজারে টার্গেট ইউজারের সেশন চালু
     res.cookies.set("session-token", impersonatedToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       path: "/",
       maxAge: 3 * 60 * 60,

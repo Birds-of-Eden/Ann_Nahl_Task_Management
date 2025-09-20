@@ -4,6 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
+// ছোট util: বর্তমান রিকোয়েস্ট HTTPS কিনা
+function getIsSecure(req: NextRequest) {
+  const proto =
+    req.headers.get("x-forwarded-proto") ??
+    (req as any).nextUrl?.protocol?.replace(":", "") ??
+    "http";
+  return proto === "https";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const currentToken = req.cookies.get("session-token")?.value || null;
@@ -43,6 +52,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
+    const isSecure = getIsSecure(req);
+
     // যদি অরিজিন সেশন থাকে এবং বৈধ হয়, সেটায় ফিরে যান; না হলে সেশন ক্লিয়ার
     if (originToken) {
       const origin = await prisma.session.findUnique({
@@ -57,7 +68,7 @@ export async function POST(req: NextRequest) {
         );
         res.cookies.set("session-token", originToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: isSecure,
           sameSite: "lax",
           path: "/",
           maxAge: seconds,
@@ -65,7 +76,7 @@ export async function POST(req: NextRequest) {
       } else {
         res.cookies.set("session-token", "", {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: isSecure,
           sameSite: "lax",
           path: "/",
           maxAge: 0,
@@ -74,7 +85,7 @@ export async function POST(req: NextRequest) {
     } else {
       res.cookies.set("session-token", "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
         path: "/",
         maxAge: 0,
@@ -84,7 +95,7 @@ export async function POST(req: NextRequest) {
     // অরিজিন টোকেন কুকি ক্লিয়ার
     res.cookies.set("impersonation-origin", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       path: "/",
       maxAge: 0,
