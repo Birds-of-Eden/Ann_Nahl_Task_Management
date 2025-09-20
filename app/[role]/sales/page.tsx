@@ -1,7 +1,9 @@
+// app/[role]/sales/page.tsx
 "use client";
 
 import * as React from "react";
 import useSWR from "swr";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -25,11 +27,9 @@ import {
   Users,
   Clock,
   AlertTriangle,
-  DollarSign,
-  Package as PackageIcon,
-  Target,
-  CalendarX,
-  Package,
+  RefreshCw,
+  Search,
+  Star,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -39,41 +39,18 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  BarChart,
+  Bar,
+  Legend,
   PieChart,
   Pie,
   Cell,
+  Area,
+  AreaChart,
+  ComposedChart,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
-
-// Enhanced color palette
-const COLORS = {
-  primary: "#3B82F6",
-  secondary: "#10B981",
-  accent: "#F59E0B",
-  danger: "#EF4444",
-  warning: "#F97316",
-  success: "#22C55E",
-  purple: "#8B5CF6",
-  pink: "#EC4899",
-  teal: "#14B8A6",
-  indigo: "#6366F1",
-};
-
-const PIE_COLORS = [
-  COLORS.primary,
-  COLORS.secondary,
-  COLORS.accent,
-  COLORS.purple,
-  COLORS.pink,
-  COLORS.teal,
-  COLORS.indigo,
-  COLORS.warning,
-  COLORS.danger,
-];
-
-type Status = "active" | "expired" | "upcoming" | "unknown";
 
 type Overview = {
   summary: {
@@ -114,13 +91,214 @@ type Overview = {
       email: string | null;
       startDate: string | null;
       dueDate: string | null;
-      status: Status;
+      status: "active" | "expired" | "upcoming" | "unknown";
     }[];
   }[];
 };
 
+/* ================= Helpers ================= */
+const formatInt = (n: number | undefined | null) => (n ?? 0).toLocaleString();
+const formatPct = (n: number | undefined | null, dp = 1) =>
+  `${(n ?? 0).toFixed(dp)}%`;
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+
+const COLORS = {
+  cyan: "#06b6d4",
+  sky: "#0ea5e9",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  slate: "#94a3b8",
+  indigo: "#6366f1",
+  violet: "#8b5cf6",
+  green: "#22c55e",
+  orange: "#f97316",
+  zinc: "#a1a1aa",
+};
+
+function movingAverage(data: { day: string; starts: number }[], window = 7) {
+  const out: { day: string; ma: number; starts: number }[] = [];
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    sum += data[i].starts;
+    if (i >= window) sum -= data[i - window].starts;
+    out.push({
+      day: data[i].day,
+      starts: data[i].starts,
+      ma: i >= window - 1 ? +(sum / window).toFixed(2) : NaN,
+    });
+  }
+  return out;
+}
+
+function cumulative(data: { day: string; starts: number }[]) {
+  let acc = 0;
+  return data.map((d) => {
+    acc += d.starts;
+    return { day: d.day, cumulative: acc };
+  });
+}
+
+/* =============== UI micro-components =============== */
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "animate-pulse rounded-md bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100",
+        className
+      )}
+    />
+  );
+}
+
+function EmptyState({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="mb-3 rounded-full bg-slate-50 p-3 ring-1 ring-slate-100">
+        <Search className="h-5 w-5 text-slate-400" />
+      </div>
+      <p className="text-sm font-medium">{title}</p>
+      {hint ? (
+        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function StatusPill({
+  status,
+}: {
+  status: "active" | "expired" | "upcoming" | "unknown";
+}) {
+  const map: Record<string, string> = {
+    active:
+      "bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-[inset_0_1px_0_0_rgba(16,185,129,0.15)]",
+    expired:
+      "bg-rose-50 text-rose-700 border-rose-200/60 shadow-[inset_0_1px_0_0_rgba(244,63,94,0.15)]",
+    upcoming:
+      "bg-amber-50 text-amber-800 border-amber-200/60 shadow-[inset_0_1px_0_0_rgba(245,158,11,0.15)]",
+    unknown:
+      "bg-slate-50 text-slate-700 border-slate-200/60 shadow-[inset_0_1px_0_0_rgba(148,163,184,0.15)]",
+  };
+  return (
+    <span
+      className={cn(
+        "text-[11px] px-2 py-1 rounded-full border capitalize",
+        map[status] || map.unknown
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
+function KPI({
+  title,
+  value,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  trend?: { label: string; positive?: boolean };
+}) {
+  return (
+    <Card className="border-slate-200">
+      <CardContent className="p-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground">{title}</p>
+          <p className="text-xl font-semibold tracking-tight">{value}</p>
+          {trend ? (
+            <p
+              className={cn(
+                "mt-1 text-[11px]",
+                trend.positive ? "text-emerald-600" : "text-rose-600"
+              )}
+            >
+              {trend.label}
+            </p>
+          ) : null}
+        </div>
+        <div className="p-2 rounded-lg bg-slate-50 ring-1 ring-slate-100">
+          {icon}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PackageCard({
+  title,
+  total,
+  active,
+  expired,
+  avgDaysLeft,
+  selected,
+  onClick,
+}: {
+  title: string;
+  total: number;
+  active: number;
+  expired: number;
+  avgDaysLeft: number | null;
+  selected?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="text-left">
+      <Card
+        className={cn(
+          "transition-all hover:shadow-sm border-slate-200",
+          selected ? "ring-2 ring-cyan-400 shadow" : "hover:-translate-y-0.5"
+        )}
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm line-clamp-1">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-3 gap-2 items-end">
+          <div>
+            <p className="text-[10px] text-muted-foreground">Total</p>
+            <p className="text-lg font-semibold">{formatInt(total)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Active</p>
+            <p className="text-lg font-semibold text-emerald-600">
+              {formatInt(active)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Expired</p>
+            <p className="text-lg font-semibold text-rose-600">
+              {formatInt(expired)}
+            </p>
+          </div>
+          <div className="col-span-3 mt-1">
+            <Badge variant="secondary" className="text-[10px]">
+              {avgDaysLeft !== null
+                ? `Avg days left: ${avgDaysLeft}`
+                : "Avg days left: —"}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
+
+/* ===================== Page ===================== */
+
 export default function AMCEOSalesPage() {
-  const { data } = useSWR<Overview>("/api/am/sales/overview", fetcher);
+  const { data, isLoading, mutate, error } = useSWR<Overview>(
+    "/api/am/sales/overview",
+    fetcher,
+    { revalidateOnFocus: false }
+  );
 
   const [selectedPkg, setSelectedPkg] = React.useState<string | "all">("all");
   const [query, setQuery] = React.useState("");
@@ -130,138 +308,25 @@ export default function AMCEOSalesPage() {
   const byPackage = data?.byPackage ?? [];
   const grouped = data?.groupedClients ?? [];
   const packageSales = data?.packageSales ?? [];
-  // NOTE: "Total Revenue" card will now show expired-clients info (count),
-  // so totalSales from API is no longer displayed in the KPI.
+  const totalSales = data?.totalSales ?? summary?.totalSales ?? 0;
   const totalClients = summary?.totalWithPackage ?? 0;
 
-  /* =========================
-     Build month-over-month dynamics from API data
-  ======================== */
-  const ALL_CLIENTS = React.useMemo(
-    () => grouped.flatMap((g) => g.clients),
-    [grouped]
-  );
+  /* ===== Derived analytics for charts ===== */
+  const ma7 = React.useMemo(() => movingAverage(series, 7), [series]);
+  const cumStarts = React.useMemo(() => cumulative(series), [series]);
 
-  // Helpers for month boundaries
-  const today = new Date();
-  const cmYear = today.getFullYear();
-  const cmMonth = today.getMonth(); // 0-11
-  const prevMonthDate = new Date(cmYear, cmMonth - 1, 1);
-  const pmYear = prevMonthDate.getFullYear();
-  const pmMonth = prevMonthDate.getMonth();
+  // Growth: last 30d vs previous 30d (based on "starts")
+  const growth = React.useMemo(() => {
+    if (!series?.length) return null;
+    const last30 = series.slice(-30);
+    const prev30 = series.slice(-60, -30);
+    const s1 = last30.reduce((a, b) => a + (b?.starts ?? 0), 0);
+    const s0 = prev30.reduce((a, b) => a + (b?.starts ?? 0), 0);
+    const delta = s1 - s0;
+    const pct = s0 ? (delta / s0) * 100 : s1 ? 100 : 0;
+    return { s0, s1, delta, pct };
+  }, [series]);
 
-  const isInYearMonth = (d: Date, y: number, m: number) =>
-    d.getFullYear() === y && d.getMonth() === m;
-
-  // Parse ISO safely
-  const parse = (v: string | null) => (v ? new Date(v) : null);
-
-  // Derive monthly metrics
-  const startedThisMonth = React.useMemo(
-    () =>
-      ALL_CLIENTS.filter((c) => {
-        const sd = parse(c.startDate);
-        return sd ? isInYearMonth(sd, cmYear, cmMonth) : false;
-      }),
-    [ALL_CLIENTS, cmYear, cmMonth]
-  );
-
-  const startedPrevMonth = React.useMemo(
-    () =>
-      ALL_CLIENTS.filter((c) => {
-        const sd = parse(c.startDate);
-        return sd ? isInYearMonth(sd, pmYear, pmMonth) : false;
-      }),
-    [ALL_CLIENTS, pmYear, pmMonth]
-  );
-
-  const activeStartedThisMonth = React.useMemo(
-    () => startedThisMonth.filter((c) => c.status === "active"),
-    [startedThisMonth]
-  );
-  const activeStartedPrevMonth = React.useMemo(
-    () => startedPrevMonth.filter((c) => c.status === "active"),
-    [startedPrevMonth]
-  );
-
-  const expiredThisMonth = React.useMemo(
-    () =>
-      ALL_CLIENTS.filter((c) => {
-        const dd = parse(c.dueDate);
-        // "Expired clients information" = due date is in current month AND already expired by now
-        return dd ? isInYearMonth(dd, cmYear, cmMonth) && dd < today : false;
-      }),
-    [ALL_CLIENTS, cmYear, cmMonth, today]
-  );
-
-  const expiredPrevMonth = React.useMemo(
-    () =>
-      ALL_CLIENTS.filter((c) => {
-        const dd = parse(c.dueDate);
-        // Expired in previous month (due date fell in previous month)
-        return dd ? isInYearMonth(dd, pmYear, pmMonth) : false;
-      }),
-    [ALL_CLIENTS, pmYear, pmMonth]
-  );
-
-  // "Packages Sold" per month = number of clients who started this month
-  const packagesSoldThisMonth = startedThisMonth.length;
-  const packagesSoldPrevMonth = startedPrevMonth.length;
-
-  // Change helpers
-  function pctChange(curr: number, prev: number) {
-    if (prev === 0) {
-      if (curr === 0) return { text: "0%", type: "positive" as const };
-      return { text: "+100%", type: "positive" as const };
-    }
-    const pct = ((curr - prev) / Math.abs(prev)) * 100;
-    const rounded = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
-    return {
-      text: rounded,
-      type: pct >= 0 ? ("positive" as const) : ("negative" as const),
-    };
-  }
-
-  // Build KPI dynamics
-  // Overall (cumulative) values from the API
-  const overallTotalClients = summary?.totalWithPackage ?? 0;
-  const overallActiveClients = summary?.active ?? 0;
-  const overallExpiredClients = summary?.expired ?? 0;
-  // For overall “Packages Sold”, use total clients with a package (all sales to date)
-  const overallPackagesSold = overallTotalClients;
-  const packagesWithAtLeastOneClient = React.useMemo(
-    () =>
-      byPackage ? byPackage.filter((p) => (p.clients || 0) > 0).length : 0,
-    [byPackage]
-  );
-
-  // Build KPI objects: VALUE = overall, CHANGE = MoM you computed above
-  const kpiTotalClients = {
-    value: overallTotalClients,
-    change: pctChange(startedThisMonth.length, startedPrevMonth.length),
-  };
-
-  const kpiActiveClients = {
-    value: overallActiveClients,
-    change: pctChange(
-      activeStartedThisMonth.length,
-      activeStartedPrevMonth.length
-    ),
-  };
-
-  const kpiExpiredClients = {
-    value: overallExpiredClients,
-    change: pctChange(expiredThisMonth.length, expiredPrevMonth.length),
-  };
-
-  const kpiPackagesSold = {
-    value: overallPackagesSold,
-    change: pctChange(packagesSoldThisMonth, packagesSoldPrevMonth),
-  };
-
-  /* =========================
-     Existing computed visuals
-  ======================== */
   const pkgOptions = React.useMemo(() => {
     return grouped.map((g) => ({
       id: g.packageId,
@@ -287,209 +352,252 @@ export default function AMCEOSalesPage() {
     );
   }, [grouped, selectedPkg, query]);
 
-  // Prepare pie chart data
-  const packageDistributionData = React.useMemo(() => {
-    return byPackage.map((pkg) => ({
-      name: pkg.packageName ?? `Package ${pkg.packageId.slice(0, 6)}`,
-      value: pkg.clients,
-      packageId: pkg.packageId,
-    }));
-  }, [byPackage]);
+  const selectedLabel =
+    selectedPkg === "all"
+      ? "All Packages"
+      : pkgOptions.find((p) => p.id === selectedPkg)?.label ??
+        "Selected Package";
 
-  const statusDistributionData = React.useMemo(() => {
-    return [
-      { name: "Active", value: summary?.active ?? 0, color: COLORS.success },
-      { name: "Expired", value: summary?.expired ?? 0, color: COLORS.danger },
-      {
-        name: "Starting Soon",
-        value: summary?.startingSoon ?? 0,
-        color: COLORS.warning,
-      },
-      {
-        name: "Expiring Soon",
-        value: summary?.expiringSoon ?? 0,
-        color: COLORS.accent,
-      },
-    ].filter((item) => item.value > 0);
-  }, [summary]);
-
-  const salesDistributionData = React.useMemo(() => {
-    return packageSales.map((pkg) => ({
-      name: pkg.packageName ?? `Package ${pkg.packageId.slice(0, 6)}`,
-      value: pkg.sales,
-      percentage: pkg.sharePercent,
-    }));
-  }, [packageSales]);
-
+  /* ===================== UI ===================== */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6 space-y-8">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Sales Analytics Dashboard
+          <h1 className="text-xl font-bold tracking-tight">
+            AM CEO — Package Sales
           </h1>
-          <p className="text-slate-600 mt-1">
-            Comprehensive package sales overview and insights
+          <p className="text-xs text-muted-foreground">
+            Package performance, client status, and sales distribution
           </p>
         </div>
-        <Badge className="rounded-full bg-green-100 text-green-700 border-green-200 px-4 py-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-          Live Data
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className="rounded-full">Live</Badge>
+          <button
+            onClick={() => mutate()}
+            className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900"
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Enhanced KPI Cards (now dynamic MoM) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard
-          title="Total Clients"
-          value={kpiTotalClients.value}
-          icon={<Users className="h-6 w-6" />}
-          gradient="from-blue-500 to-cyan-600"
-          change={kpiTotalClients.change.text}
-          changeType={kpiTotalClients.change.type}
-        />
-        <KPICard
-          title="Active Clients"
-          value={kpiActiveClients.value}
-          icon={<Target className="h-6 w-6" />}
-          gradient="from-purple-500 to-violet-600"
-          change={kpiActiveClients.change.text}
-          changeType={kpiActiveClients.change.type}
-        />
-        <KPICard
-          title="Expired Clients"
-          value={kpiExpiredClients.value}
-          icon={<CalendarX className="h-6 w-6" />} // or your chosen icon
-          gradient="from-green-500 to-emerald-600"
-          change={kpiExpiredClients.change.text}
-          changeType={kpiExpiredClients.change.type}
-        />
-        <KPICard
-          title="Packages Sold"
-          value={kpiPackagesSold.value}
-          icon={<Package className="h-6 w-6" />}
-          gradient="from-orange-500 to-red-600"
-          change={kpiPackagesSold.change.text}
-          changeType={kpiPackagesSold.change.type}
-        />
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Package Distribution Pie Chart */}
-        <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-t-xl">
-            <CardTitle className="flex items-center gap-2">
-              <PackageIcon className="h-5 w-5" />
-              Package Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={packageDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {packageDistributionData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+      {error ? (
+        <Card>
+          <CardContent className="p-6 text-sm">
+            <p className="font-medium text-rose-600">Failed to load data.</p>
+            <p className="mt-1 text-muted-foreground">
+              Please try again or contact support if the issue persists.
+            </p>
           </CardContent>
         </Card>
+      ) : null}
 
-        {/* Status Distribution Pie Chart */}
-        <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-xl">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Contract Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {statusDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+      {/* ====== SALES SPOTLIGHT (Hero) ====== */}
+      <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-slate-200">
+        <div className="grid grid-cols-1 lg:grid-cols-3">
+          {/* Left: Big number + meta */}
+          <div className="p-6 lg:p-8 bg-gradient-to-br from-cyan-50 via-sky-50 to-white">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-cyan-600" />
+              <p className="text-xs font-medium text-cyan-700">
+                Sales Spotlight
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight">
+              {isLoading ? "—" : formatInt(totalSales)}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total Sales (all packages)
+            </p>
 
-        {/* Sales Distribution Pie Chart */}
-        <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-t-xl">
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Sales by Package
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={salesDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percentage }) => `${name}: ${percentage}%`}
-                  >
-                    {salesDistributionData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            {/* Growth pill */}
+            {!isLoading && growth ? (
+              <div
+                className={cn(
+                  "mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ring-1",
+                  growth.delta >= 0
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200/70"
+                    : "bg-rose-50 text-rose-700 ring-rose-200/70"
+                )}
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span className="font-medium">
+                  {growth.delta >= 0 ? "+" : ""}
+                  {growth.delta} vs prev. 30d
+                </span>
+                <span className="opacity-70">
+                  ({growth.pct >= 0 ? "+" : ""}
+                  {growth.pct.toFixed(1)}%)
+                </span>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <Skeleton className="h-6 w-40" />
+              </div>
+            )}
+
+            {/* Top 3 packages quick insight */}
+            <div className="mt-6 space-y-2">
+              <p className="text-xs font-medium text-slate-700">
+                Top Packages by Sales
+              </p>
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-4 w-3/5" />
+                </>
+              ) : (
+                packageSales
+                  .slice()
+                  .sort((a, b) => b.sales - a.sales)
+                  .slice(0, 3)
+                  .map((p) => {
+                    const name = p.packageName ?? p.packageId.slice(0, 6);
+                    const width = Math.max(5, Math.min(100, p.sharePercent));
+                    return (
+                      <div key={p.packageId}>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="truncate">{name}</span>
+                          <span className="text-slate-500">
+                            {formatInt(p.sales)} •{" "}
+                            {formatPct(p.sharePercent, 1)}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
+                          <div
+                            className="h-2 rounded-full bg-cyan-500"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      {/* Enhanced Package Cards */}
-      <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-t-xl">
-          <CardTitle className="flex items-center gap-2">
-            <PackageIcon className="h-5 w-5" />
-            Package Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+          {/* Middle: Sparkline (last 30d) */}
+          <div className="p-6 lg:p-8">
+            <p className="text-xs text-muted-foreground">Last 30 days starts</p>
+            <div className="h-28 mt-2">
+              {isLoading ? (
+                <Skeleton className="h-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={series.slice(-30)}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="day" hide />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="starts"
+                      stroke={COLORS.indigo}
+                      dot={false}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* KPI chips */}
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <KPI
+                title="Active"
+                value={isLoading ? "—" : formatInt(summary?.active)}
+                icon={<Users className="h-5 w-5" />}
+              />
+              <KPI
+                title="Expiring ≤30d"
+                value={isLoading ? "—" : formatInt(summary?.expiringSoon)}
+                icon={<Clock className="h-5 w-5" />}
+              />
+              <KPI
+                title="Expired"
+                value={isLoading ? "—" : formatInt(summary?.expired)}
+                icon={<AlertTriangle className="h-5 w-5" />}
+              />
+            </div>
+          </div>
+
+          {/* Right: Sales Share Pie */}
+          <div className="p-6 lg:p-8">
+            <p className="text-xs text-muted-foreground">Sales Share</p>
+            <div className="h-40 mt-2">
+              {isLoading ? (
+                <Skeleton className="h-full" />
+              ) : packageSales.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip
+                      formatter={(v: any) => `${v}%`}
+                      contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
+                    />
+                    <Pie
+                      data={packageSales.map((p) => ({
+                        name: p.packageName ?? p.packageId.slice(0, 6),
+                        value: +(
+                          (p.sharePercent as number)?.toFixed?.(2) ??
+                          p.sharePercent
+                        ),
+                      }))}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                    >
+                      {packageSales.map((_, idx) => {
+                        const palette = [
+                          COLORS.cyan,
+                          COLORS.indigo,
+                          COLORS.emerald,
+                          COLORS.orange,
+                          COLORS.violet,
+                          COLORS.rose,
+                          COLORS.amber,
+                          COLORS.green,
+                        ];
+                        return (
+                          <Cell
+                            key={idx}
+                            fill={palette[idx % palette.length]}
+                          />
+                        );
+                      })}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState title="No sales data" />
+              )}
+            </div>
+            <div className="mt-4 text-[11px] text-slate-600">
+              Total:{" "}
+              <span className="font-medium">{formatInt(totalSales)}</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ===== Packages Overview Cards ===== */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          Packages Overview
+        </h2>
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3">
             <PackageCard
               title="All Packages"
               total={totalClients}
@@ -498,13 +606,12 @@ export default function AMCEOSalesPage() {
               avgDaysLeft={null}
               selected={selectedPkg === "all"}
               onClick={() => setSelectedPkg("all")}
-              gradient="from-slate-600 to-slate-700"
             />
-            {byPackage.map((pkg, index) => (
+            {byPackage.map((pkg) => (
               <PackageCard
                 key={pkg.packageId}
                 title={
-                  pkg.packageName ?? `Package ${pkg.packageId.slice(0, 6)}`
+                  pkg.packageName ?? `(untitled ${pkg.packageId.slice(0, 6)})`
                 }
                 total={pkg.clients}
                 active={pkg.active}
@@ -512,372 +619,338 @@ export default function AMCEOSalesPage() {
                 avgDaysLeft={pkg.avgDaysLeft}
                 selected={selectedPkg === pkg.packageId}
                 onClick={() => setSelectedPkg(pkg.packageId)}
-                gradient={`from-${
-                  [
-                    "blue",
-                    "green",
-                    "purple",
-                    "orange",
-                    "pink",
-                    "teal",
-                    "indigo",
-                    "red",
-                    "yellow",
-                  ][index % 9]
-                }-500 to-${
-                  [
-                    "blue",
-                    "green",
-                    "purple",
-                    "orange",
-                    "pink",
-                    "teal",
-                    "indigo",
-                    "red",
-                    "yellow",
-                  ][index % 9]
-                }-600`}
               />
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
-      {/* Enhanced Trend Chart */}
-      <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-t-xl">
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            New Package Starts Trend (Last 90 days)
-          </CardTitle>
+      {/* ===== Charts Row: Trend / MA vs Daily / Cumulative ===== */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Daily starts (Area) */}
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Daily Starts (Last 90d)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <Skeleton className="h-full" />
+            ) : series.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={series}>
+                  <defs>
+                    <linearGradient id="startsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor={COLORS.sky}
+                        stopOpacity={0.25}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={COLORS.sky}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="starts"
+                    stroke={COLORS.sky}
+                    fill="url(#startsFill)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No recent starts" />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Daily vs 7-day MA (Composed) */}
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Daily vs 7-day Avg</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <Skeleton className="h-full" />
+            ) : series.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={ma7}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
+                  />
+                  <Bar dataKey="starts" name="Daily" fill={COLORS.zinc} />
+                  <Line
+                    type="monotone"
+                    dataKey="ma"
+                    name="7-day Avg"
+                    stroke={COLORS.indigo}
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No data" />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Cumulative Starts (Line) */}
+        <Card className="xl:col-span-1">
+          <CardHeader>
+            <CardTitle>Cumulative Starts</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {isLoading ? (
+              <Skeleton className="h-full" />
+            ) : cumStarts.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={cumStarts}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke={COLORS.emerald}
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState title="No data" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ===== Clients by Package (Status Breakdown) ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Clients by Package (Status Breakdown)</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="h-80">
+        <CardContent className="h-80">
+          {isLoading ? (
+            <Skeleton className="h-full" />
+          ) : byPackage.length ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series}>
-                <defs>
-                  <linearGradient id="colorStarts" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor={COLORS.primary}
-                      stopOpacity={0.8}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor={COLORS.primary}
-                      stopOpacity={0.1}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="day" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
+              <BarChart data={byPackage}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey={(d: any) => d.packageName ?? d.packageId.slice(0, 6)}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "none",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-                  }}
+                  contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0" }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="starts"
-                  stroke={COLORS.primary}
-                  strokeWidth={3}
-                  fill="url(#colorStarts)"
-                  dot={{ fill: COLORS.primary, strokeWidth: 2, r: 6 }}
-                  activeDot={{ r: 8, stroke: COLORS.primary, strokeWidth: 2 }}
+                <Legend />
+                <Bar
+                  dataKey="clients"
+                  stackId="total"
+                  fill={COLORS.slate}
+                  name="Total"
                 />
-              </LineChart>
+                <Bar
+                  dataKey="active"
+                  stackId="status"
+                  fill={COLORS.green}
+                  name="Active"
+                />
+                <Bar
+                  dataKey="expired"
+                  stackId="status"
+                  fill={COLORS.orange}
+                  name="Expired"
+                />
+              </BarChart>
             </ResponsiveContainer>
-          </div>
+          ) : (
+            <EmptyState title="No package data" />
+          )}
         </CardContent>
       </Card>
 
-      {/* Enhanced Client Table */}
-      <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-t-xl">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Client Management
+      {/* ===== Sales Table ===== */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Package Sales</CardTitle>
+          {!isLoading && (
+            <div className="text-xs text-muted-foreground">
+              Total sales:{" "}
+              <span className="font-medium">{formatInt(totalSales)}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Select
-                value={selectedPkg}
-                onValueChange={(v) => setSelectedPkg(v as any)}
-              >
-                <SelectTrigger className="w-56 bg-white/20 border-white/30 text-white">
-                  <SelectValue placeholder="Select package" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    All Packages ({totalClients})
-                  </SelectItem>
-                  {pkgOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.label} ({p.count})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Search clients..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-72 bg-white/20 border-white/30 text-white placeholder:text-white/70"
-              />
-            </div>
-          </CardTitle>
+          )}
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-slate-600">
-              Displaying{" "}
-              <span className="font-bold text-blue-600">
-                {currentClients.length}
-              </span>{" "}
-              client(s)
-              {selectedPkg !== "all" && (
-                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                  {pkgOptions.find((p) => p.id === selectedPkg)?.label ??
-                    "Selected Package"}
-                </span>
-              )}
-            </p>
-          </div>
-
-          <div className="overflow-auto rounded-lg border border-slate-200">
+        <CardContent className="overflow-x-auto">
+          {isLoading ? (
+            <Skeleton className="h-40" />
+          ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="font-semibold text-slate-700">
-                    Client
-                  </TableHead>
-                  <TableHead className="font-semibold text-slate-700">
-                    Company
-                  </TableHead>
-                  <TableHead className="font-semibold text-slate-700">
-                    Email
-                  </TableHead>
-                  <TableHead className="font-semibold text-slate-700">
-                    Start Date
-                  </TableHead>
-                  <TableHead className="font-semibold text-slate-700">
-                    Due Date
-                  </TableHead>
-                  <TableHead className="font-semibold text-slate-700">
-                    Status
-                  </TableHead>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Package</TableHead>
+                  <TableHead className="text-right">Sales</TableHead>
+                  <TableHead className="text-right">% Share</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentClients.map((c, index) => (
-                  <TableRow
-                    key={c.id}
-                    className={`hover:bg-slate-50 transition-colors ${
-                      index % 2 === 0 ? "bg-white" : "bg-slate-25"
-                    }`}
-                  >
-                    <TableCell className="font-medium text-slate-900">
-                      {c.name ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-700">
-                      {c.company ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600">
-                      {c.email ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-700">
-                      {c.startDate ? fmtDate(c.startDate) : "—"}
-                    </TableCell>
-                    <TableCell className="text-slate-700">
-                      {c.dueDate ? fmtDate(c.dueDate) : "—"}
-                    </TableCell>
+                {packageSales.map((row, i) => (
+                  <TableRow key={row.packageId}>
+                    <TableCell>{i + 1}</TableCell>
                     <TableCell>
-                      <StatusPill status={c.status} />
+                      {row.packageName ??
+                        `(untitled ${row.packageId.slice(0, 6)})`}
+                    </TableCell>
+                    <TableCell className="font-medium text-right">
+                      {formatInt(row.sales)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatPct(row.sharePercent, 2)}
                     </TableCell>
                   </TableRow>
                 ))}
-                {currentClients.length === 0 && (
+                {packageSales.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
-                      className="text-center text-slate-500 py-12"
+                      colSpan={4}
+                      className="text-center text-sm text-muted-foreground"
                     >
-                      <div className="flex flex-col items-center gap-2">
-                        <Users className="h-12 w-12 text-slate-300" />
-                        <p>No clients found</p>
-                      </div>
+                      No sales data found
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ===== Filters + Clients Table ===== */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle>Clients</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedPkg}
+              onValueChange={(v) => setSelectedPkg(v as any)}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Select package" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  All Packages ({formatInt(totalClients)})
+                </SelectItem>
+                {pkgOptions.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label} ({formatInt(p.count)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search client name, company, or email"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-72 pl-8"
+              />
+            </div>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-2 text-sm text-muted-foreground">
+            Showing{" "}
+            <span className="font-medium">
+              {formatInt(currentClients.length)}
+            </span>{" "}
+            client(s) for <span className="font-medium">{selectedLabel}</span>
+          </div>
+
+          {isLoading ? (
+            <Skeleton className="h-56" />
+          ) : currentClients.length === 0 ? (
+            <EmptyState
+              title="No clients found"
+              hint="Try clearing filters or adjusting your search."
+            />
+          ) : (
+            <div className="overflow-auto rounded-md border border-slate-200">
+              <Table>
+                <TableHeader className="sticky top-0 bg-white z-10">
+                  <TableRow>
+                    <TableHead className="w-[220px]">Client</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentClients.map((c) => (
+                    <TableRow key={c.id} className="hover:bg-slate-50/60">
+                      <TableCell className="font-medium">
+                        {c.name ?? "-"}
+                      </TableCell>
+                      <TableCell>{c.company ?? "-"}</TableCell>
+                      <TableCell className="text-xs">
+                        {c.email ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        {c.startDate ? formatDate(c.startDate) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {c.dueDate ? formatDate(c.dueDate) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusPill status={c.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-}
-
-/* ===== Enhanced Components ===== */
-
-function PackageCard({
-  title,
-  total,
-  active,
-  expired,
-  avgDaysLeft,
-  selected,
-  onClick,
-  gradient,
-}: {
-  title: string;
-  total: number;
-  active: number;
-  expired: number;
-  avgDaysLeft: number | null;
-  selected?: boolean;
-  onClick?: () => void;
-  gradient?: string;
-}) {
-  return (
-    <button onClick={onClick} className="text-left w-full">
-      <Card
-        className={cn(
-          "transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white/90 backdrop-blur-sm border-white/20",
-          selected ? "ring-2 ring-cyan-400 shadow-xl scale-105" : ""
-        )}
-      >
-        <CardHeader
-          className={`bg-gradient-to-br ${
-            gradient || "from-blue-500 to-blue-600"
-          } text-white rounded-t-xl pb-2`}
-        >
-          <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div className="text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wide">
-                Total
-              </p>
-              <p className="text-lg font-bold text-slate-800">{total}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wide">
-                Active
-              </p>
-              <p className="text-lg font-bold text-emerald-600">{active}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wide">
-                Expired
-              </p>
-              <p className="text-lg font-bold text-rose-600">{expired}</p>
-            </div>
-          </div>
-          <Badge
-            variant="secondary"
-            className="text-[10px] w-full justify-center bg-slate-100 text-slate-600"
-          >
-            {avgDaysLeft !== null
-              ? `Avg: ${avgDaysLeft} days left`
-              : "Avg: N/A"}
-          </Badge>
-        </CardContent>
-      </Card>
-    </button>
-  );
-}
-
-function KPICard({
-  title,
-  value,
-  icon,
-  gradient,
-  change,
-  changeType,
-}: {
-  title: string;
-  value: number | string;
-  icon: React.ReactNode;
-  gradient: string;
-  change?: string;
-  changeType?: "positive" | "negative";
-}) {
-  return (
-    <Card className="bg-white/90 backdrop-blur-sm border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div
-            className={`p-3 rounded-xl bg-gradient-to-br ${gradient} shadow-lg`}
-          >
-            <div className="text-white">{icon}</div>
-          </div>
-          {change && (
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${
-                changeType === "positive"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {change}
-            </span>
-          )}
-        </div>
-        <div>
-          <p className="text-sm text-slate-500 uppercase tracking-wide font-medium">
-            {title}
-          </p>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatusPill({
-  status,
-}: {
-  status: "active" | "expired" | "upcoming" | "unknown";
-}) {
-  const statusConfig = {
-    active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    expired: "bg-rose-100 text-rose-700 border-rose-200",
-    upcoming: "bg-amber-100 text-amber-700 border-amber-200",
-    unknown: "bg-slate-100 text-slate-700 border-slate-200",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center text-xs px-3 py-1 rounded-full font-medium border ${
-        statusConfig[status] || statusConfig.unknown
-      }`}
-    >
-      <div
-        className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-          status === "active"
-            ? "bg-emerald-500"
-            : status === "expired"
-            ? "bg-rose-500"
-            : status === "upcoming"
-            ? "bg-amber-500"
-            : "bg-slate-500"
-        }`}
-      ></div>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-}
-
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
