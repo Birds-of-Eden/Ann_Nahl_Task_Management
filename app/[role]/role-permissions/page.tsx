@@ -19,6 +19,7 @@ import {
   ChevronUp,
   Trash2,
   X,
+  DollarSign, // 🆕 for Sales category icon
 } from "lucide-react";
 
 type Role = {
@@ -77,6 +78,9 @@ const PERMISSION_CATEGORY_MAP: Record<string, string> = {
   // also map common client permissions to keep them grouped nicely
   view_clients_list: "clients",
   view_clients_create: "clients",
+
+  // ---- Sales (NEW) ----
+  view_sales: "sales",
 };
 
 export default function RolePermissionPage() {
@@ -249,6 +253,17 @@ export default function RolePermissionPage() {
       icon: (
         <div className="w-5 h-5 bg-teal-100 rounded-md flex items-center justify-center text-teal-600">
           <Shield size={14} />
+        </div>
+      ),
+    },
+    // 🆕 Sales category
+    {
+      id: "sales",
+      name: "Sales",
+      description: "Sales dashboards and reports",
+      icon: (
+        <div className="w-5 h-5 bg-emerald-100 rounded-md flex items-center justify-center text-emerald-600">
+          <DollarSign size={14} />
         </div>
       ),
     },
