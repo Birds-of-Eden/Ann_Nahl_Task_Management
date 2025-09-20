@@ -42,6 +42,7 @@ const fetcher = (u: string) => fetch(u).then((r) => r.json());
 type Overview = {
   summary: {
     totalWithPackage: number;
+    totalSales: number; // 🔹 নতুন
     active: number;
     expired: number;
     startingSoon: number;
@@ -58,6 +59,14 @@ type Overview = {
     expired: number;
     avgDaysLeft: number | null;
   }[];
+  // 🔹 নতুন: API থেকে সরাসরি package-wise sales + share %
+  packageSales: {
+    packageId: string;
+    packageName: string | null;
+    sales: number;
+    sharePercent: number;
+  }[];
+  totalSales: number; // 🔹 নতুন (summary.totalSales এর mirror)
   groupedClients: {
     packageId: string;
     packageName: string | null;
@@ -85,6 +94,8 @@ export default function AMCEOSalesPage() {
   const series = data?.timeseries ?? [];
   const byPackage = data?.byPackage ?? [];
   const grouped = data?.groupedClients ?? [];
+  const packageSales = data?.packageSales ?? [];
+  const totalSales = data?.totalSales ?? summary?.totalSales ?? 0;
 
   const totalClients = summary?.totalWithPackage ?? 0;
 
@@ -125,6 +136,30 @@ export default function AMCEOSalesPage() {
         <h1 className="text-xl font-bold">AM CEO — Package Sales</h1>
         <Badge className="rounded-full">Live</Badge>
       </div>
+
+      {/* ====== Sales Overview (Total Sales) ====== */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Sales Overview</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KPI
+            title="Total Sales"
+            value={totalSales}
+            icon={<Users className="h-5 w-5" />}
+          />
+          <KPI
+            title="Active Contracts"
+            value={summary?.active ?? 0}
+            icon={<TrendingUp className="h-5 w-5" />}
+          />
+          <KPI
+            title="Expiring ≤30d"
+            value={summary?.expiringSoon ?? 0}
+            icon={<Clock className="h-5 w-5" />}
+          />
+        </CardContent>
+      </Card>
 
       {/* ====== Package Count Cards (Top) ====== */}
       <div className="space-y-3">
@@ -218,7 +253,49 @@ export default function AMCEOSalesPage() {
         </CardContent>
       </Card>
 
-      {/* By Package chart */}
+      {/* Package Sales (Count + Share %) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Package Sales</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>#</TableHead>
+                <TableHead>Package</TableHead>
+                <TableHead>Sales</TableHead>
+                <TableHead>% Share</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {packageSales.map((row, i) => (
+                <TableRow key={row.packageId}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>
+                    {row.packageName ??
+                      `(untitled ${row.packageId.slice(0, 6)})`}
+                  </TableCell>
+                  <TableCell className="font-medium">{row.sales}</TableCell>
+                  <TableCell>{row.sharePercent}%</TableCell>
+                </TableRow>
+              ))}
+              {packageSales.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-sm text-muted-foreground"
+                  >
+                    No sales data found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Clients by Package (bars) */}
       <Card>
         <CardHeader>
           <CardTitle>Clients by Package</CardTitle>
@@ -227,7 +304,9 @@ export default function AMCEOSalesPage() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={byPackage}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="packageName" />
+              <XAxis
+                dataKey={(d: any) => d.packageName ?? d.packageId.slice(0, 6)}
+              />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -239,7 +318,7 @@ export default function AMCEOSalesPage() {
         </CardContent>
       </Card>
 
-      {/* Package filter + Table */}
+      {/* Package filter + Client Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Clients</CardTitle>
@@ -273,7 +352,13 @@ export default function AMCEOSalesPage() {
         <CardContent>
           <div className="mb-2 text-sm text-muted-foreground">
             Showing <span className="font-medium">{currentClients.length}</span>{" "}
-            client(s) for <span className="font-medium">{selectedLabel}</span>
+            client(s) for{" "}
+            <span className="font-medium">
+              {selectedPkg === "all"
+                ? "All Packages"
+                : pkgOptions.find((p) => p.id === selectedPkg)?.label ??
+                  "Selected Package"}
+            </span>
           </div>
 
           <div className="overflow-auto">

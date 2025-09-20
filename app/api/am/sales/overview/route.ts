@@ -61,6 +61,8 @@ export async function GET() {
 
   const summary = {
     totalWithPackage,
+    // totalSales আলাদা করে নাম দিচ্ছি যেন UI "Sales Overview" এ দেখাতে পারেন
+    totalSales: totalWithPackage,
     active,
     expired,
     startingSoon,
@@ -122,6 +124,17 @@ export async function GET() {
     }))
     .sort((a, b) => b.clients - a.clients);
 
+  // --- Package-wise sales (count + share %)
+  const totalSales = byPackage.reduce((s, r) => s + r.clients, 0);
+  const packageSales = byPackage.map((p) => ({
+    packageId: p.packageId,
+    packageName: p.packageName,
+    sales: p.clients,
+    sharePercent: totalSales
+      ? Math.round((p.clients * 10000) / totalSales) / 100
+      : 0,
+  }));
+
   // --- Timeseries: new package starts per day (last 90 days)
   const since = new Date();
   since.setDate(since.getDate() - 90);
@@ -167,7 +180,9 @@ export async function GET() {
   return NextResponse.json({
     summary,
     timeseries,
-    byPackage,
+    byPackage, // আগের UI অংশগুলো ব্যবহার করছে
+    packageSales, // 🔹 নতুন: package-wise sales + share %
+    totalSales, // 🔹 নতুন: মোট সেলস
     recent,
     groupedClients,
   });
