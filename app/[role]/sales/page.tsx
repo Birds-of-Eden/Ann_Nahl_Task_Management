@@ -33,6 +33,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { cn } from "@/lib/utils";
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json());
 
@@ -55,7 +56,6 @@ type Overview = {
     expired: number;
     avgDaysLeft: number | null;
   }[];
-  recent: any[]; // not used directly here, but available if you want a "Recent" table
   groupedClients: {
     packageId: string;
     packageName: string | null;
@@ -122,6 +122,40 @@ export default function AMCEOSalesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">AM CEO — Package Sales</h1>
         <Badge className="rounded-full">Live</Badge>
+      </div>
+
+      {/* ====== Package Count Cards (Top) ====== */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          Packages Overview
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3">
+          {/* All Packages card */}
+          <PackageCard
+            title="All Packages"
+            total={totalClients}
+            active={summary?.active ?? 0}
+            expired={summary?.expired ?? 0}
+            avgDaysLeft={null}
+            selected={selectedPkg === "all"}
+            onClick={() => setSelectedPkg("all")}
+          />
+          {/* Per-package cards */}
+          {byPackage.map((pkg) => (
+            <PackageCard
+              key={pkg.packageId}
+              title={
+                pkg.packageName ?? `(untitled ${pkg.packageId.slice(0, 6)})`
+              }
+              total={pkg.clients}
+              active={pkg.active}
+              expired={pkg.expired}
+              avgDaysLeft={pkg.avgDaysLeft}
+              selected={selectedPkg === pkg.packageId}
+              onClick={() => setSelectedPkg(pkg.packageId)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* KPIs */}
@@ -287,6 +321,62 @@ export default function AMCEOSalesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/* ===== Components ===== */
+
+function PackageCard({
+  title,
+  total,
+  active,
+  expired,
+  avgDaysLeft,
+  selected,
+  onClick,
+}: {
+  title: string;
+  total: number;
+  active: number;
+  expired: number;
+  avgDaysLeft: number | null;
+  selected?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="text-left">
+      <Card
+        className={cn(
+          "transition-all hover:shadow-md",
+          selected ? "ring-2 ring-cyan-400 shadow" : "hover:-translate-y-0.5"
+        )}
+      >
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-3 gap-2 items-end">
+          <div>
+            <p className="text-[10px] text-muted-foreground">Total</p>
+            <p className="text-lg font-semibold">{total}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Active</p>
+            <p className="text-lg font-semibold text-emerald-600">{active}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Expired</p>
+            <p className="text-lg font-semibold text-rose-600">{expired}</p>
+          </div>
+          <div className="col-span-3 mt-1">
+            <Badge variant="secondary" className="text-[10px]">
+              {avgDaysLeft !== null
+                ? `Avg days left: ${avgDaysLeft}`
+                : "Avg days left: —"}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
 
