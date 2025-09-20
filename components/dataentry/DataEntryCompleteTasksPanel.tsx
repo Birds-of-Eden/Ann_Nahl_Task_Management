@@ -59,10 +59,10 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
       const data = await res.json();
       const mine = (data as any[]).filter((t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id);
       setTasks(mine);
-      
+
       // Check if posting tasks already exist
-      const hasPostingTasks = mine.some((task) => 
-        task.name?.toLowerCase().includes('posting') || 
+      const hasPostingTasks = mine.some((task) =>
+        task.name?.toLowerCase().includes('posting') ||
         task.category?.name?.toLowerCase().includes('posting')
       );
       setHasCreatedTasks(hasPostingTasks);
@@ -91,6 +91,31 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     if (!qlc) return tasks;
     return tasks.filter((t) => [t.name, t.category?.name || "", t.priority || "", t.status || ""].some((s) => String(s).toLowerCase().includes(qlc)));
   }, [tasks, q]);
+
+  // Some Statistics derived from tasks
+  const stats = useMemo(() => {
+    const total = tasks.length;
+    const byStatus = tasks.reduce((acc, t) => {
+      const key = (t.status || "unknown").toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const completed = (byStatus["completed"] ?? 0) + (byStatus["qc_approved"] ?? 0);
+    const inProgress = (byStatus["in_progress"] ?? 0) + (byStatus["inprogress"] ?? 0);
+    const notStarted = (byStatus["not_started"] ?? 0) + (byStatus["pending"] ?? 0) + (byStatus["todo"] ?? 0);
+
+    const now = new Date();
+    const overdue = tasks.filter((t) => {
+      if (!t.dueDate) return false;
+      const due = new Date(t.dueDate);
+      if (isNaN(due.getTime())) return false;
+      const done = (t.status === "completed" || t.status === "qc_approved");
+      return !done && due < now;
+    }).length;
+
+    return { total, completed, inProgress, notStarted, overdue };
+  }, [tasks]);
 
   // Gate readiness by required categories fully QC-approved
   const requiredCategories = [
@@ -239,14 +264,20 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     <Card className="border-0 shadow-2xl overflow-hidden bg-white/90 backdrop-blur">
       <div className="flex items-center justify-between pb-2">
         <h2 className="text-2xl font-bold pl-6">Data Entry — Complete Tasks</h2>
+        {/* Some Statistics */}
+        <BackgroundGradient className="flex gap-3 items-center rounded-xl p-4">
+          <div className="text-2xl font-bold uppercase tracking-wide text-slate-900">Total - </div>
+          <div className="text-2xl font-bold text-slate-900">{stats.total} Task Remaining</div>
+        </BackgroundGradient>
+
         <div className="flex items-center gap-2 pr-6">
-          <CreateTasksButton 
-            clientId={clientId} 
+          <CreateTasksButton
+            clientId={clientId}
             disabled={hasCreatedTasks}
             onTaskCreationComplete={() => {
               setHasCreatedTasks(true);
               load();
-            }} 
+            }}
           />
         </div>
       </div>
@@ -254,7 +285,6 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
         <div className="flex items-center gap-3 mb-4">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Quick search tasks" className="h-10 rounded-xl" />
         </div>
-
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
             <thead className="bg-slate-50 text-slate-700">
@@ -313,7 +343,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                 <label className="text-sm font-medium">Completion Link</label>
                 <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" className="mt-1" />
               </div>
-              
+
               {!isSimpleTask(selected) && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
