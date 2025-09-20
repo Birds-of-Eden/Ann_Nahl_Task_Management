@@ -247,6 +247,8 @@ const PERMS = [
   { id: "user_edit", name: "user_edit", description: "Can edit users" },
   { id: "user_view", name: "user_view", description: "Can view users" },
   { id: "user_delete", name: "user_delete", description: "Can delete users" },
+
+  { id: "view_sales", name: "view_sales", description: "Sidebar: Sales" },
 ];
 
 async function seedPermissions() {
@@ -342,6 +344,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_am_ceo_clients_list",
     "view_notifications",
     "chat_am_ceo",
+    "view_sales",
   ],
 
   data_entry: [

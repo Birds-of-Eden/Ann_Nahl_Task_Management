@@ -244,13 +244,17 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-
     {
       title: "Package",
       url: p(r, "/packages"),
       permission: "view_packages_list",
     },
- 
+
+    {
+      title: "sales",
+      url: p(r, "/sales"),
+      permission: "view_sales",
+    },
 
     // Distribution
     {
