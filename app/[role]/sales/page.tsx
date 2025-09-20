@@ -1,3 +1,5 @@
+// app/[role]/sales/page.tsx
+
 "use client";
 
 import * as React from "react";
