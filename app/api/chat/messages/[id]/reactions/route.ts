@@ -1,3 +1,5 @@
+// app/api/chat/messages/[id]/reactions/route.ts
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/getAuthUser";

@@ -1,3 +1,5 @@
+// app/api/chat/messages/[id]/forward/route.ts
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthUser } from "@/lib/getAuthUser";
@@ -69,15 +71,23 @@ export async function POST(req: Request, ctx: Ctx) {
     if (targetConversationIds.length) {
       const convs = await prisma.conversation.findMany({
         where: { id: { in: targetConversationIds } },
-        select: { id: true, type: true, participants: { select: { userId: true } } },
+        select: {
+          id: true,
+          type: true,
+          participants: { select: { userId: true } },
+        },
       });
       const allowed = convs
         .filter((c) => {
           const ids = new Set(c.participants.map((p) => p.userId));
-          return c.type === "dm" && ids.size === 2 && ids.has(me.id) && ids.has(amId);
+          return (
+            c.type === "dm" && ids.size === 2 && ids.has(me.id) && ids.has(amId)
+          );
         })
         .map((c) => c.id);
-      targetConversationIds = targetConversationIds.filter((cid) => allowed.includes(cid));
+      targetConversationIds = targetConversationIds.filter((cid) =>
+        allowed.includes(cid)
+      );
     }
 
     if (!targetUserIds.length && !targetConversationIds.length) {
