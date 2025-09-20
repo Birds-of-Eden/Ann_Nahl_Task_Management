@@ -58,18 +58,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ✅ 3) lastSeenAt আপডেট (online/last-seen এর জন্য)
+    // 3) lastSeenAt আপডেট
     await prisma.user.update({
       where: { id: user.id },
       data: { lastSeenAt: new Date() },
     });
 
-    // 4) permissions list
+    // 4) permissions list (name হিসেবে)
     const permissions =
       user.role?.rolePermissions.map((rp) => rp.permission.name) || [];
 
     // 5) Response + cookie set
-    const response = NextResponse.json(
+    const isHttps = req.nextUrl.protocol === "https:"; // ✅ http হলে false
+    const res = NextResponse.json(
       {
         success: true,
         message: "Login successful",
@@ -84,15 +85,15 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
-    response.cookies.set("session-token", sessionToken, {
+    res.cookies.set("session-token", sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps, // ✅ গুরুত্বপূর্ণ
       sameSite: "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
-    return response;
+    return res;
   } catch (error) {
     console.error("❌ Login error:", error);
     return NextResponse.json(

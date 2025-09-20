@@ -1,12 +1,10 @@
-// app/(main)/auth/sign-in/login-form.tsx
-
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,25 +12,8 @@ import { toast } from "sonner";
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (!role) return;
-    const timeout = setTimeout(() => {
-      if (role === "admin") router.replace("/admin");
-      else if (role === "agent") router.replace("/agent");
-      else if (role === "manager") router.replace("/manager");
-      else if (role === "qc") router.replace("/qc");
-      else if (role === "am") router.replace("/am");
-      else if (role === "am_ceo") router.replace("/am_ceo");
-      else if (role === "client") router.replace("/client");
-      else if (role === "data_entry") router.replace("/data_entry");
-      else router.push("/");
-    }, 100);
-    return () => clearTimeout(timeout);
-  }, [role, router]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -48,22 +29,50 @@ export function LoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // ✅ কুকি পাঠানো/নেওয়া
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         toast.error(data.error || "Invalid credentials");
-      } else {
-        toast.success("Signed in successfully!");
-        // ✅ Online/Last-seen: সাথে সাথে heartbeat পিং (ঐচ্ছিক কিন্তু ভালো)
-        await fetch("/api/presence/heartbeat", { method: "POST" }).catch(
-          () => {}
-        );
-        setRole((data.user.role || "").toLowerCase());
+        return;
       }
-    } catch (error) {
-      console.error("Login error:", error);
+
+      toast.success("Signed in successfully!");
+
+      // লগইনের পর সাথে সাথে heartbeat (ঐচ্ছিক)
+      await fetch("/api/presence/heartbeat", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
+
+      const role = (data?.user?.role || "").toLowerCase();
+      const target =
+        role === "admin"
+          ? "/admin"
+          : role === "agent"
+          ? "/agent"
+          : role === "manager"
+          ? "/manager"
+          : role === "qc"
+          ? "/qc"
+          : role === "am"
+          ? "/am"
+          : role === "am_ceo"
+          ? "/am_ceo"
+          : role === "client"
+          ? "/client"
+          : role === "data_entry"
+          ? "/data_entry"
+          : "/";
+
+      // ✅ সবচেয়ে নির্ভরযোগ্য redirect
+      window.location.href = target;
+      // অথবা শুধু client navigation চাইলে:
+      // router.replace(target);
+    } catch (err) {
+      console.error("Login error:", err);
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

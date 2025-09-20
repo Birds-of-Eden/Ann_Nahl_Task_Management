@@ -1,10 +1,12 @@
 // app/api/auth/sign-out/route.ts
+
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const isHttps = req.nextUrl.protocol === "https:"; // ✅ http হলে false
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("session-token")?.value;
     const originToken = cookieStore.get("impersonation-origin")?.value;
@@ -34,14 +36,15 @@ export async function POST() {
       // বর্তমান টোকেন ডিলিট
       await prisma.session.deleteMany({ where: { token: sessionToken } });
 
-      // origin টোকেন valid হলে restore করুন, না হলে clear
+      // origin টোকেন valid হলে restore, না হলে clear
       const originValid = await prisma.session.findUnique({
         where: { token: originToken },
       });
+
       if (originValid) {
         res.cookies.set("session-token", originToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: isHttps, // ✅
           sameSite: "lax",
           path: "/",
           maxAge: Math.max(
@@ -52,26 +55,25 @@ export async function POST() {
       } else {
         res.cookies.set("session-token", "", {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: isHttps, // ✅
           sameSite: "lax",
           path: "/",
           maxAge: 0,
         });
       }
+
       res.cookies.set("impersonation-origin", "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isHttps, // ✅
         sameSite: "lax",
         path: "/",
         maxAge: 0,
       });
 
-      // (ঐচ্ছিক) lastSeenAt update: যেহেতু আপনি আগেই করছিলেন, রাখতে পারেন
-
       return res;
     }
 
-    // নরমাল sign-out (আগের লজিক)
+    // নরমাল sign-out
     if (session?.userId) {
       await prisma.user.update({
         where: { id: session.userId },
@@ -80,25 +82,27 @@ export async function POST() {
     }
     await prisma.session.deleteMany({ where: { token: sessionToken } });
 
-    const response = NextResponse.json(
+    const res = NextResponse.json(
       { success: true, message: "Signed out successfully" },
       { status: 200 }
     );
-    response.cookies.set("session-token", "", {
+
+    res.cookies.set("session-token", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps, // ✅
       sameSite: "lax",
       path: "/",
       maxAge: 0,
     });
-    response.cookies.set("impersonation-origin", "", {
+    res.cookies.set("impersonation-origin", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps, // ✅
       sameSite: "lax",
       path: "/",
       maxAge: 0,
     });
-    return response;
+
+    return res;
   } catch (error) {
     console.error("❌ Sign-out error:", error);
     return NextResponse.json(
