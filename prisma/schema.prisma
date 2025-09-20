@@ -211,8 +211,7 @@ model Team {
   description         String?
   clientTeamMembers   ClientTeamMember[]
   templateTeamMembers TemplateTeamMember[]
-  // teamwise conversation
-  conversations Conversation[] @relation("TeamConversations") 
+  
 }
 
 // ========== PACKAGES ==========
@@ -275,8 +274,6 @@ model Client {
   assignments  Assignment[]
   teamMembers  ClientTeamMember[]
   tasks        Task[]
-
-  conversations Conversation[] @relation("ClientConversations")
 
   amId           String?
   accountManager User?   @relation("AccountManagerClients", fields: [amId], references: [id])
@@ -376,8 +373,7 @@ model Assignment {
   tasks             Task[]
   siteAssetSettings AssignmentSiteAssetSetting[]
 
-  // Assignment Conversations (e.g., discussion, support, etc.).
-  conversations Conversation[] @relation("AssignmentConversations")
+  
 }
 
 // ========== ASSIGNMENT SITE/ASSET SETTINGS ==========
@@ -434,8 +430,7 @@ model Task {
   reports               Report[]
   notifications         Notification[]
   
-  // Each Task can have its own dedicated Conversation thread.
-  conversations         Conversation[]     @relation("TaskConversations")
+  
 }
 
 
@@ -500,17 +495,6 @@ model Conversation {
   createdById   String?
   createdBy     User?              @relation("UserCreatedConversations", fields: [createdById], references: [id])
 
-  clientId      String?
-  client        Client?            @relation("ClientConversations", fields: [clientId], references: [id])
-
-  teamId        String?
-  team          Team?              @relation("TeamConversations", fields: [teamId], references: [id])
-
-  assignmentId  String?
-  assignment    Assignment?        @relation("AssignmentConversations", fields: [assignmentId], references: [id])
-
-  taskId        String?
-  task          Task?              @relation("TaskConversations", fields: [taskId], references: [id])
 
   isArchived    Boolean            @default(false)
   createdAt     DateTime           @default(now())
@@ -519,10 +503,7 @@ model Conversation {
   participants  ConversationParticipant[]
   messages      ChatMessage[]
 
-  @@index([type, clientId])
-  @@index([type, teamId])
-  @@index([type, assignmentId])
-  @@index([type, taskId])
+  @@index([type])  
 }
 
 
