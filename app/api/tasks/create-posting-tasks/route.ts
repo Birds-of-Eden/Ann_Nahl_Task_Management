@@ -134,6 +134,7 @@ function collectWeb2PlatformSources(
     password: string | null;
     completionLink: string | null;
     templateSiteAsset?: { type: string | null } | null;
+    idealDurationMinutes?: number | null;
   }[]
 ) {
   const map = new Map<
@@ -144,6 +145,7 @@ function collectWeb2PlatformSources(
       password: string;
       url: string;
       label: string;
+      idealDurationMinutes?: number | null;
     }
   >();
 
@@ -157,6 +159,7 @@ function collectWeb2PlatformSources(
     const email = t.email ?? "";
     const password = t.password ?? "";
     const url = t.completionLink ?? ""; // url হিসেবে completionLink
+    const idealDurationMinutes = t.idealDurationMinutes ?? null;
 
     // চারটিই না থাকলে স্কিপ
     if (!username || !email || !password || !url) continue;
@@ -169,6 +172,7 @@ function collectWeb2PlatformSources(
         password,
         url,
         label: PLATFORM_META[p].label,
+        idealDurationMinutes,
       });
     }
   }
@@ -742,6 +746,7 @@ export async function POST(req: NextRequest) {
         email: creds.email,
         password: creds.password,
         completionLink: creds.url, // url
+        idealDurationMinutes: creds.idealDurationMinutes ?? undefined,
 
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
