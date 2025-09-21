@@ -195,6 +195,9 @@ export default function SocialCommunicationTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all");
+  const [clientFilter, setClientFilter] = useState<
+    "all" | "no-client" | string
+  >("all");
 
   // Modal state
   const [open, setOpen] = useState(false);
@@ -238,8 +241,56 @@ export default function SocialCommunicationTasksPage() {
         const payload = await res.json();
 
         // hard-filter to Social Communication
-        const rawList: Task[] = (payload?.tasks ?? payload ?? []) as Task[];
-        const onlySC = rawList.filter(isSocialCommunication);
+        // ✅ NEW:
+        const rawList: any[] = (payload?.tasks ?? payload ?? []) as any[];
+
+        // normalize: bring assignment.client up to task.client (so UI's t.client?.name works)
+        const normalizedFromAPI: Task[] = rawList.map((t: any) => {
+          const client =
+            t.client ??
+            t.assignment?.client ??
+            (t.clientId
+              ? { id: t.clientId as string, name: t.clientName ?? null }
+              : null);
+
+          const category =
+            t.category ??
+            (t.categoryName
+              ? { id: t.categoryId ?? "unknown", name: t.categoryName }
+              : null);
+
+          const templateSiteAsset =
+            t.templateSiteAsset ??
+            (t.siteAssetId || t.siteAssetUrl
+              ? {
+                  id: Number(t.siteAssetId ?? 0),
+                  name: t.siteAssetName ?? "",
+                  type: t.siteAssetType ?? "",
+                  url: t.siteAssetUrl ?? null,
+                }
+              : null);
+
+          // keep existing fields; leave others as-is
+          return {
+            id: t.id,
+            name: t.name,
+            status: t.status,
+            dueDate: t.dueDate ?? null,
+            idealDurationMinutes: t.idealDurationMinutes ?? null,
+            client, // 👈 flattened for UI
+            category, // 👈 ensure category object exists
+            username: t.username ?? null,
+            email: t.email ?? null,
+            password: t.password ?? null,
+            completionLink: t.completionLink ?? null,
+            templateSiteAsset, // 👈 keep URL source if available
+            completedAt: t.completedAt ?? null,
+            nextEligibleAt: t.nextEligibleAt ?? null,
+          } as Task;
+        });
+
+        // now hard-filter to Social Communication using your existing helper
+        const onlySC = normalizedFromAPI.filter(isSocialCommunication);
 
         // normalize repeat info
         const normalized: Task[] = onlySC.map((t) => {
@@ -291,18 +342,48 @@ export default function SocialCommunicationTasksPage() {
   }, []);
 
   /* ---------------- Filtering ---------------- */
+  // Unique client list (from SC tasks only)
+  const clientOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; count: number }>();
+
+    (tasks || []).filter(isSocialCommunication).forEach((t) => {
+      const id = t.client?.id || "";
+      const name = (t.client?.name ?? "").trim() || "(No Client)";
+      const key = id || "__no_client__";
+      if (!map.has(key)) map.set(key, { id, name, count: 0 });
+      map.get(key)!.count += 1;
+    });
+
+    // Sort: named clients A→Z, keep "(No Client)" at bottom
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => {
+      if (a.id === "" && b.id !== "") return 1;
+      if (b.id === "" && a.id !== "") return -1;
+      return a.name.localeCompare(b.name);
+    });
+    return arr;
+  }, [tasks]);
+
   const filtered = useMemo(() => {
     const q = (query || "").trim().toLowerCase();
-    return (tasks || [])
-      .filter(isSocialCommunication) // enforce again
-      .filter((t) => {
-        const okStatus =
-          statusFilter === "all" ? true : (t as any).status === statusFilter;
-        const hay = `${t.name} ${t.client?.name ?? ""}`.toLowerCase();
-        const okQuery = !q || hay.includes(q);
-        return okStatus && okQuery;
-      });
-  }, [tasks, query, statusFilter]);
+    return (tasks || []).filter(isSocialCommunication).filter((t) => {
+      const okStatus =
+        statusFilter === "all" ? true : (t as any).status === statusFilter;
+
+      // client filter
+      const okClient =
+        clientFilter === "all"
+          ? true
+          : clientFilter === "no-client"
+          ? !t.client?.id
+          : t.client?.id === clientFilter;
+
+      const hay = `${t.name} ${t.client?.name ?? ""}`.toLowerCase();
+      const okQuery = !q || hay.includes(q);
+
+      return okStatus && okClient && okQuery;
+    });
+  }, [tasks, query, statusFilter, clientFilter]);
 
   /* ---------------- Stats ---------------- */
   const stats = useMemo(() => {
@@ -627,27 +708,31 @@ export default function SocialCommunicationTasksPage() {
         {/* Toolbar */}
         <Card className="border-0 shadow-md">
           <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-              <div className="flex-1">
+            {/* Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              {/* Search (1/2 width on md+) */}
+              <div className="md:col-span-2 w-full">
                 <div className="relative">
                   <Input
                     placeholder="Search by task/client..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="pl-9"
+                    className="h-11 pl-10 rounded-xl border-gray-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-blue-500"
                   />
-                  <ListFilter className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <ListFilter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
-              <div className="w-full md:w-56">
+
+              {/* Status (1/4 width on md+) */}
+              <div className="md:col-span-1 w-full">
                 <Select
                   value={statusFilter}
                   onValueChange={(v) => setStatusFilter(v as any)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full h-11 rounded-xl border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-blue-500">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl shadow-lg w-[var(--radix-select-trigger-width)]">
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
@@ -656,6 +741,37 @@ export default function SocialCommunicationTasksPage() {
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="qc_approved">QC Approved</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Client (1/4 width on md+) */}
+              <div className="md:col-span-1 w-full">
+                <Select
+                  value={clientFilter}
+                  onValueChange={(v) => setClientFilter(v as any)}
+                >
+                  <SelectTrigger className="w-full h-11 rounded-xl border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-blue-500">
+                    <SelectValue placeholder="Filter by client" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-lg max-h-72 w-[var(--radix-select-trigger-width)]">
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clientOptions.some((c) => !c.id) && (
+                      <SelectItem value="no-client">
+                        (No Client)
+                        {(() => {
+                          const c = clientOptions.find((x) => !x.id);
+                          return c ? ` • ${c.count}` : "";
+                        })()}
+                      </SelectItem>
+                    )}
+                    {clientOptions
+                      .filter((c) => !!c.id)
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name} • {c.count}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
