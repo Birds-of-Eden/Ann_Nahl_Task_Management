@@ -1,3 +1,4 @@
+// app/(main)/auth/sign-in/login-form.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -5,15 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -25,52 +25,47 @@ export function LoginForm() {
       .value;
 
     try {
-      const res = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include", // ✅ কুকি পাঠানো/নেওয়া
+      // credentials provider কল
+      const res = await signIn("credentials", {
+        redirect: false, // নিজে রিডাইরেক্ট কন্ট্রোল করব
+        email,
+        password,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Invalid credentials");
+      if (res?.error) {
+        toast.error(res.error || "Invalid credentials");
         return;
       }
 
       toast.success("Signed in successfully!");
 
-      // লগইনের পর সাথে সাথে heartbeat (ঐচ্ছিক)
-      await fetch("/api/presence/heartbeat", {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => {});
+      // role-ভিত্তিক রিডাইরেক্ট (session callback এ role সেট হয়)
+      // ছোট ডিলে দিয়ে session hydrate হওয়ার সময় দিন
+      setTimeout(async () => {
+        // ক্লায়েন্ট থেকে session ফেচ
+        const me = await fetch("/api/auth/session"); // NextAuth built-in
+        const json = await me.json();
+        const role = (json?.user?.role || "").toLowerCase();
 
-      const role = (data?.user?.role || "").toLowerCase();
-      const target =
-        role === "admin"
-          ? "/admin"
-          : role === "agent"
-          ? "/agent"
-          : role === "manager"
-          ? "/manager"
-          : role === "qc"
-          ? "/qc"
-          : role === "am"
-          ? "/am"
-          : role === "am_ceo"
-          ? "/am_ceo"
-          : role === "client"
-          ? "/client"
-          : role === "data_entry"
-          ? "/data_entry"
-          : "/";
+        const target =
+          role === "admin"
+            ? "/admin"
+            : role === "agent"
+            ? "/agent"
+            : role === "manager"
+            ? "/manager"
+            : role === "qc"
+            ? "/qc"
+            : role === "am"
+            ? "/am"
+            : role === "am_ceo"
+            ? "/am_ceo"
+            : role === "data_entry"
+            ? "/data_entry"
+            : "/client";
 
-      // ✅ সবচেয়ে নির্ভরযোগ্য redirect
-      window.location.href = target;
-      // অথবা শুধু client navigation চাইলে:
-      // router.replace(target);
+        window.location.href = target;
+      }, 150);
     } catch (err) {
       console.error("Login error:", err);
       toast.error("Something went wrong. Please try again.");
@@ -100,7 +95,6 @@ export function LoginForm() {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="m@example.com"
                 required
                 autoComplete="username"
                 className="placeholder:text-white/80 text-white"
@@ -115,14 +109,12 @@ export function LoginForm() {
                   id="password"
                   type={showPass ? "text" : "password"}
                   name="password"
-                  placeholder="Your password"
                   required
                   autoComplete="current-password"
                   className="placeholder:text-white/80 text-white pr-10"
                 />
                 <button
                   type="button"
-                  aria-label={showPass ? "Hide password" : "Show password"}
                   onClick={() => setShowPass((s) => !s)}
                   className="absolute inset-y-0 right-2 flex items-center text-white/80 hover:text-white"
                   tabIndex={-1}

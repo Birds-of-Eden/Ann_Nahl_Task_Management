@@ -1,51 +1,39 @@
-// context/auth-context.tsx
-
+// context/auth-context.tsx  (NextAuth wrapper ভার্সন)
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext } from "react";
+import { useSession, signOut } from "next-auth/react";
 
-interface User {
+type User = {
   id: string;
-  name: string;
-  email: string;
+  name: string | null;
+  email: string | null;
   role: string | null;
-  permissions: string[];
-}
+  // permissions আপনি session callback-এ ids পাঠাচ্ছেন—number[]/string[] যেটা দিয়েছেন সেটা দিন
+  permissions?: string[] | number[];
+  roleId?: string | null;
+  clientId?: string | null;
+};
 
 interface AuthContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
-  logout: () => void;
+  status: "loading" | "authenticated" | "unauthenticated";
+  // setUser তুলে দিলাম—NextAuth session মিউটেট করা উচিত না
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const { data, status } = useSession();
+  const user = (data?.user as User) ?? null;
 
-  // Page reload হলে cookie/session দিয়ে user আনুন
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        }
-      } catch (err) {
-        console.error("Auth check failed:", err);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const logout = () => {
-    setUser(null);
-    fetch("/api/auth/sign-out", { method: "POST" });
+  const logout = async () => {
+    await signOut({ callbackUrl: "/auth/sign-in" });
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout }}>
+    <AuthContext.Provider value={{ user, status, logout }}>
       {children}
     </AuthContext.Provider>
   );
