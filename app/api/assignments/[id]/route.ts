@@ -1,85 +1,127 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+// app/api/assignments/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { withAuth } from "@/lib/authz";
 
-const prisma = new PrismaClient()
+export const dynamic = "force-dynamic";
 
-function extractIdFromUrl(url: URL): string | null {
-  const segments = url.pathname.split("/")
-  return segments.pop() || null
-}
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+  Vary: "Cookie",
+};
 
-export async function GET(request: NextRequest) {
-  try {
-    const id = extractIdFromUrl(request.nextUrl)
+// ✅ GET /api/assignments/[id]  → permission: assignment.read
+export const GET = withAuth(
+  async (_req: NextRequest, { params }: { params: { id: string } }) => {
+    try {
+      const { id } = params;
+      if (!id) {
+        return NextResponse.json(
+          { error: "Missing ID" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing ID" }, { status: 400 })
-    }
-
-    const assignment = await prisma.assignment.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        template: {
-          include: {
-            sitesAssets: true,
-            templateTeamMembers: {
-              include: {
-                agent: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    image: true,
+      const assignment = await prisma.assignment.findUnique({
+        where: { id },
+        include: {
+          client: true,
+          template: {
+            include: {
+              sitesAssets: true,
+              templateTeamMembers: {
+                include: {
+                  agent: {
+                    select: { id: true, name: true, email: true, image: true },
                   },
                 },
               },
             },
           },
-        },
-        tasks: {
-          include: {
-            assignedTo: true,
+          tasks: {
+            include: {
+              assignedTo: true,
+              // চাইলে category/templateSiteAsset-ও ফেরত নিতে পারেন:
+              // category: true,
+              // templateSiteAsset: true,
+            },
+            orderBy: { createdAt: "desc" },
           },
+          // যদি settings দরকার হয়:
+          // siteAssetSettings: true,
         },
-      },
-    })
+      });
 
-    if (!assignment) {
-      return NextResponse.json({ error: "Assignment not found" }, { status: 404 })
+      if (!assignment) {
+        return NextResponse.json(
+          { error: "Assignment not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      return NextResponse.json(assignment, { headers: NO_STORE_HEADERS });
+    } catch (error: any) {
+      console.error("GET /api/assignments/[id] error:", error);
+      return NextResponse.json(
+        {
+          error: "Failed to fetch assignment",
+          message: error?.message ?? "Unknown error",
+        },
+        { status: 500, headers: NO_STORE_HEADERS }
+      );
     }
+  },
+  { permissions: ["assignment.read"] }
+);
 
-    return NextResponse.json(assignment)
-  } catch (error) {
-    console.error("Error fetching assignment:", error)
-    return NextResponse.json({ error: "Failed to fetch assignment", message: error.message }, { status: 500 })
-  }
-}
+// ✅ DELETE /api/assignments/[id]  → permission: assignment.delete
+export const DELETE = withAuth(
+  async (_req: NextRequest, { params }: { params: { id: string } }) => {
+    try {
+      const { id } = params;
+      if (!id) {
+        return NextResponse.json(
+          { error: "Missing ID" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
 
-// ✅ DELETE /api/assignments/[id]
-export async function DELETE(request: NextRequest) {
-  try {
-    const id = extractIdFromUrl(request.nextUrl)
+      // সম্পর্কিত রেকর্ডগুলো ক্লিনআপ (যদি schema-তে cascade না থাকে)
+      await prisma.$transaction([
+        prisma.task.deleteMany({ where: { assignmentId: id } }),
+        prisma.assignmentSiteAssetSetting?.deleteMany
+          ? prisma.assignmentSiteAssetSetting.deleteMany({
+              where: { assignmentId: id },
+            })
+          : prisma.$executeRaw`SELECT 1`, // যদি টেবিল না থাকে, নো-অপ
+      ]);
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing ID" }, { status: 400 })
+      // মেইন অ্যাসাইনমেন্ট ডিলিট
+      await prisma.assignment.delete({ where: { id } });
+
+      return NextResponse.json(
+        { success: true, message: "Assignment deleted" },
+        { headers: NO_STORE_HEADERS }
+      );
+    } catch (error: any) {
+      // P2025 = not found
+      if (error?.code === "P2025") {
+        return NextResponse.json(
+          { error: "Assignment not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      }
+      console.error("DELETE /api/assignments/[id] error:", error);
+      return NextResponse.json(
+        {
+          error: "Failed to delete assignment",
+          message: error?.message ?? "Unknown error",
+        },
+        { status: 500, headers: NO_STORE_HEADERS }
+      );
     }
-
-    // First, delete related tasks (if cascade not setup in schema)
-    await prisma.task.deleteMany({
-      where: {
-        assignmentId: id,
-      },
-    })
-
-    // Then delete the assignment
-    await prisma.assignment.delete({
-      where: { id },
-    })
-
-    return NextResponse.json({ success: true, message: "Assignment deleted" })
-  } catch (error) {
-    console.error("Error deleting assignment:", error)
-    return NextResponse.json({ error: "Failed to delete assignment", message: error.message }, { status: 500 })
-  }
-}
+  },
+  { permissions: ["assignment.delete"] }
+);

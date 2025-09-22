@@ -54,33 +54,49 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    // JWT-তে যা লাগবে সেট করুন (প্রথম সাইনইনে user থাকে)
+    // ✅ প্রথম সাইনইনেই role/permissions টোকেনে ক্যাশ করুন
     async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id; // ensure user id on token
+
+        // DB থেকে মিনিমাল সিলেক্ট
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id as string },
+          select: {
+            roleId: true,
+            clientId: true,
+            role: {
+              select: {
+                name: true,
+                rolePermissions: {
+                  select: { permission: { select: { id: true } } },
+                },
+              },
+            },
+          },
+        });
+
+        (token as any).role = dbUser?.role?.name ?? null;
+        (token as any).roleId = dbUser?.roleId ?? null;
+        (token as any).clientId = dbUser?.clientId ?? null;
+        (token as any).permissions =
+          dbUser?.role?.rolePermissions.map((rp) => rp.permission.id) ?? [];
       }
+
+      // নোট: user না থাকলে (পরের কলগুলোতে) আমরা টোকেন অপরিবর্তিত রাখছি
+      // চাইলে role পরিবর্তন হলে ফোর্স-রিফ্রেশের লজিক যোগ করতে পারেন।
       return token;
     },
 
-    // session.user-এ আপনার কাস্টম ফিল্ডগুলো বসান
+    // ✅ session.user ফিল্ডগুলো টোকেন থেকে দিন (DB হিট নয়)
     async session({ session, token }) {
       if (!session.user || !token?.sub) return session;
 
-      const dbUser = await prisma.user.findUnique({
-        where: { id: token.sub as string },
-        include: {
-          role: {
-            include: { rolePermissions: { include: { permission: true } } },
-          },
-        },
-      });
-
       (session.user as any).id = token.sub;
-      (session.user as any).role = dbUser?.role?.name ?? null;
-      (session.user as any).roleId = dbUser?.roleId ?? null;
-      (session.user as any).clientId = dbUser?.clientId ?? null;
-      (session.user as any).permissions =
-        dbUser?.role?.rolePermissions.map((rp) => rp.permission.id) ?? [];
+      (session.user as any).role = (token as any).role ?? null;
+      (session.user as any).roleId = (token as any).roleId ?? null;
+      (session.user as any).clientId = (token as any).clientId ?? null;
+      (session.user as any).permissions = (token as any).permissions ?? [];
 
       return session;
     },

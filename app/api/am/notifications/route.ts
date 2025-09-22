@@ -1,4 +1,4 @@
-// GET /api/am/notifications
+// app/api/am/notifications/route.ts
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";

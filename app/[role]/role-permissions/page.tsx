@@ -272,24 +272,17 @@ export default function RolePermissionPage() {
   // Categorize permissions (explicit map → heuristic fallback → uncategorized)
   const categorizedPermissions = useMemo(() => {
     const categorized: Record<string, Permission[]> = {};
-
-    // Initialize known categories
     permissionCategories.forEach((cat) => {
       categorized[cat.id] = [];
     });
-
-    // Fallback bucket
     categorized["uncategorized"] = [];
 
     permissions.forEach((permission) => {
-      // 1) Explicit mapping wins
       const mapped = PERMISSION_CATEGORY_MAP[permission.id];
       if (mapped && categorized[mapped]) {
         categorized[mapped].push(permission);
         return;
       }
-
-      // 2) Heuristic fallback
       let foundCategory = false;
       for (const category of permissionCategories) {
         if (
@@ -304,15 +297,11 @@ export default function RolePermissionPage() {
           break;
         }
       }
-
-      // 3) Uncategorized if nothing matched
-      if (!foundCategory) {
-        categorized["uncategorized"].push(permission);
-      }
+      if (!foundCategory) categorized["uncategorized"].push(permission);
     });
 
     return categorized;
-  }, [permissions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [permissions, permissionCategories]); // ← আগে শুধু [permissions] ছিল
 
   // ---------------- Loaders ----------------
   const loadRoles = async () => {
@@ -349,20 +338,51 @@ export default function RolePermissionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadRolePermissions = async (roleId: string) => {
+  const loadRolePermissions = async (roleIdOrName: string) => {
     try {
-      const res = await fetch(`/api/role-permissions/${roleId}`, {
-        cache: "no-store",
-      });
+      // প্রথমে id ধরে কল
+      let res = await fetch(
+        `/api/role-permissions/${encodeURIComponent(roleIdOrName)}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      // যদি 404 বা 400 (id মেলেনি) পাই, তাহলে রোল লিস্ট থেকে name বের করে fallback দিয়ে আবার ট্রাই
+      if (!res.ok && (res.status === 404 || res.status === 400)) {
+        const byId = roles.find((r) => r.id === roleIdOrName);
+        const roleName = byId?.name || roleIdOrName;
+        if (roleName && roleName !== roleIdOrName) {
+          res = await fetch(
+            `/api/role-permissions/${encodeURIComponent(roleName)}`,
+            {
+              cache: "no-store",
+            }
+          );
+        }
+      }
+
+      // 403 হলে আলাদা মেসেজ
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data?.error ||
+            "You don’t have permission to view role permissions (403)."
+        );
+      }
+
       const data = await res.json();
       if (!res.ok)
         throw new Error(data?.error || "Failed to load role permissions");
+
       setSelectedRole({
-        id: roleId,
+        id: roleIdOrName,
         permissions: (data.permissions || []).map((p: any) => p.id),
       });
     } catch (e: any) {
       toast.error(e.message || "Failed to load role permissions");
+      // UI খালি না থাকে—কমপক্ষে সিলেক্টেড রোল সেট করে দিই যাতে ইউজার context বোঝে
+      setSelectedRole((prev) => prev ?? { id: roleIdOrName, permissions: [] });
     }
   };
 

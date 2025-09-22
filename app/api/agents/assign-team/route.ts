@@ -1,285 +1,291 @@
-import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+// app/api/agents/assign-team/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { withAuth } from "@/lib/authz";
 
-const prisma = new PrismaClient()
+export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
-  try {
-    const { agentId, teamId, role = "Member", assignmentType = "template" } = await request.json()
-    console.log("Assigning agent to team:", { agentId, teamId, role, assignmentType })
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+  Vary: "Cookie",
+};
 
-    if (!agentId || !teamId) {
-      return NextResponse.json({ message: "Agent ID and Team ID are required" }, { status: 400 })
-    }
+// POST: assign agent to team → permission: agent.assign
+export const POST = withAuth(
+  async (request: NextRequest) => {
+    try {
+      const {
+        agentId,
+        teamId,
+        role = "Member",
+        assignmentType = "template",
+      } = await request.json();
 
-    // Verify agent exists
-    const agent = await prisma.user.findUnique({
-      where: { id: agentId },
-    })
+      if (!agentId || !teamId) {
+        return NextResponse.json(
+          { message: "Agent ID and Team ID are required" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
 
-    if (!agent) {
-      return NextResponse.json({ message: "Agent not found" }, { status: 404 })
-    }
+      // verify agent & team
+      const [agent, team] = await Promise.all([
+        prisma.user.findUnique({ where: { id: agentId } }),
+        prisma.team.findUnique({ where: { id: teamId } }),
+      ]);
+      if (!agent)
+        return NextResponse.json(
+          { message: "Agent not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      if (!team)
+        return NextResponse.json(
+          { message: "Team not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
 
-    // Verify team exists
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-    })
+      if (assignmentType === "client") {
+        // need clientId for client assignment
+        return NextResponse.json(
+          { message: "Client team assignment requires clientId" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
 
-    if (!team) {
-      return NextResponse.json({ message: "Team not found" }, { status: 404 })
-    }
-
-    let teamMember
-
-    if (assignmentType === "client") {
-      // For client team assignments, you'd need a clientId
-      // This is a placeholder - adjust based on your business logic
-      return NextResponse.json({ message: "Client team assignment requires clientId" }, { status: 400 })
-    } else {
-      // For template team assignments
-      // First, check if we have any templates, if not create a default one
-      let template = await prisma.template.findFirst()
-
+      // template assignment
+      let template = await prisma.template.findFirst();
       if (!template) {
-        // Create a default template
         template = await prisma.template.create({
           data: {
             id: "default-template",
             name: "Default Template",
             description: "Default template for team assignments",
           },
-        })
-        console.log("Created default template:", template.id)
+        });
       }
 
-      // Check if assignment already exists
-      const existingAssignment = await prisma.templateTeamMember.findFirst({
-        where: {
-          agentId: agentId,
-          teamId: teamId,
-          templateId: template.id,
-        },
-      })
-
-      if (existingAssignment) {
-        return NextResponse.json({ message: "Agent is already assigned to this team" }, { status: 400 })
-      }
-
-      // Create the team assignment
-      teamMember = await prisma.templateTeamMember.create({
-        data: {
-          templateId: template.id,
-          agentId: agentId,
-          teamId: teamId,
-          role: role,
-          assignedDate: new Date(),
-        },
-        include: {
-          agent: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
-          },
-          team: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      })
-    }
-
-    console.log("Team assignment created successfully")
-
-    return NextResponse.json(
-      {
-        message: "Agent assigned to team successfully",
-        assignment: teamMember,
-      },
-      { status: 201 },
-    )
-  } catch (error) {
-    console.error("Error in POST /api/agents/assign-team:", error)
-    return NextResponse.json({ message: "Internal server error", error: error.message }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: Request) {
-  try {
-    const { agentId, teamId, assignmentType = "template" } = await request.json()
-
-    if (!agentId || !teamId) {
-      return NextResponse.json({ message: "Agent ID and Team ID are required" }, { status: 400 })
-    }
-
-    if (assignmentType === "client") {
-      await prisma.clientTeamMember.deleteMany({
-        where: {
-          agentId: agentId,
-          teamId: teamId,
-        },
-      })
-    } else {
-      await prisma.templateTeamMember.deleteMany({
-        where: {
-          agentId: agentId,
-          teamId: teamId,
-        },
-      })
-    }
-
-    return NextResponse.json({ message: "Team assignment removed successfully" }, { status: 200 })
-  } catch (error) {
-    console.error("Error in DELETE /api/agents/assign-team:", error)
-    return NextResponse.json({ message: "Internal server error", error: error.message }, { status: 500 })
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const {
-      agentId,
-      teamId,
-      role = "Member",
-      assignmentType = "template",
-      templateId: bodyTemplateId,   // optional; if not provided we use/find/create default
-      clientId,                     // optional for client assignments
-    }: {
-      agentId: string;
-      teamId?: string | null;
-      role?: string;
-      assignmentType?: "template" | "client";
-      templateId?: string;
-      clientId?: string;
-    } = body;
-
-    if (!agentId) {
-      return NextResponse.json({ message: "Agent ID is required" }, { status: 400 });
-    }
-    if (!teamId) {
-      return NextResponse.json({ message: "Team ID is required" }, { status: 400 });
-    }
-
-    // Verify agent & team exist
-    const [agent, team] = await Promise.all([
-      prisma.user.findUnique({ where: { id: agentId } }),
-      prisma.team.findUnique({ where: { id: teamId } }),
-    ]);
-    if (!agent) return NextResponse.json({ message: "Agent not found" }, { status: 404 });
-    if (!team)  return NextResponse.json({ message: "Team not found" }, { status: 404 });
-
-    // ---------- CLIENT ASSIGNMENT (optional) ----------
-    if (assignmentType === "client") {
-      if (!clientId) {
+      const exists = await prisma.templateTeamMember.findFirst({
+        where: { agentId, teamId, templateId: template.id },
+      });
+      if (exists) {
         return NextResponse.json(
-          { message: "Client team assignment requires clientId" },
-          { status: 400 }
+          { message: "Agent is already assigned to this team" },
+          { status: 400, headers: NO_STORE_HEADERS }
         );
       }
 
-      // upsert by composite key @@id([clientId, agentId])
-      const clientMember = await prisma.clientTeamMember.upsert({
-        where: { clientId_agentId: { clientId, agentId } },
-        update: {
-          teamId,
-          role,
-          assignedDate: new Date(),
-        },
-        create: {
-          clientId,
+      const teamMember = await prisma.templateTeamMember.create({
+        data: {
+          templateId: template.id,
           agentId,
           teamId,
           role,
           assignedDate: new Date(),
         },
-        select: {
-          clientId: true,
-          agentId: true,
-          teamId: true,
-          role: true,
-          assignedDate: true,
+        include: {
           agent: { select: { firstName: true, lastName: true, email: true } },
-          team:  { select: { name: true } },
-          client:{ select: { id: true, name: true } },
+          team: { select: { name: true } },
         },
       });
 
       return NextResponse.json(
         {
-          message: "Client team assignment updated successfully",
-          assignment: clientMember,
+          message: "Agent assigned to team successfully",
+          assignment: teamMember,
         },
-        { status: 200 }
+        { status: 201, headers: NO_STORE_HEADERS }
+      );
+    } catch (error: any) {
+      console.error("POST /api/agents/assign-team error:", error);
+      return NextResponse.json(
+        { message: "Internal server error", error: error?.message },
+        { status: 500, headers: NO_STORE_HEADERS }
       );
     }
+  },
+  { permissions: ["agent.assign"] }
+);
 
-    // ---------- TEMPLATE ASSIGNMENT (default path) ----------
-    // Find/ensure a template
-    let templateId = bodyTemplateId ?? null;
-    if (!templateId) {
-      const first = await prisma.template.findFirst({ select: { id: true } });
-      if (first) {
-        templateId = first.id;
-      } else {
-        const created = await prisma.template.create({
-          data: {
-            id: "default-template",
-            name: "Default Template",
-            description: "Default template for team assignments",
-          },
-          select: { id: true },
-        });
-        templateId = created.id;
-      }
-    }
-
-    // Idempotent update: upsert by composite primary key (templateId + agentId)
-    const teamMember = await prisma.templateTeamMember.upsert({
-      where: {
-        templateId_agentId: { templateId, agentId }, // matches @@id([templateId, agentId])
-      },
-      update: {
-        teamId,
-        role,
-        assignedDate: new Date(),
-      },
-      create: {
-        templateId,
+// DELETE: remove team assignment → permission: agent.assign
+export const DELETE = withAuth(
+  async (request: NextRequest) => {
+    try {
+      const {
         agentId,
         teamId,
-        role,
-        assignedDate: new Date(),
-      },
-      include: {
-        agent: { select: { firstName: true, lastName: true, email: true } },
-        team:  { select: { name: true } },
-        template: { select: { id: true, name: true } },
-      },
-    });
+        assignmentType = "template",
+      } = await request.json();
 
-    return NextResponse.json(
-      {
-        message: "Template team assignment updated successfully",
-        assignment: teamMember,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    // upsert should prevent P2002, but handle just in case
-    if (error?.code === "P2002") {
+      if (!agentId || !teamId) {
+        return NextResponse.json(
+          { message: "Agent ID and Team ID are required" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      if (assignmentType === "client") {
+        await prisma.clientTeamMember.deleteMany({
+          where: { agentId, teamId },
+        });
+      } else {
+        await prisma.templateTeamMember.deleteMany({
+          where: { agentId, teamId },
+        });
+      }
+
       return NextResponse.json(
-        { message: "Assignment already exists. No changes made." },
-        { status: 200 }
+        { message: "Team assignment removed successfully" },
+        { status: 200, headers: NO_STORE_HEADERS }
+      );
+    } catch (error: any) {
+      console.error("DELETE /api/agents/assign-team error:", error);
+      return NextResponse.json(
+        { message: "Internal server error", error: error?.message },
+        { status: 500, headers: NO_STORE_HEADERS }
       );
     }
-    console.error("Error in PUT /api/agents/assign-team:", error);
-    return NextResponse.json(
-      { message: "Internal server error", error: error?.message ?? "Unknown error" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  { permissions: ["agent.assign"] }
+);
+
+// PUT: upsert/update assignment → permission: agent.assign
+export const PUT = withAuth(
+  async (request: NextRequest) => {
+    try {
+      const body = await request.json();
+      const {
+        agentId,
+        teamId,
+        role = "Member",
+        assignmentType = "template",
+        templateId: bodyTemplateId, // optional
+        clientId, // required if assignmentType === "client"
+      }: {
+        agentId: string;
+        teamId?: string | null;
+        role?: string;
+        assignmentType?: "template" | "client";
+        templateId?: string;
+        clientId?: string;
+      } = body;
+
+      if (!agentId) {
+        return NextResponse.json(
+          { message: "Agent ID is required" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+      if (!teamId) {
+        return NextResponse.json(
+          { message: "Team ID is required" },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      // verify agent & team
+      const [agent, team] = await Promise.all([
+        prisma.user.findUnique({ where: { id: agentId } }),
+        prisma.team.findUnique({ where: { id: teamId } }),
+      ]);
+      if (!agent)
+        return NextResponse.json(
+          { message: "Agent not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      if (!team)
+        return NextResponse.json(
+          { message: "Team not found" },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+
+      if (assignmentType === "client") {
+        if (!clientId) {
+          return NextResponse.json(
+            { message: "Client team assignment requires clientId" },
+            { status: 400, headers: NO_STORE_HEADERS }
+          );
+        }
+
+        const clientMember = await prisma.clientTeamMember.upsert({
+          where: { clientId_agentId: { clientId, agentId } },
+          update: { teamId, role, assignedDate: new Date() },
+          create: { clientId, agentId, teamId, role, assignedDate: new Date() },
+          select: {
+            clientId: true,
+            agentId: true,
+            teamId: true,
+            role: true,
+            assignedDate: true,
+            agent: { select: { firstName: true, lastName: true, email: true } },
+            team: { select: { name: true } },
+            client: { select: { id: true, name: true } },
+          },
+        });
+
+        return NextResponse.json(
+          {
+            message: "Client team assignment updated successfully",
+            assignment: clientMember,
+          },
+          { status: 200, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      // template path
+      let templateId = bodyTemplateId ?? null;
+      if (!templateId) {
+        const first = await prisma.template.findFirst({ select: { id: true } });
+        if (first) {
+          templateId = first.id;
+        } else {
+          const created = await prisma.template.create({
+            data: {
+              id: "default-template",
+              name: "Default Template",
+              description: "Default template for team assignments",
+            },
+            select: { id: true },
+          });
+          templateId = created.id;
+        }
+      }
+
+      const teamMember = await prisma.templateTeamMember.upsert({
+        where: { templateId_agentId: { templateId, agentId } },
+        update: { teamId, role, assignedDate: new Date() },
+        create: { templateId, agentId, teamId, role, assignedDate: new Date() },
+        include: {
+          agent: { select: { firstName: true, lastName: true, email: true } },
+          team: { select: { name: true } },
+          template: { select: { id: true, name: true } },
+        },
+      });
+
+      return NextResponse.json(
+        {
+          message: "Template team assignment updated successfully",
+          assignment: teamMember,
+        },
+        { status: 200, headers: NO_STORE_HEADERS }
+      );
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        return NextResponse.json(
+          { message: "Assignment already exists. No changes made." },
+          { status: 200, headers: NO_STORE_HEADERS }
+        );
+      }
+      console.error("PUT /api/agents/assign-team error:", error);
+      return NextResponse.json(
+        {
+          message: "Internal server error",
+          error: error?.message ?? "Unknown error",
+        },
+        { status: 500, headers: NO_STORE_HEADERS }
+      );
+    }
+  },
+  { permissions: ["agent.assign"] }
+);
