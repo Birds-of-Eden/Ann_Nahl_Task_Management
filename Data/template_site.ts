@@ -84,6 +84,8 @@ export const DEFAULT_SOCIAL_SITES = [
 ];
 
 export const DEFAULT_WEB2_SITES = [
+  { name: "Medium", url: "https://medium.com/", isRequired: false },
+  { name: "Wordpress", url: "https://wordpress.com/", isRequired: false },
   { name: "Strikingly", url: "https://www.strikingly.com/", isRequired: false },
   { name: "Tumblr", url: "https://www.tumblr.com/", isRequired: false },
   { name: "Jigsy", url: "http://jigsy.com/", isRequired: false },
@@ -131,35 +133,49 @@ export const DEFAULT_ADDITIONAL_SITES = [
 ];
 
 export const DEFAULT_GRAPHICS_DESIGN = [
-  { name: "Graphic Design", url: "https://drive.google.com/drive/home", isRequired: false }
+  {
+    name: "Graphic Design",
+    url: "https://drive.google.com/drive/home",
+    isRequired: false,
+  },
 ];
 
 export const DEFAULT_CONTENT_STUDIO = [
-  { name: "Content Studio", url: "https://contentstudio.io/", isRequired: false }
+  {
+    name: "Content Studio",
+    url: "https://contentstudio.io/",
+    isRequired: false,
+  },
 ];
 
 export const DEFAULT_CONTENT_WRITING = [
-  { name: "Content Writing", url: "https://docs.google.com/document/u/0/", isRequired: false }
+  {
+    name: "Content Writing",
+    url: "https://docs.google.com/document/u/0/",
+    isRequired: false,
+  },
 ];
 
 export const DEFAULT_BACKLINKS = [
-  { name: "Backlinks", url: "https://backlinko.com/", isRequired: false }
+  { name: "Backlinks", url: "https://backlinko.com/", isRequired: false },
 ];
 
 export const DEFAULT_YOUTUBE_VIDEO_OPTIMIZATION = [
-  { name: "YouTube Video Optimization", url: "https://www.youtube.com/", isRequired: false }
+  {
+    name: "YouTube Video Optimization",
+    url: "https://www.youtube.com/",
+    isRequired: false,
+  },
 ];
 
 export const DEFAULT_MONITORING = [
-  { name: "Monitoring", url: "https://www.google.com/", isRequired: false }
+  { name: "Monitoring", url: "https://www.google.com/", isRequired: false },
 ];
 
 export const DEFAULT_REVIEW_REMOVAL = [
-  { name: "Review Removal", url: "https://www.google.com/", isRequired: false }
+  { name: "Review Removal", url: "https://www.google.com/", isRequired: false },
 ];
 
 export const DEFAULT_SUMMARY_REPORT = [
-  { name: "Summary Report", url: "https://www.google.com/", isRequired: false }
+  { name: "Summary Report", url: "https://www.google.com/", isRequired: false },
 ];
-
-

@@ -60,14 +60,14 @@ export async function GET() {
   }
 
   const summary = {
-    totalWithPackage,
+    totalWithPackage: totalWithPackage || 0,
     // totalSales আলাদা করে নাম দিচ্ছি যেন UI "Sales Overview" এ দেখাতে পারেন
-    totalSales: totalWithPackage,
-    active,
-    expired,
-    startingSoon,
-    expiringSoon,
-    missingDates,
+    totalSales: totalWithPackage || 0,
+    active: active || 0,
+    expired: expired || 0,
+    startingSoon: startingSoon || 0,
+    expiringSoon: expiringSoon || 0,
+    missingDates: missingDates || 0,
   };
 
   // --- Group by package (counts, active/expired, avg days left)
@@ -128,9 +128,9 @@ export async function GET() {
   const totalSales = byPackage.reduce((s, r) => s + r.clients, 0);
   const packageSales = byPackage.map((p) => ({
     packageId: p.packageId,
-    packageName: p.packageName,
-    sales: p.clients,
-    sharePercent: totalSales
+    packageName: p.packageName || 'Unknown Package',
+    sales: p.clients || 0,
+    sharePercent: totalSales && p.clients
       ? Math.round((p.clients * 10000) / totalSales) / 100
       : 0,
   }));
@@ -177,13 +177,28 @@ export async function GET() {
       })),
   }));
 
+  // Ensure all numeric values are properly handled
+  const safeTimeseries = (timeseries || []).map(item => ({
+    ...item,
+    starts: item.starts || 0
+  }));
+
+  const safeByPackage = byPackage.map(pkg => ({
+    ...pkg,
+    active: pkg.active || 0,
+    expired: pkg.expired || 0,
+    clients: pkg.clients || 0,
+    totalMonths: pkg.totalMonths || 0,
+    avgDaysLeft: pkg.avgDaysLeft || 0
+  }));
+
   return NextResponse.json({
     summary,
-    timeseries,
-    byPackage, // আগের UI অংশগুলো ব্যবহার করছে
-    packageSales, // 🔹 নতুন: package-wise sales + share %
-    totalSales, // 🔹 নতুন: মোট সেলস
-    recent,
-    groupedClients,
+    timeseries: safeTimeseries,
+    byPackage: safeByPackage,
+    packageSales,
+    totalSales: totalSales || 0,
+    recent: recent || [],
+    groupedClients: groupedClients || [],
   });
 }

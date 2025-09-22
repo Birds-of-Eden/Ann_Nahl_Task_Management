@@ -133,14 +133,14 @@ function pickCounts(c: ClientData): TaskCounts {
 function pickProgress(c: ClientData): number {
   // Always use agent-specific progress or compute from agent's task counts
   if (typeof c.agentProgress === "number") return c.agentProgress;
-  
+
   const counts = pickCounts(c);
   if (counts.total > 0) {
     // Consider both completed and qc_approved tasks as completed for progress
     const completedCount = counts.completed + counts.qc_approved;
     return Math.round((completedCount / counts.total) * 100);
   }
-  
+
   // Fallback to overall progress only if no agent-specific tasks exist
   return typeof c.progress === "number" ? c.progress : 0;
 }
@@ -175,6 +175,8 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
     taskName: null,
   });
 
+  const EXCLUDED_CATEGORIES = ["Social Communication"];
+
   // Preselect from query params
   useEffect(() => {
     const clientId = searchParams.get("clientId");
@@ -192,21 +194,26 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/tasks/clients/agents/${agentId}`);
-      if (!response.ok) {
+      const params = new URLSearchParams();
+      // backend will parse CSV
+      params.set("excludeCategories", EXCLUDED_CATEGORIES.join(","));
+
+      const response = await fetch(
+        `/api/tasks/clients/agents/${agentId}?${params.toString()}`
+      );
+      if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
-      }
+
       const data: ClientData[] = await response.json();
 
-      // Normalize data: ensure taskCounts is always present & set progress safely
+      // as-is: normalize
       const normalized = data.map((client) => {
         const counts = pickCounts(client);
         const progress = pickProgress(client);
-
         return {
           ...client,
           progress,
-          taskCounts: counts, // From now on, UI uses .taskCounts with safe values
+          taskCounts: counts,
           agentTaskCounts: undefined,
         };
       });
@@ -357,6 +364,7 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
         isLockedBySelf={isLockedBySelf}
         lockedTaskId={globalTimerLock.taskId}
         lockedTaskName={globalTimerLock.taskName}
+        excludedCategories={EXCLUDED_CATEGORIES} // ⬅️ add this prop in that component
       />
     );
   }

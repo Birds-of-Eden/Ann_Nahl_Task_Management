@@ -131,6 +131,9 @@ const RUN_KEY = "runningTaskTimer"; // only the actively running timer
 const PAUSE_KEY = "pausedTaskTimer"; // at most one paused task
 const LOCK_KEY = "globalTimerLock"; // navigation lock
 
+// Exclude these categories from display
+const EXCLUDED_CATEGORIES = ["Social Communication"]; 
+
 type StoredTimer = TimerState & { savedAt?: number; agentId?: string };
 
 /* =========================
@@ -324,18 +327,23 @@ export function ClientTasksView({
       const data: Task[] = await response.json();
 
       const agentTasks = data.filter((task) => task.assignedTo?.id === agentId);
-      setTasks(agentTasks);
+
+      // Filter out excluded categories
+      const visibleTasks = agentTasks.filter(
+        (t) => !EXCLUDED_CATEGORIES.includes(t.category?.name ?? "")
+      );
+
+      setTasks(visibleTasks);
 
       setStats({
-        total: agentTasks.length,
-        pending: agentTasks.filter((t) => t.status === "pending").length,
-        inProgress: agentTasks.filter((t) => t.status === "in_progress").length,
-        completed: agentTasks.filter((t) => t.status === "completed").length,
-        overdue: agentTasks.filter((t) => t.status === "overdue").length, // status-based only
-        cancelled: agentTasks.filter((t) => t.status === "cancelled").length,
-        reassigned: agentTasks.filter((t) => t.status === "reassigned").length,
-        qc_approved: agentTasks.filter((t) => t.status === "qc_approved")
-          .length,
+        total: visibleTasks.length,
+        pending: visibleTasks.filter((t) => t.status === "pending").length,
+        inProgress: visibleTasks.filter((t) => t.status === "in_progress").length,
+        completed: visibleTasks.filter((t) => t.status === "completed").length,
+        overdue: visibleTasks.filter((t) => t.status === "overdue").length, // status-based only
+        cancelled: visibleTasks.filter((t) => t.status === "cancelled").length,
+        reassigned: visibleTasks.filter((t) => t.status === "reassigned").length,
+        qc_approved: visibleTasks.filter((t) => t.status === "qc_approved").length,
       });
     } catch (err: any) {
       const errorMessage = err.message || "Failed to fetch client tasks.";

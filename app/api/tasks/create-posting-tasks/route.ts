@@ -20,6 +20,16 @@ const CAT_BLOG_POSTING = "Blog Posting";
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
 const WEB2_FIXED_PLATFORMS = ["medium", "tumblr", "wordpress"] as const;
 
+// --- NEW: Web2 fixed platform metadata (label + default URL)
+const PLATFORM_META: Record<
+  "medium" | "tumblr" | "wordpress",
+  { label: string; url: string }
+> = {
+  medium: { label: "Medium", url: "https://medium.com/" },
+  tumblr: { label: "Tumblr", url: "https://www.tumblr.com/" },
+  wordpress: { label: "Wordpress", url: "https://wordpress.com/" },
+};
+
 // ---------- Helpers ----------
 function normalizeTaskPriority(v: unknown): TaskPriority {
   switch (String(v ?? "").toLowerCase()) {
@@ -94,6 +104,79 @@ function fail(stage: string, err: unknown, http = 500) {
     { message: "Internal Server Error", stage, error: e },
     { status: http }
   );
+}
+
+// --- NEW: Helpers to match web2 platform from task name and collect creds from web2 sources
+function normalize(str: string) {
+  return String(str).toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function matchPlatformFromWeb2Name(
+  name: string
+): "medium" | "tumblr" | "wordpress" | null {
+  const n = normalize(name);
+  if (/\bmedium\b/.test(n)) return "medium";
+  if (/\btumblr\b/.test(n)) return "tumblr";
+  // WordPress/Wordpress/word press—সব ধরার জন্য
+  if (/\bwordpress\b/.test(n) || /\bword\s*press\b/.test(n)) return "wordpress";
+  return null;
+}
+
+/**
+ * কেবল web2_site সোর্স টাস্ক থেকেই প্ল্যাটফর্মভিত্তিক পুরো ক্রেডেনশিয়াল টেনে আনবে।
+ * শর্ত: username, email, password, completionLink (url) — চারটিই থাকতে হবে।
+ */
+function collectWeb2PlatformSources(
+  srcTasks: {
+    name: string;
+    username: string | null;
+    email: string | null;
+    password: string | null;
+    completionLink: string | null;
+    templateSiteAsset?: { type: string | null } | null;
+    idealDurationMinutes?: number | null;
+  }[]
+) {
+  const map = new Map<
+    "medium" | "tumblr" | "wordpress",
+    {
+      username: string;
+      email: string;
+      password: string;
+      url: string;
+      label: string;
+      idealDurationMinutes?: number | null;
+    }
+  >();
+
+  for (const t of srcTasks) {
+    if (t.templateSiteAsset?.type !== "web2_site") continue;
+
+    const p = matchPlatformFromWeb2Name(t.name);
+    if (!p) continue;
+
+    const username = t.username ?? "";
+    const email = t.email ?? "";
+    const password = t.password ?? "";
+    const url = t.completionLink ?? ""; // url হিসেবে completionLink
+    const idealDurationMinutes = t.idealDurationMinutes ?? null;
+
+    // চারটিই না থাকলে স্কিপ
+    if (!username || !email || !password || !url) continue;
+
+    // প্রথম ম্যাচটাই রাখছি (প্রয়োজনে স্কোরিং/বেস্ট পিক করতে পারেন)
+    if (!map.has(p)) {
+      map.set(p, {
+        username,
+        email,
+        password,
+        url,
+        label: PLATFORM_META[p].label,
+        idealDurationMinutes,
+      });
+    }
+  }
+  return map;
 }
 
 // Node 18+ has global crypto.randomUUID()
@@ -415,6 +498,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- NEW: Build creds map for Medium/Tumblr/Wordpress strictly from web2 sources
+    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+
     // per-asset frequency overrides
     const assetIds = Array.from(
       new Set(
@@ -634,10 +720,18 @@ export async function POST(req: NextRequest) {
         .sort((a, b) => a.getTime() - b.getTime())
         .pop() ?? calculateTaskDueDate(new Date(), 1); // fallback = today + 15 days (cycle 1)
 
+    // --- REPLACE: Fixed Web2 SC creation (guarded by creds from web2 sources)
     for (const p of ["medium", "tumblr", "wordpress"] as const) {
-      const label = p.charAt(0).toUpperCase() + p.slice(1);
-      const scName = `${label} - Social Communication`;
+      const scName = `${PLATFORM_META[p].label} - Social Communication`;
       if (skipNameSet.has(scName)) continue;
+
+      // কেবল তখনই বানাবো, যখন web2PlatformCreds থেকে পুরো ক্রেডেনশিয়াল + url পাওয়া যায়
+      const creds = web2PlatformCreds.get(p);
+      if (!creds) {
+        // চাইলে লগ দিতে পারেন কেন স্কিপ হলো
+        // console.log(`[SC Web2] Skip ${p}: missing complete creds/url in web2 sources`);
+        continue;
+      }
 
       const catId = categoryIdByName.get("Social Communication")!;
       payloads.push({
@@ -645,7 +739,15 @@ export async function POST(req: NextRequest) {
         name: scName,
         status: "pending",
         priority: overridePriority ?? "medium",
-        dueDate: maxLastSocialDue.toISOString(), // use overall last social due date
+        dueDate: maxLastSocialDue.toISOString(),
+
+        // 🔐 কপি হচ্ছে web2 সোর্স থেকে
+        username: creds.username,
+        email: creds.email,
+        password: creds.password,
+        completionLink: creds.url, // url
+        idealDurationMinutes: creds.idealDurationMinutes ?? undefined,
+
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
         category: { connect: { id: catId } },

@@ -45,6 +45,32 @@ const EMPTY_PRIORITY: PriorityCounts = {
   urgent: 0,
 };
 
+// --- helper: parse CSV query (?excludeCategories=a,b,c) -> ["a","b","c"]
+function parseExcluded(req: NextRequest): string[] {
+  const raw = req.nextUrl.searchParams.get("excludeCategories") ?? "";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// --- helper: relation-aware exclusion when Task.category is a relation.
+// Keeps tasks where category is NULL or category.name NOT IN excluded.
+// Excludes tasks where category.name IS IN excluded.
+function excludeCategoriesWhere(excluded: string[]) {
+  if (!excluded.length) return {};
+  return {
+    NOT: {
+      category: {
+        is: {
+          // Change "name" here if your related model uses a different field (e.g., "title"/"slug").
+          name: { in: excluded },
+        },
+      },
+    },
+  } as const;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
@@ -55,9 +81,13 @@ export async function GET(
       return NextResponse.json({ error: "agentId is required" }, { status: 400 });
     }
 
+    // Optional exclusion (no effect unless query param is provided)
+    const excluded = parseExcluded(_request);
+    const categoryWhere = excludeCategoriesWhere(excluded);
+
     // 1) Which clients have tasks assigned to this agent?
     const distinctClientIds = await prisma.task.findMany({
-      where: { assignedToId: agentId, clientId: { not: null } },
+      where: { assignedToId: agentId, clientId: { not: null }, ...categoryWhere },
       select: { clientId: true },
       distinct: ["clientId"],
     });
@@ -67,7 +97,7 @@ export async function GET(
       .filter((id): id is string => Boolean(id));
 
     if (clientIds.length === 0) {
-      return NextResponse.json([]); // nothing assigned to this agent yet
+      return NextResponse.json([]); // nothing assigned to this agent yet (after exclusions if any)
     }
 
     // 2) Fetch basic client info for those ids
@@ -89,7 +119,7 @@ export async function GET(
     // 3) Count tasks by status per client (only tasks assigned to this agent)
     const grouped = await prisma.task.groupBy({
       by: ["clientId", "status"],
-      where: { assignedToId: agentId, clientId: { in: clientIds } },
+      where: { assignedToId: agentId, clientId: { in: clientIds }, ...categoryWhere },
       _count: { _all: true },
     });
 
@@ -107,7 +137,7 @@ export async function GET(
     // 3b) Count tasks by priority per client (extra summary for UI widgets)
     const priorityGrouped = await prisma.task.groupBy({
       by: ["clientId", "priority"],
-      where: { assignedToId: agentId, clientId: { in: clientIds } },
+      where: { assignedToId: agentId, clientId: { in: clientIds }, ...categoryWhere },
       _count: { _all: true },
     });
 
@@ -126,6 +156,7 @@ export async function GET(
       where: {
         assignedToId: agentId,
         clientId: { in: clientIds },
+        ...categoryWhere,
         OR: [
           { email: { not: null } },
           { username: { not: null } },
@@ -172,6 +203,7 @@ export async function GET(
       where: {
         assignedToId: agentId,
         clientId: { in: clientIds },
+        ...categoryWhere,
         templateSiteAsset: { is: { url: { not: null } } }, // ensure url exists
       },
       orderBy: [{ clientId: "asc" }, { updatedAt: "desc" }],
@@ -200,6 +232,7 @@ export async function GET(
 
     // Step B (fallback): for clients still missing an asset with URL,
     // search ANY task (regardless of assigned agent) for a latest asset with URL.
+    // Keep the same exclusion applied so excluded categories don't leak back in.
     const missingClientIds = clients
       .map((c) => c.id)
       .filter((cid) => !assetByClient.has(cid));
@@ -208,6 +241,7 @@ export async function GET(
       const assetRowsFallback = await prisma.task.findMany({
         where: {
           clientId: { in: missingClientIds },
+          ...categoryWhere,
           templateSiteAsset: { is: { url: { not: null } } }, // ensure url exists
         },
         orderBy: [{ clientId: "asc" }, { updatedAt: "desc" }],
@@ -281,8 +315,8 @@ export async function GET(
 
         // --- Site asset shortcuts ---
         asset: asset?.name ?? null,
-        assetUrl: asset?.url ?? null, // ✅ explicit asset URL
-        url: asset?.url ?? null,      // ✅ kept for backward compatibility
+        assetUrl: asset?.url ?? null, // explicit asset URL
+        url: asset?.url ?? null,      // kept for backward compatibility
         siteAsset: asset
           ? { id: asset.id, name: asset.name, url: asset.url, type: asset.type }
           : null,

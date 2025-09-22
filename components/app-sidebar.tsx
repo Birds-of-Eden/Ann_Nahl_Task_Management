@@ -292,14 +292,14 @@ function buildNav(role: Role): NavItem[] {
       permission: "view_agent_tasks",
     },
     {
+      title: "Social Activity Task",
+      url: p("agent", "/social-activity"),
+      permission: "view_social_activities",
+    },
+    {
       title: "Tasks History",
       url: p("agent", "/taskHistory"),
       permission: "view_agent_tasks_history",
-    },
-    {
-      title: "Social Activity",
-      url: p("agent", "/social-activity"),
-      permission: "view_social_activities",
     },
 
     // QC review quick-link
