@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard";
 import type { Client } from "@/types/client";
 
-const UNCATEGORIZED = { id: "uncategorized", name: "Uncategorized", description: "" };
+const UNCATEGORIZED = {
+  id: "uncategorized",
+  name: "Uncategorized",
+  description: "",
+};
 
 function normalizeClientData(apiData: any): Client {
   return {
@@ -31,7 +35,7 @@ function normalizeClientData(apiData: any): Client {
 }
 
 async function fetchClient(clientId: string): Promise<Client | null> {
-  const h = headers(); // sync
+  const h = await headers(); // await headers
   const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
   const proto =
     h.get("x-forwarded-proto") ||
@@ -41,12 +45,15 @@ async function fetchClient(clientId: string): Promise<Client | null> {
   // forward cookies so protected API works
   const cookieHeader = (await cookies()).toString();
 
-  const res = await fetch(`${base}/api/clients/${encodeURIComponent(clientId)}`, {
-    cache: "no-store",
-    headers: {
-      cookie: cookieHeader,
-    },
-  });
+  const res = await fetch(
+    `${base}/api/clients/${encodeURIComponent(clientId)}`,
+    {
+      cache: "no-store",
+      headers: {
+        cookie: cookieHeader,
+      },
+    }
+  );
 
   if (!res.ok) return null;
 
@@ -58,9 +65,10 @@ async function fetchClient(clientId: string): Promise<Client | null> {
 export default async function ClientPage({
   params,
 }: {
-  params: { clientId: string }; // <-- Promise নয়
+  params: Promise<{ clientId: string }>; // <-- এখন Promise
 }) {
-  const clientData = await fetchClient(params.clientId);
+  const { clientId } = await params; // await params প্রথমে
+  const clientData = await fetchClient(clientId);
 
   if (!clientData) {
     notFound();
