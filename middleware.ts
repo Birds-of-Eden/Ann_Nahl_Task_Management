@@ -1,29 +1,42 @@
 // middleware.ts
-
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(req: NextRequest) {
-  const p = req.nextUrl.pathname;
-  const isApi = p.startsWith("/api");
-  const token = req.cookies.get("session-token")?.value;
+export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
 
-  if (p.startsWith("/api/auth")) return NextResponse.next();
+  // Auth routes সবসময় allow
+  if (path.startsWith("/api/auth") || path.startsWith("/auth")) {
+    return NextResponse.next();
+  }
+
+  const isApi = path.startsWith("/api");
+  // NextAuth-এর অফিসিয়াল টোকেন রিডার
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
   const protectedPage =
-    p.startsWith("/admin") ||
-    p.startsWith("/agent") ||
-    p.startsWith("/manager") ||
-    p.startsWith("/qc") ||
-    p.startsWith("/am") ||
-    p.startsWith("/am_ceo") ||
-    p.startsWith("/client") ||
-    p.startsWith("/data_entry");
+    path.startsWith("/admin") ||
+    path.startsWith("/agent") ||
+    path.startsWith("/manager") ||
+    path.startsWith("/qc") ||
+    path.startsWith("/am") ||
+    path.startsWith("/am_ceo") ||
+    path.startsWith("/client") ||
+    path.startsWith("/data_entry");
 
   if ((isApi || protectedPage) && !token) {
-    return isApi
-      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      : NextResponse.redirect(new URL("/auth/sign-in", req.url));
+    if (isApi) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const url = new URL("/auth/sign-in", req.url);
+    // callbackUrl যোগ করলে sign-in শেষে user আবার আগের পেজে ফিরে আসবে
+    url.searchParams.set(
+      "callbackUrl",
+      req.nextUrl.pathname + req.nextUrl.search
+    );
+    return NextResponse.redirect(url);
   }
+
   return NextResponse.next();
 }
 
@@ -38,5 +51,6 @@ export const config = {
     "/client/:path*",
     "/data_entry/:path*",
     "/api/:path*",
+    "/auth/:path*", // auth pages allow করার জন্য
   ],
 };
