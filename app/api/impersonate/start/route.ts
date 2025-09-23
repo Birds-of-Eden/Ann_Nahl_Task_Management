@@ -1,5 +1,4 @@
 // app/api/impersonate/start/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
@@ -33,13 +32,12 @@ function hasImpersonatePermission(
 ) {
   if (!session?.user) return false;
   const roleName = session.user.role?.name?.toLowerCase();
-  if (roleName === "admin") return true; // shortcut
+  if (roleName === "admin" || roleName === "am") return true; // allow AM
   const perms =
     session.user.role?.rolePermissions.map((rp) => rp.permission.name) || [];
   return perms.includes("user_impersonate");
 }
 
-// ছোট util: বর্তমান রিকোয়েস্ট HTTPS কিনা
 function getIsSecure(req: NextRequest) {
   const proto =
     req.headers.get("x-forwarded-proto") ??
@@ -77,25 +75,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Target user আছে কি না
-    const target = await prisma.user.findUnique({
+    // target user (need role + clientId)
+    const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
+      include: { role: true },
     });
-    if (!target) {
+    if (!targetUser) {
       return NextResponse.json(
         { error: "Target user not found" },
         { status: 404 }
       );
     }
 
-    // নতুন impersonated সেশন
+    // AM scope guard: AM can only impersonate their own Client users
+    const actorRole = adminSession.user.role?.name?.toLowerCase();
+    if (actorRole === "am") {
+      if (targetUser.role?.name?.toLowerCase() !== "client") {
+        return NextResponse.json(
+          { error: "AM can only impersonate client users" },
+          { status: 403 }
+        );
+      }
+      if (!targetUser.clientId) {
+        return NextResponse.json(
+          { error: "Target client link missing" },
+          { status: 403 }
+        );
+      }
+      const client = await prisma.client.findUnique({
+        where: { id: targetUser.clientId },
+        select: { amId: true },
+      });
+      if (!client || String(client.amId) !== String(adminSession.userId)) {
+        return NextResponse.json({ error: "Not your client" }, { status: 403 });
+      }
+    }
+
     const impersonatedToken = randomUUID();
-    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000); // 3h
+    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
 
     await prisma.session.create({
       data: {
         token: impersonatedToken,
-        userId: target.id,
+        userId: targetUser.id,
         expiresAt,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -105,39 +127,40 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Audit log
     await prisma.activityLog.create({
       data: {
         id: randomUUID(),
         entityType: "auth",
-        entityId: target.id,
+        entityId: targetUser.id,
         userId: adminSession.userId,
         action: "impersonate_start",
-        details: { targetUserId: target.id },
+        details: { targetUserId: targetUser.id },
       },
     });
 
     const res = NextResponse.json(
       {
         success: true,
-        message: `Now impersonating ${target.email || target.id}`,
-        actingUser: { id: target.id, name: target.name, email: target.email },
+        message: `Now impersonating ${targetUser.email || targetUser.id}`,
+        actingUser: {
+          id: targetUser.id,
+          name: targetUser.name,
+          email: targetUser.email,
+        },
       },
       { status: 200 }
     );
 
     const isSecure = getIsSecure(req);
 
-    // মূল এডমিন টোকেন সেফ রাখতে আলাদা কুকি
     res.cookies.set("impersonation-origin", adminToken!, {
       httpOnly: true,
       secure: isSecure,
       sameSite: "lax",
       path: "/",
-      maxAge: 3 * 60 * 60, // 3h
+      maxAge: 3 * 60 * 60,
     });
 
-    // ব্রাউজারে টার্গেট ইউজারের সেশন চালু
     res.cookies.set("session-token", impersonatedToken, {
       httpOnly: true,
       secure: isSecure,

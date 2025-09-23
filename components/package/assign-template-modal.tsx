@@ -29,6 +29,22 @@ interface AssignTemplateModalProps {
   onAssignComplete?: (clientId: string) => void;
 }
 
+// Helper to title-case a status safely
+function titleStatus(status?: string | null) {
+  const s = (status ?? "").toString();
+  if (!s) return "Unknown";
+  return (s.charAt?.(0)?.toUpperCase?.() ?? "") + (s.slice?.(1) ?? "");
+}
+
+// Map a status to badge classes
+function statusClasses(status?: string | null) {
+  const s = (status ?? "").toString();
+  if (s === "active") return "bg-green-50 text-green-700 border-green-200";
+  if (s === "pending") return "bg-amber-50 text-amber-700 border-amber-200";
+  // fallback bucket
+  return "bg-gray-50 text-gray-700 border-gray-200";
+}
+
 export function AssignTemplateModal({
   isOpen,
   onClose,
@@ -40,7 +56,9 @@ export function AssignTemplateModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [clientFilter, setClientFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState<
+    "all" | "active" | "pending"
+  >("all");
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
 
@@ -49,20 +67,34 @@ export function AssignTemplateModal({
   );
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
 
-  // Fetch clients
+  // Fetch clients & assignments
   useEffect(() => {
+    if (!isOpen) return;
+
     const fetchClients = async () => {
       setIsLoadingClients(true);
       try {
-       const response = await fetch(`/api/clients?packageId=${packageId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setClients(data);
-        } else {
-          toast.error("Failed to fetch clients");
-        }
-      } catch (error) {
-        console.error("Error fetching clients:", error);
+        const response = await fetch(
+          `/api/clients?packageId=${encodeURIComponent(packageId)}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch clients");
+        const raw = await response.json();
+
+        // Defensive normalization so the UI never crashes
+        const normalized = (Array.isArray(raw) ? raw : [])
+          .filter(Boolean)
+          .map((c: any) => ({
+            id: String(c.id),
+            name: c.name ?? "",
+            email: c.email ?? "",
+            company: c.company ?? "",
+            avatar: c.avatar ?? "",
+            status: c.status ?? "unknown",
+          })) as Client[];
+
+        setClients(normalized);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
         toast.error("An error occurred while fetching clients");
       } finally {
         setIsLoadingClients(false);
@@ -73,46 +105,43 @@ export function AssignTemplateModal({
       setIsLoadingAssignments(true);
       try {
         const response = await fetch(
-          `/api/assignments?templateId=${templateId}`
+          `/api/assignments?templateId=${encodeURIComponent(templateId)}`
         );
-        if (response.ok) {
-          const data = await response.json();
-          const ids = new Set<string>(data.map((a: any) => a.clientId));
-          setAssignedClientIds(ids);
-        } else {
-          toast.error("Failed to fetch assignments");
-        }
-      } catch (error) {
-        console.error("Error fetching assignments:", error);
+        if (!response.ok) throw new Error("Failed to fetch assignments");
+        const data = await response.json();
+        const ids = new Set<string>(
+          (Array.isArray(data) ? data : [])
+            .filter(Boolean)
+            .map((a: any) => String(a.clientId))
+        );
+        setAssignedClientIds(ids);
+      } catch (err) {
+        console.error("Error fetching assignments:", err);
+        toast.error("Failed to fetch assignments");
       } finally {
         setIsLoadingAssignments(false);
       }
     };
 
-    if (isOpen) {
-      fetchClients();
-      fetchAssignments();
-    }
-  }, [isOpen, templateId]);
+    fetchClients();
+    fetchAssignments();
+  }, [isOpen, packageId, templateId]);
 
-  const filteredClients = clients.filter((client) => {
-    // Filter by status
-    if (clientFilter !== "all" && client.status !== clientFilter) {
-      return false;
-    }
+  const filteredClients = clients.filter((c) => {
+    if (!c) return false;
 
-    // Filter by search query
+    const status = (c as any).status ?? "unknown";
+
+    // Tab status filter (only when not "all")
+    if (clientFilter !== "all" && status !== clientFilter) return false;
+
+    // Search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const name = client.name || '';
-      const email = client.email || '';
-      const company = client.company || '';
-      
-      return (
-        name.toLowerCase().includes(query) ||
-        email.toLowerCase().includes(query) ||
-        company.toLowerCase().includes(query)
-      );
+      const q = searchQuery.toLowerCase();
+      const name = (c.name ?? "").toLowerCase();
+      const email = (c.email ?? "").toLowerCase();
+      const company = (c.company ?? "").toLowerCase();
+      return name.includes(q) || email.includes(q) || company.includes(q);
     }
 
     return true;
@@ -125,9 +154,7 @@ export function AssignTemplateModal({
     }
 
     setIsLoading(true);
-
     try {
-      // Create a new assignment
       const assignment = {
         id: `assignment-${Date.now()}`,
         templateId,
@@ -138,32 +165,23 @@ export function AssignTemplateModal({
 
       const response = await fetch("/api/assignments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(assignment),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to assign template");
-      }
+      if (!response.ok) throw new Error("Failed to assign template");
 
-      const selectedClientData = clients.find(
-        (client) => client.id === selectedClient
-      );
-
+      const selectedClientData = clients.find((c) => c.id === selectedClient);
       toast.success(
-        `Template assigned to ${selectedClientData?.name} successfully`
+        `Template assigned to ${
+          selectedClientData?.name || "client"
+        } successfully`
       );
 
-      // Call the onAssignComplete callback if provided
-      if (onAssignComplete) {
-        onAssignComplete(selectedClient);
-      }
-
+      onAssignComplete?.(selectedClient);
       onClose();
-    } catch (error) {
-      console.error("Error assigning template:", error);
+    } catch (err) {
+      console.error("Error assigning template:", err);
       toast.error("Failed to assign template");
     } finally {
       setIsLoading(false);
@@ -176,7 +194,7 @@ export function AssignTemplateModal({
         <DialogHeader>
           <DialogTitle>Assign Template to Client</DialogTitle>
           <DialogDescription>
-            Assign "{templateName}" template to a client
+            Assign &quot;{templateName}&quot; template to a client
           </DialogDescription>
         </DialogHeader>
 
@@ -200,7 +218,7 @@ export function AssignTemplateModal({
 
           <Tabs
             value={clientFilter}
-            onValueChange={setClientFilter}
+            onValueChange={(v) => setClientFilter(v as any)}
             className="mb-4"
           >
             <TabsList className="grid w-full grid-cols-3">
@@ -210,7 +228,7 @@ export function AssignTemplateModal({
             </TabsList>
           </Tabs>
 
-          {isLoadingClients ? (
+          {isLoadingClients || isLoadingAssignments ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -225,6 +243,7 @@ export function AssignTemplateModal({
                   {filteredClients.map((client) => {
                     const isAssigned = assignedClientIds.has(client.id);
                     const isSelected = selectedClient === client.id;
+                    const status = (client as any).status ?? "unknown";
 
                     return (
                       <div
@@ -243,7 +262,7 @@ export function AssignTemplateModal({
                         <Avatar className="h-10 w-10">
                           <AvatarImage
                             src={client.avatar || "/placeholder.svg"}
-                            alt={client.name}
+                            alt={client.name ?? "Client"}
                           />
                           <AvatarFallback>
                             <User className="h-4 w-4" />
@@ -252,26 +271,19 @@ export function AssignTemplateModal({
 
                         <div className="flex-1 min-w-0">
                           <div className="font-medium flex items-center gap-2">
-                            {client.name}
+                            {client.name || "Unnamed"}
                             <Badge
                               variant="outline"
-                              className={
-                                client.status === "active"
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : client.status === "pending"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-gray-50 text-gray-700 border-gray-200"
-                              }
+                              className={statusClasses(status)}
                             >
-                              {client.status.charAt(0).toUpperCase() +
-                                client.status.slice(1)}
+                              {titleStatus(status)}
                             </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground truncate">
-                            {client.company}
+                            {client.company ?? "—"}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {client.email}
+                            {client.email ?? "—"}
                           </div>
                         </div>
 

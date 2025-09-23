@@ -307,7 +307,7 @@ model ClientTeamMember {
   completedTasks Int?      @default(0)
   lateTasks      Int?      @default(0)
 
-  client Client @relation(fields: [clientId], references: [id])
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   agent  User   @relation(fields: [agentId], references: [id])
   team   Team?  @relation(fields: [teamId], references: [id])
 
@@ -332,7 +332,7 @@ model Template {
 model TemplateSiteAsset {
   id                          Int           @id @default(autoincrement())
   templateId                  String
-  template                    Template      @relation(fields: [templateId], references: [id])
+  template                    Template      @relation(fields: [templateId], references: [id], onDelete: Cascade)
   type                        SiteAssetType
   name                        String
   url                         String?
@@ -353,7 +353,7 @@ model TemplateTeamMember {
   teamId       String?
   assignedDate DateTime?
 
-  template Template @relation(fields: [templateId], references: [id])
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
   agent    User     @relation(fields: [agentId], references: [id])
   team     Team?    @relation(fields: [teamId], references: [id])
 
@@ -365,8 +365,8 @@ model Assignment {
   id         String    @id
   templateId String?
   clientId   String?
-  template   Template? @relation(fields: [templateId], references: [id])
-  client     Client?   @relation(fields: [clientId], references: [id])
+  template   Template? @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  client     Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   assignedAt DateTime? @default(now())
   status     String?
 
@@ -382,8 +382,8 @@ model AssignmentSiteAssetSetting {
   assignmentId        String
   templateSiteAssetId Int
 
-  assignment           Assignment        @relation(fields: [assignmentId], references: [id])
-  templateSiteAsset    TemplateSiteAsset @relation(fields: [templateSiteAssetId], references: [id])
+  assignment           Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  templateSiteAsset    TemplateSiteAsset @relation(fields: [templateSiteAssetId], references: [id], onDelete: Cascade)
   requiredFrequency    Int?
   period               PeriodType        @default(monthly)
   idealDurationMinutes Int?
@@ -420,9 +420,9 @@ model Task {
   pauseReasons          Json?            @default("[]")
   socialCommunications Json? @default("[]") // 👈 NEW
 
-  assignment            Assignment?        @relation(fields: [assignmentId], references: [id])
-  client                Client?            @relation(fields: [clientId], references: [id])
-  templateSiteAsset     TemplateSiteAsset? @relation(fields: [templateSiteAssetId], references: [id])
+  assignment            Assignment?        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  client                Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateSiteAsset     TemplateSiteAsset? @relation(fields: [templateSiteAssetId], references: [id], onDelete: Cascade)
   category              TaskCategory?      @relation(fields: [categoryId], references: [id])
   assignedTo            User?              @relation("AssignedTasks", fields: [assignedToId], references: [id])
 
@@ -442,7 +442,7 @@ model Comment {
   text     String
   date     DateTime @default(now())
 
-  task   Task? @relation(fields: [taskId], references: [id])
+  task   Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author User? @relation(fields: [authorId], references: [id])
 }
 
@@ -455,7 +455,7 @@ model Report {
   severity String?
   date     DateTime @default(now())
 
-  task   Task? @relation(fields: [taskId], references: [id])
+  task   Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author User? @relation(fields: [authorId], references: [id])
 }
 
@@ -483,7 +483,7 @@ model Notification {
   isRead    Boolean          @default(false)
 
   user User  @relation(fields: [userId], references: [id])
-  task Task? @relation(fields: [taskId], references: [id])
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 
