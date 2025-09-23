@@ -1,14 +1,16 @@
-"use client"
-import { Eye } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import type { Client } from "@/types/client"
+"use client";
+import { Eye, Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import type { Client } from "@/types/client";
+import { hasPermissionClient } from "@/lib/permissions-client";
+import { handleDeleteClient } from "./handleDeleteClient";
 
 interface ClientListProps {
-  clients: Client[]
-  onViewDetails: (client: Client) => void
+  clients: Client[];
+  onViewDetails: (client: Client) => void;
 }
 
 export function ClientList({ clients, onViewDetails }: ClientListProps) {
@@ -32,7 +34,9 @@ export function ClientList({ clients, onViewDetails }: ClientListProps) {
               <AvatarImage
                 src={
                   client.avatar ||
-                  `/placeholder.svg?height=60&width=60&text=${client.name.substring(0, 2) || "/placeholder.svg"}`
+                  `/placeholder.svg?height=60&width=60&text=${
+                    client.name.substring(0, 2) || "/placeholder.svg"
+                  }`
                 }
                 alt={client.name}
               />
@@ -52,8 +56,8 @@ export function ClientList({ clients, onViewDetails }: ClientListProps) {
                 client.status === "active"
                   ? "bg-emerald-100 text-emerald-800 font-medium px-3 py-1 rounded-full"
                   : client.status === "inactive"
-                    ? "bg-gray-100 text-gray-800 font-medium px-3 py-1 rounded-full"
-                    : "bg-amber-100 text-amber-800 font-medium px-3 py-1 rounded-full"
+                  ? "bg-gray-100 text-gray-800 font-medium px-3 py-1 rounded-full"
+                  : "bg-amber-100 text-amber-800 font-medium px-3 py-1 rounded-full"
               }
             >
               {client.status || "Pending"}
@@ -68,15 +72,22 @@ export function ClientList({ clients, onViewDetails }: ClientListProps) {
             </Badge>
           </div>
           <div className="text-center w-28 text-sm text-gray-600 font-medium">
-            {client.startDate ? new Date(client.startDate).toLocaleDateString() : "-"}
+            {client.startDate
+              ? new Date(client.startDate).toLocaleDateString()
+              : "-"}
           </div>
           <div className="w-28 px-2">
             <div className="flex items-center gap-2">
-              <Progress value={client.progress || 0} className="h-2 w-full bg-gray-200" />
-              <span className="text-sm font-medium text-gray-700">{client.progress || 0}%</span>
+              <Progress
+                value={client.progress || 0}
+                className="h-2 w-full bg-gray-200"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                {client.progress || 0}%
+              </span>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-2 w-28">
+          <div className="flex items-center justify-center gap-1 w-28">
             <Button
               variant="ghost"
               size="icon"
@@ -85,9 +96,17 @@ export function ClientList({ clients, onViewDetails }: ClientListProps) {
             >
               <Eye className="h-4 w-4" />
             </Button>
+
+            <Button
+              variant="ghost"
+              className="h-9 w-9 rounded-full text-red-600 hover:bg-cyan-50 hover:text-red-500 transition-colors"
+              onClick={() => handleDeleteClient(client.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       ))}
     </div>
-  )
+  );
 }

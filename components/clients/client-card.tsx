@@ -4,7 +4,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Package, ListChecks } from "lucide-react";
+import {
+  FileText,
+  Eye,
+  Package,
+  ListChecks,
+  Delete,
+  Trash2,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +28,7 @@ import type { Client, TaskStatusCounts } from "@/types/client";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { useAuth } from "@/context/auth-context";
+import { handleDeleteClient } from "./handleDeleteClient";
 
 interface ClientCardProps {
   clientId: string;
@@ -217,7 +225,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
-    } else if (segment === 'data_entry') {
+    } else if (segment === "data_entry") {
       router.push(`/data_entry/clients/${clientId}`);
     } else {
       router.push(`/${segment}/clients/${clientId}`);
@@ -225,7 +233,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   };
 
   const handleViewTasks = () => {
-    if (segment === 'data_entry') {
+    if (segment === "data_entry") {
       router.push(`/data_entry/data_entry/clients/${clientId}/tasks`);
     } else {
       router.push(`/${segment}/clients/${clientId}/tasks`);
@@ -370,6 +378,30 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
             >
               <Eye className="h-4 w-4 mr-2" />
               View Details
+            </Button>
+          )}
+        </div>
+
+        <div className="flex gap-2 w-full">
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_client_view"
+          ) && (
+            <Button
+              onClick={() => handleDeleteClient(client.id)}
+              className="
+                flex-1
+                bg-gradient-to-r from-rose-500 to-red-500
+                hover:from-rose-600 hover:to-red-600
+                text-white
+                shadow-md
+                rounded-lg
+                px-5 py-2.5
+                transition-all duration-300
+              "
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
           )}
         </div>
