@@ -1,5 +1,4 @@
-// components/users/ImpersonateButton.tsx
-
+// components/users/ImpersonateButton.tsx (allow AM without extra perm)
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,6 +20,7 @@ function roleToLanding(role?: string | null) {
   if (r === "manager") return "/manager";
   if (r === "qc") return "/qc";
   if (r === "am") return "/am";
+  if (r === "client") return "/client";
   return "/";
 }
 
@@ -34,7 +34,6 @@ export default function ImpersonateButton({
   const [canImpersonate, setCanImpersonate] = useState<boolean | null>(null);
   const [selfId, setSelfId] = useState<string | null>(null);
 
-  // কে লগইন করা আছে + permission আছে কি না চেক
   useEffect(() => {
     let mounted = true;
     fetch("/api/auth/me")
@@ -42,9 +41,11 @@ export default function ImpersonateButton({
       .then((d) => {
         if (!mounted) return;
         const me = d?.user || null;
+        const role = (me?.role || "").toLowerCase();
         const perms: string[] = d?.user?.permissions || [];
         const ok =
-          (me?.role || "").toLowerCase() === "admin" ||
+          role === "admin" ||
+          role === "am" ||
           perms.includes("user_impersonate");
         setCanImpersonate(ok);
         setSelfId(me?.id || null);
@@ -55,8 +56,8 @@ export default function ImpersonateButton({
     };
   }, []);
 
-  if (canImpersonate === false) return null; // permission নেই তাহলে বাটন দেখাবেন না
-  if (selfId && selfId === targetUserId) return null; // নিজেরেই impersonate নয়
+  if (canImpersonate === false) return null;
+  if (selfId && selfId === targetUserId) return null;
 
   const start = async () => {
     if (!targetUserId) return;
@@ -80,12 +81,11 @@ export default function ImpersonateButton({
         `Now impersonating ${data?.actingUser?.email || targetName || "user"}`
       );
 
-      // নতুন সেশন সেট হয়েছে—এখন নতুন রোল অনুযায়ী রিডাইরেক্ট
       const meRes = await fetch("/api/auth/me");
       const me = await meRes.json();
       const dest = roleToLanding(me?.user?.role);
       router.replace(dest);
-    } catch (e) {
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setLoading(false);

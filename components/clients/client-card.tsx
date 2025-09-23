@@ -1,4 +1,4 @@
-// app/components/clients/client-card.tsx
+// components/clients/client-card.tsx
 
 "use client";
 
@@ -21,13 +21,20 @@ import type { Client, TaskStatusCounts } from "@/types/client";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { useAuth } from "@/context/auth-context";
+import ImpersonateButton from "@/components/users/ImpersonateButton";
 
 interface ClientCardProps {
   clientId: string;
+  /** The linked client-role user's ID for this client (needed for impersonation). */
+  clientUserId?: string | null;
   onViewDetails?: () => void;
 }
 
-export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
+export function ClientCard({
+  clientId,
+  clientUserId,
+  onViewDetails,
+}: ClientCardProps) {
   const { user } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,6 +115,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
     return counts;
   };
 
+  // Loading
   if (loading) {
     return (
       <Card className="p-6 flex items-center justify-center">
@@ -203,7 +211,7 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   const displayOverall = Math.min(100, Math.max(0, derivedProgress));
   const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth));
 
-  // -------- Role normalization (FIX) --------
+  // -------- Role normalization --------
   // Try multiple shapes: session.user.role.name, session.user.role, or session.role
   const roleRaw =
     (session as any)?.user?.role?.name ??
@@ -211,13 +219,13 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
     (session as any)?.role;
   const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined;
 
-  // Use normalized role for dynamic segment (and actually use it in router.push)
+  // Use normalized role for dynamic segment
   const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
-    } else if (segment === 'data_entry') {
+    } else if (segment === "data_entry") {
       router.push(`/data_entry/clients/${clientId}`);
     } else {
       router.push(`/${segment}/clients/${clientId}`);
@@ -225,8 +233,8 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
   };
 
   const handleViewTasks = () => {
-    if (segment === 'data_entry') {
-      router.push(`/data_entry/data_entry/clients/${clientId}/tasks`);
+    if (segment === "data_entry") {
+      router.push(`/data_entry/clients/${clientId}/tasks`);
     } else {
       router.push(`/${segment}/clients/${clientId}/tasks`);
     }
@@ -358,33 +366,39 @@ export function ClientCard({ clientId, onViewDetails }: ClientCardProps) {
       </CardContent>
 
       {/* Footer */}
-      <CardFooter className="border-t border-gray-100 gap-4 p-4 bg-gray-50">
-        <div className="flex gap-2 w-full">
+      <CardFooter className="border-t border-gray-100 bg-gray-50 p-6">
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
           {hasPermissionClient(
             user?.permissions,
             "client_card_client_view"
           ) && (
             <Button
-              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              variant="default"
+              className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
               onClick={handleViewDetails}
             >
               <Eye className="h-4 w-4 mr-2" />
               View Details
             </Button>
           )}
-        </div>
 
-        {/* FIXED: use normalized role (lowercased) instead of session?.role === "Admin" */}
-
-        <div className="flex gap-2 w-full">
           {hasPermissionClient(user?.permissions, "client_card_task_view") && (
             <Button
-              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              variant="default"
+              className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
               onClick={handleViewTasks}
             >
               <ListChecks className="h-4 w-4 mr-2" />
               View Tasks
             </Button>
+          )}
+
+          {clientUserId && (
+            <ImpersonateButton
+              targetUserId={clientUserId}
+              targetName={client.name}
+              className="flex-1 bg-gradient-to-r from-gray-900 to-black hover:from-black hover:to-gray-800 text-white font-medium shadow-lg rounded-lg px-5 py-2.5 transition-all duration-300"
+            />
           )}
         </div>
       </CardFooter>

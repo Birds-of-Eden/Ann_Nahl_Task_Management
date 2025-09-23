@@ -1,3 +1,5 @@
+// app/[role]/am_ceo_clients/page.tsx
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -35,7 +37,12 @@ export default function ClientsPage() {
 
   // ✅ AM হলে UI ফিল্টারও জোর করে নিজের amId-তে সেট করো
   useEffect(() => {
-    if (!sessionLoading && isAM && currentUserId && amFilter !== currentUserId) {
+    if (
+      !sessionLoading &&
+      isAM &&
+      currentUserId &&
+      amFilter !== currentUserId
+    ) {
       setAmFilter(currentUserId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,10 +110,12 @@ export default function ClientsPage() {
         (Array.isArray(raw?.data) && raw.data) ||
         [];
 
-      const mapped: { id: string; name: string }[] = (list as any[]).map((p) => ({
-        id: String(p.id),
-        name: String(p.name ?? "Unnamed"),
-      }));
+      const mapped: { id: string; name: string }[] = (list as any[]).map(
+        (p) => ({
+          id: String(p.id),
+          name: String(p.name ?? "Unnamed"),
+        })
+      );
       setPackages(mapped);
     } catch {
       // fallback: বর্তমান clients থেকে derive করো
@@ -152,7 +161,8 @@ export default function ClientsPage() {
           const nm = c.accountManager?.name ?? null;
           const email = c.accountManager?.email ?? null;
           const label = nm ? (email ? `${nm} (${email})` : nm) : String(id);
-          if (!map.has(String(id))) map.set(String(id), { id: String(id), label });
+          if (!map.has(String(id)))
+            map.set(String(id), { id: String(id), label });
           return map;
         }, new Map<string, { id: string; label: string }>())
       ).map(([, v]) => v),
@@ -170,16 +180,24 @@ export default function ClientsPage() {
     }
 
     // package filter (string compare)
-    const clientPkgId = client.packageId != null ? String(client.packageId) : null;
+    const clientPkgId =
+      client.packageId != null ? String(client.packageId) : null;
     if (packageFilter !== "all" && clientPkgId !== String(packageFilter)) {
       return false;
     }
 
     // AM scope (string compare)
     const effectiveAmFilter =
-      isAM && currentUserId ? String(currentUserId) : (amFilter === "all" ? "all" : String(amFilter));
+      isAM && currentUserId
+        ? String(currentUserId)
+        : amFilter === "all"
+        ? "all"
+        : String(amFilter);
     const clientAm = client.amId ?? client.accountManager?.id ?? null;
-    if (effectiveAmFilter !== "all" && String(clientAm ?? "") !== effectiveAmFilter) {
+    if (
+      effectiveAmFilter !== "all" &&
+      String(clientAm ?? "") !== effectiveAmFilter
+    ) {
       return false;
     }
 
@@ -231,13 +249,21 @@ export default function ClientsPage() {
       {/* Clients Grid or List */}
       {filteredClients.length === 0 ? (
         <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-lg border border-gray-100">
-          <p className="text-lg font-medium mb-2">No clients found matching your criteria.</p>
+          <p className="text-lg font-medium mb-2">
+            No clients found matching your criteria.
+          </p>
           <p className="text-sm">Try adjusting your search or filters.</p>
         </div>
       ) : viewMode === "grid" ? (
-        <ClientGrid clients={filteredClients} onViewDetails={handleViewClientDetails} />
+        <ClientGrid
+          clients={filteredClients}
+          onViewDetails={handleViewClientDetails}
+        />
       ) : (
-        <ClientList clients={filteredClients} onViewDetails={handleViewClientDetails} />
+        <ClientList
+          clients={filteredClients}
+          onViewDetails={handleViewClientDetails}
+        />
       )}
     </div>
   );

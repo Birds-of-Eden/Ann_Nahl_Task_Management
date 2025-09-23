@@ -1,12 +1,12 @@
-// components/clients/client-grid.tsx
-"use client"
+// components/clients/client-grid.tsx (pass clientUserId to card)
+"use client";
 
-import { ClientCard } from "@/components/clients/client-card"
-import type { Client } from "@/types/client"
+import { ClientCard } from "@/components/clients/client-card";
+import type { Client } from "@/types/client";
 
 interface ClientGridProps {
-  clients: Client[]
-  onViewDetails: (client: Client) => void
+  clients: Client[];
+  onViewDetails: (client: Client) => void;
 }
 
 export function ClientGrid({ clients, onViewDetails }: ClientGridProps) {
@@ -15,10 +15,11 @@ export function ClientGrid({ clients, onViewDetails }: ClientGridProps) {
       {clients.map((client) => (
         <ClientCard
           key={client.id}
-          clientId={client.id}  // ✅ pass only ID
+          clientId={client.id}
+          clientUserId={(client as any).clientUserId ?? null}
           onViewDetails={() => onViewDetails(client)}
         />
       ))}
     </div>
-  )
+  );
 }
