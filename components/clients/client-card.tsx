@@ -4,7 +4,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Package, ListChecks } from "lucide-react";
+import {
+  FileText,
+  Eye,
+  Package,
+  ListChecks,
+  Delete,
+  Trash2,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -225,6 +232,7 @@ export function ClientCard({
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
+    } else if (segment === "data_entry") {
     } else if (segment === "data_entry") {
       router.push(`/data_entry/clients/${clientId}`);
     } else {

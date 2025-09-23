@@ -178,3 +178,85 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+
+// DELETE /api/clients?id=CLIENT_ID  (also accepts { id } in JSON body)
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    let id = searchParams.get("id") ?? "";
+
+    if (!id) {
+      try {
+        const body = await req.json();
+        id = body?.id || "";
+      } catch {
+        /* ignore body parse errors */
+      }
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing client id" }, { status: 400 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1) Find assignments & tasks for this client
+      const assignments = await tx.assignment.findMany({
+        where: { clientId: id },
+        select: { id: true },
+      });
+      const assignmentIds = assignments.map((a) => a.id);
+
+      const directTasks = await tx.task.findMany({
+        where: { clientId: id },
+        select: { id: true },
+      });
+      const assignmentTasks = assignmentIds.length
+        ? await tx.task.findMany({
+            where: { assignmentId: { in: assignmentIds } },
+            select: { id: true },
+          })
+        : [];
+
+      const allTaskIds = Array.from(
+        new Set([...directTasks, ...assignmentTasks].map((t) => t.id))
+      );
+
+      // 2) Delete task children first
+      if (allTaskIds.length) {
+        await tx.comment.deleteMany({ where: { taskId: { in: allTaskIds } } });
+        await tx.report.deleteMany({ where: { taskId: { in: allTaskIds } } });
+        await tx.notification.deleteMany({
+          where: { taskId: { in: allTaskIds } },
+        });
+      }
+
+      // 3) Delete tasks
+      if (allTaskIds.length) {
+        await tx.task.deleteMany({ where: { id: { in: allTaskIds } } });
+      }
+
+      // 4) Delete assignment extras, then assignments
+      if (assignmentIds.length) {
+        await tx.assignmentSiteAssetSetting.deleteMany({
+          where: { assignmentId: { in: assignmentIds } },
+        });
+        await tx.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
+      }
+
+      // 5) Other client-owned records
+      await tx.socialMedia.deleteMany({ where: { clientId: id } });
+      await tx.clientTeamMember.deleteMany({ where: { clientId: id } });
+
+      // 6) Finally delete the client
+      await tx.client.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
