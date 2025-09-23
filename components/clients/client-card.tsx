@@ -418,14 +418,14 @@ export function ClientCard({
             </Button>
           )}
 
-          {hasPermissionClient(
+          {/* {hasPermissionClient(
             user?.permissions,
             "client_card_client_view"
-          ) && (
-            <Button
-              onClick={onDelete}
-              disabled={isDeleting}
-              className="
+          ) && ( */}
+          <Button
+            onClick={onDelete}
+            disabled={isDeleting}
+            className="
                 flex-1
                 bg-gradient-to-r from-rose-500 to-red-500
                 hover:from-rose-600 hover:to-red-600
@@ -435,11 +435,11 @@ export function ClientCard({
                 px-5 py-2.5
                 transition-all duration-300
               "
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          )}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+          {/* )} */}
 
           {hasPermissionClient(user?.permissions, "client_card_task_view") && (
             <Button
