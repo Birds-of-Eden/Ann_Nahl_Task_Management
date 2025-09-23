@@ -515,7 +515,7 @@ export function PackageCards() {
                 </div>
               </CardContent>
 
-              <CardFooter className="p-6 pt-0 space-y-3">
+              <CardFooter className="gap-4">
                 {/* Primary Action Buttons */}
                 <div className="flex gap-2 w-full">
                   <Button
@@ -525,14 +525,6 @@ export function PackageCards() {
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     Templates
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-green-200 hover:border-green-300 hover:bg-green-50 hover:text-green-600 transition-all duration-200 bg-transparent rounded-lg"
-                    onClick={() => handleViewDetails(pkg.id)}
-                  >
-                    <Info className="h-4 w-4 mr-2" />
-                    Details
                   </Button>
                 </div>
 
@@ -548,6 +540,8 @@ export function PackageCards() {
                       Edit
                     </Button>
                   )}
+                </div>
+                <div className="flex gap-2 w-full">
                   {hasPermissionClient(user?.permissions, "package_delete") && (
                     <Button
                       variant="outline"
