@@ -29,6 +29,7 @@ import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { useAuth } from "@/context/auth-context";
 import ImpersonateButton from "@/components/users/ImpersonateButton";
+import { handleDeleteClient } from "./handleDeleteClient";
 
 interface ClientCardProps {
   clientId: string;
@@ -387,6 +388,28 @@ export function ClientCard({
             >
               <Eye className="h-4 w-4 mr-2" />
               View Details
+            </Button>
+          )}
+
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_client_view"
+          ) && (
+            <Button
+              onClick={() => handleDeleteClient(client.id)}
+              className="
+                flex-1
+                bg-gradient-to-r from-rose-500 to-red-500
+                hover:from-rose-600 hover:to-red-600
+                text-white
+                shadow-md
+                rounded-lg
+                px-5 py-2.5
+                transition-all duration-300
+              "
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
           )}
 
