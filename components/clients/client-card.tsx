@@ -29,6 +29,7 @@ import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { useAuth } from "@/context/auth-context";
 import ImpersonateButton from "@/components/users/ImpersonateButton";
+import { handleDeleteClient } from "./handleDeleteClient";
 
 interface ClientCardProps {
   clientId: string;
@@ -48,12 +49,22 @@ export function ClientCard({
   const router = useRouter();
   const { user: session } = useUserSession();
 
+  const [deleted, setDeleted] = useState(false); // ✅ add
+  const [isDeleting, setIsDeleting] = useState(false); // (optional UX)
+
   // Fetch full client details from API
   useEffect(() => {
     const fetchClient = async () => {
       try {
         const response = await fetch(`/api/clients/${clientId}`);
-        if (!response.ok) throw new Error("Failed to fetch client");
+        if (!response.ok) {
+          if (response.status === 404) {
+            // ✅ add
+            setDeleted(true); // ✅ add (server বলছে নাই, UI থেকেও হাইড)
+            return;
+          }
+          throw new Error("Failed to fetch client");
+        }
         const data: Client = await response.json();
         setClient(data);
       } catch (error) {
@@ -65,6 +76,8 @@ export function ClientCard({
     };
     fetchClient();
   }, [clientId]);
+
+  if (deleted) return null; // ✅ add (optimistic hide)
 
   // Normalize task statuses and compute counts dynamically
   const normalizeStatus = (raw?: string | null) => {
@@ -229,6 +242,21 @@ export function ClientCard({
   // Use normalized role for dynamic segment
   const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
+  // ✅ SWR key — লিস্ট পেজে useSWR যেই key ব্যবহার করেছেন, সেটাই
+  const swrKey = "/api/clients";
+
+  // ✅ Delete handler — optimistic hide + SWR mutate + server refresh
+  const onDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    const ok = await handleDeleteClient(clientId, swrKey);
+    if (ok) {
+      setDeleted(true); // সাথে সাথে কার্ড লুকাবে
+      router.refresh(); // সার্ভার-সাইড ডেটা রিফ্রেশ
+    }
+    setIsDeleting(false);
+  };
+
   const handleViewDetails = () => {
     if (onViewDetails) {
       onViewDetails();
@@ -387,6 +415,29 @@ export function ClientCard({
             >
               <Eye className="h-4 w-4 mr-2" />
               View Details
+            </Button>
+          )}
+
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_client_view"
+          ) && (
+            <Button
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="
+                flex-1
+                bg-gradient-to-r from-rose-500 to-red-500
+                hover:from-rose-600 hover:to-red-600
+                text-white
+                shadow-md
+                rounded-lg
+                px-5 py-2.5
+                transition-all duration-300
+              "
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           )}
 
