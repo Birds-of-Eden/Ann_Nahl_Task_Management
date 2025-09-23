@@ -1,4 +1,4 @@
-// components/users/ImpersonateButton.tsx (allow AM without extra perm)
+// components/users/ImpersonateButton.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -31,32 +31,26 @@ export default function ImpersonateButton({
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [canImpersonate, setCanImpersonate] = useState<boolean | null>(null);
   const [selfId, setSelfId] = useState<string | null>(null);
 
+  // কেবল নিজের আইডি ধরার জন্য
   useEffect(() => {
     let mounted = true;
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => {
         if (!mounted) return;
-        const me = d?.user || null;
-        const role = (me?.role || "").toLowerCase();
-        const perms: string[] = d?.user?.permissions || [];
-        const ok =
-          role === "admin" ||
-          role === "am" ||
-          perms.includes("user_impersonate");
-        setCanImpersonate(ok);
-        setSelfId(me?.id || null);
+        setSelfId(d?.user?.id || null);
       })
-      .catch(() => setCanImpersonate(false));
+      .catch(() => {
+        // ignore
+      });
     return () => {
       mounted = false;
     };
   }, []);
 
-  if (canImpersonate === false) return null;
+  // নিজেরেই impersonate করা যাবে না
   if (selfId && selfId === targetUserId) return null;
 
   const start = async () => {
@@ -81,6 +75,7 @@ export default function ImpersonateButton({
         `Now impersonating ${data?.actingUser?.email || targetName || "user"}`
       );
 
+      // নতুন রোলে ল্যান্ডিং
       const meRes = await fetch("/api/auth/me");
       const me = await meRes.json();
       const dest = roleToLanding(me?.user?.role);
