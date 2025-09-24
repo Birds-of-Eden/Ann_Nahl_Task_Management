@@ -309,7 +309,7 @@ model ClientTeamMember {
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   agent  User   @relation(fields: [agentId], references: [id])
-  team   Team?  @relation(fields: [teamId], references: [id])
+  team   Team?  @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@id([clientId, agentId])
 }
@@ -355,7 +355,7 @@ model TemplateTeamMember {
 
   template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
   agent    User     @relation(fields: [agentId], references: [id])
-  team     Team?    @relation(fields: [teamId], references: [id])
+  team     Team?    @relation(fields: [teamId], references: [id], onDelete: Restrict)
 
   @@id([templateId, agentId])
 }
