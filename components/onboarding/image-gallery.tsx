@@ -378,9 +378,16 @@ export function ImageGallery({
         <Button variant="outline" onClick={onPrevious}>
           Previous
         </Button>
-        <Button onClick={onNext} disabled={!images.length}>
-          Next
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onNext}>
+            Skip this step
+          </Button>
+          {images.length > 0 && (
+            <Button onClick={onNext}>
+              Save & Continue
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
