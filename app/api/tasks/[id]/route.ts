@@ -29,7 +29,6 @@ export async function GET(
 }
 
 // ========== UPDATE TASK ==========
-// ========== UPDATE TASK ==========
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -51,6 +50,8 @@ export async function PUT(
         assignedToId: body.assignedToId,
         completionLink: body.completionLink,
         completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        // 🆕 persist data entry report if provided
+        dataEntryReport: body.dataEntryReport ?? undefined,
       },
       include: { assignedTo: true },
     });
