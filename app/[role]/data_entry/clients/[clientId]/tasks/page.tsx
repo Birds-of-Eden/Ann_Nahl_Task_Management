@@ -2,10 +2,16 @@
 
 import DataEntryCompleteTasksPanel from "@/components/dataentry/DataEntryCompleteTasksPanel";
 
-export default function TasksPage({ params }: { params: { clientId: string } }) {
+export default async function TasksPage({
+  params,
+}: {
+  params: Promise<{ clientId: string }>;
+}) {
+  const { clientId } = await params;
+
   return (
     <div className="p-2 sm:p-4">
-      <DataEntryCompleteTasksPanel clientId={params.clientId} />
+      <DataEntryCompleteTasksPanel clientId={clientId} />
     </div>
   );
 }
