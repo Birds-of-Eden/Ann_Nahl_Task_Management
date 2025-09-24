@@ -202,27 +202,6 @@ export default function DataEntryClientStats({ clients }: DataEntryClientStatsPr
           </CardContent>
         </Card>
       </div>
-
-      {/* Status summary */}
-      {/* <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.keys(stats.byStatus).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No data for selected filters.</p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              {Object.entries(stats.byStatus).map(([st, count]) => (
-                <div key={st} className="flex items-center justify-between border rounded-md px-3 py-2">
-                  <span className="capitalize">{st.replace("_", " ")}</span>
-                  <span className="font-medium">{count}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card> */}
     </div>
   );
 }
