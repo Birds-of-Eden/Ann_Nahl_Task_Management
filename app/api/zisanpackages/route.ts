@@ -9,27 +9,132 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("include") === "stats";
 
-    const packages = await prisma.package.findMany({
+    // Simple payload (back-compat)
+    if (!includeStats) {
+      const packages = await prisma.package.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          totalMonths: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { clients: true, templates: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      return NextResponse.json(packages);
+    }
+
+    // Enriched payload (with per-package stats)
+    const pkgs = await prisma.package.findMany({
       select: {
         id: true,
         name: true,
         description: true,
-        totalMonths: true, // ✅ include new field
-        createdAt: true, // ✅ for UI "Created" line
+        totalMonths: true,
+        createdAt: true,
         updatedAt: true,
-        ...(includeStats
-          ? {
-              _count: {
-                select: { clients: true, templates: true },
+        _count: { select: { clients: true, templates: true } },
+        templates: {
+          select: {
+            id: true,
+            status: true,
+            _count: {
+              select: {
+                sitesAssets: true,
+                templateTeamMembers: true, // not relied on for teamMembers anymore
+                assignments: true,
               },
-            }
-          : {}), // if not requested, you can skip counts (lighter)
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(packages);
+    const packageIds = pkgs.map((p) => p.id);
+
+    // Pull ALL TemplateTeamMember rows for templates under these packages,
+    // selecting each row’s agentId and the template’s packageId
+    const ttm = await prisma.templateTeamMember.findMany({
+      where: {
+        template: { packageId: { in: packageIds } },
+      },
+      select: {
+        agentId: true,
+        template: { select: { packageId: true } },
+      },
+    });
+
+    // Build a map: packageId -> Set(agentId)  (UNIQUE agents per package)
+    const teamUniqueByPkg = new Map<string, Set<string>>();
+    for (const row of ttm) {
+      const pkgId = row.template.packageId!;
+      if (!teamUniqueByPkg.has(pkgId)) teamUniqueByPkg.set(pkgId, new Set());
+      if (row.agentId) teamUniqueByPkg.get(pkgId)!.add(row.agentId);
+    }
+
+    // If you want TOTAL rows (not unique), you can alternatively do:
+    // const teamTotalByPkg = new Map<string, number>();
+    // for (const row of ttm) {
+    //   const pkgId = row.template.packageId!;
+    //   teamTotalByPkg.set(pkgId, (teamTotalByPkg.get(pkgId) ?? 0) + 1);
+    // }
+
+    // Count tasks per package
+    const tasksCounts = await Promise.all(
+      pkgs.map((p) =>
+        prisma.task.count({
+          where: { assignment: { template: { packageId: p.id } } },
+        })
+      )
+    );
+
+    const enriched = pkgs.map((p, i) => {
+      const activeTemplates =
+        p.templates?.filter((t) => t.status?.toLowerCase() === "active")
+          .length || 0;
+
+      const sitesAssets =
+        p.templates?.reduce(
+          (sum, t) => sum + (t._count?.sitesAssets || 0),
+          0
+        ) || 0;
+
+      const assignments =
+        p.templates?.reduce(
+          (sum, t) => sum + (t._count?.assignments || 0),
+          0
+        ) || 0;
+
+      // ✅ Team from TemplateTeamMember → Template → Package (UNIQUE agents)
+      const teamMembers = teamUniqueByPkg.get(p.id)?.size ?? 0;
+      // If you prefer TOTAL rows instead, swap to:
+      // const teamMembers = teamTotalByPkg.get(p.id) ?? 0;
+
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        totalMonths: p.totalMonths,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        stats: {
+          clients: p._count?.clients || 0,
+          templates: p._count?.templates || 0,
+          activeTemplates,
+          sitesAssets,
+          teamMembers,
+          assignments,
+          tasks: tasksCounts[i] || 0,
+        },
+      };
+    });
+
+    return NextResponse.json(enriched);
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "Failed to fetch packages" },
       { status: 500 }
