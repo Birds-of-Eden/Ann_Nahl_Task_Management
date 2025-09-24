@@ -44,6 +44,8 @@ import { CreateTemplateModal } from "@/components/package/create-template-modal"
 import { cn } from "@/lib/utils";
 import { TemplateViewModal } from "@/components/package/Template-View-Modal";
 import { AssignTemplateModal } from "@/components/package/assign-template-modal";
+import { toast } from "sonner";
+import DangerDeleteTemplateModal from "@/components/package/DangerDeleteTemplateModal";
 
 interface TemplateSiteAsset {
   id: number;
@@ -123,6 +125,10 @@ export default function TemplateListPage() {
   );
 
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [targetTemplate, setTargetTemplate] = useState<Template | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPackageName = async (pkgId: string) => {
     try {
@@ -216,35 +222,30 @@ export default function TemplateListPage() {
     }
   };
 
-  const deleteTemplate = async (templateId: string) => {
-    const confirmed = confirm(
-      "Are you sure you want to delete this template? This will also delete all associated sites/assets and team members."
-    );
-    if (!confirmed) return;
-
-    setDeletingId(templateId);
+  // NO browser confirm/alert here
+  const handleDeleteTemplate = async () => {
+    if (!targetTemplate) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(
-        `/api/templates/${templateId}?actorId=${user?.id ?? ""}`,
+        `/api/templates/${targetTemplate.id}?actorId=${user?.id ?? ""}`,
         {
           method: "DELETE",
-          headers: {
-            "x-actor-id": user?.id ?? "", // ✅ audit log-এর জন্য actor পাঠাচ্ছি
-          },
+          headers: { "x-actor-id": user?.id ?? "" },
         }
       );
-
-      if (res.ok) {
-        reloadTemplates();
-      } else {
-        const error = await res.json();
-        alert(error.message || "Failed to delete template");
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.message || "Failed to delete template");
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("An error occurred while deleting.");
+      toast.success("Template deleted successfully");
+      setOpenDeleteModal(false);
+      setTargetTemplate(null);
+      reloadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Delete failed");
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -790,14 +791,12 @@ export default function TemplateListPage() {
                           variant="outline"
                           size="sm"
                           className="border-red-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all duration-200 bg-transparent rounded-lg px-3"
-                          onClick={() => deleteTemplate(template.id)}
-                          disabled={deletingId === template.id}
+                          onClick={() => {
+                            setTargetTemplate(template);
+                            setOpenDeleteModal(true);
+                          }}
                         >
-                          {deletingId === template.id ? (
-                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-red-300 border-t-red-600" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
 
@@ -864,6 +863,18 @@ export default function TemplateListPage() {
             setAssigningTemplate(null);
             reloadTemplates(); // optional refresh
           }}
+        />
+
+        <DangerDeleteTemplateModal
+          open={openDeleteModal}
+          onOpenChange={(v) => {
+            if (!v) setTargetTemplate(null);
+            setOpenDeleteModal(v);
+          }}
+          templateId={targetTemplate?.id || ""}
+          templateName={targetTemplate?.name || ""}
+          isDeleting={isDeleting}
+          onConfirm={handleDeleteTemplate}
         />
       </div>
     </div>

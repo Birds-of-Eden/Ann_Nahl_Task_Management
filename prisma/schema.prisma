@@ -372,7 +372,6 @@ model Assignment {
 
   tasks             Task[]
   siteAssetSettings AssignmentSiteAssetSetting[]
-
   
 }
 
@@ -429,8 +428,7 @@ model Task {
 
   comments              Comment[]
   reports               Report[]
-  notifications         Notification[]
-  
+  notifications         Notification[] 
   
 }
 

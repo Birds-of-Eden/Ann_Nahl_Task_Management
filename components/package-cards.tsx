@@ -1,10 +1,8 @@
-// components/package-cards.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -24,7 +22,6 @@ import {
   TrendingUp,
   Star,
   Edit3,
-  Trash2,
   Calendar,
   Target,
   BarChart3,
@@ -35,29 +32,24 @@ import { useAuth } from "@/context/auth-context";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { cn } from "@/lib/utils";
 
+interface PackageStats {
+  clients: number;
+  templates: number;
+  activeTemplates: number;
+  sitesAssets: number;
+  teamMembers: number;
+  assignments: number;
+  tasks: number;
+}
+
 interface Package {
   id: string;
   name: string | null;
   description?: string | null;
   createdAt?: string;
   updatedAt?: string;
-  // optional totalMonths so UI can display duration when available
   totalMonths?: number;
-  _count?: {
-    clients: number;
-    templates: number;
-    assignments?: number;
-    sitesAssets?: number;
-  };
-  templates?: Array<{
-    id: string;
-    name: string;
-    status: string;
-    _count?: {
-      sitesAssets: number;
-      templateTeamMembers: number;
-    };
-  }>;
+  stats?: PackageStats;
 }
 
 export function PackageCards() {
@@ -72,8 +64,9 @@ export function PackageCards() {
 
   const fetchPackages = useCallback(async () => {
     try {
-      // include=stats query রাখা হলো ভবিষ্যতে সার্ভার-সাইড কাস্টমাইজেশনের জন্য
-      const response = await fetch("/api/zisanpackages?include=stats");
+      const response = await fetch("/api/zisanpackages?include=stats", {
+        cache: "no-store",
+      });
       if (!response.ok) throw new Error("Failed to fetch packages");
       const data = await response.json();
       setPackageList(data);
@@ -86,18 +79,16 @@ export function PackageCards() {
     fetchPackages();
   }, [fetchPackages]);
 
-  const addPackage = async (newPackage: Omit<Package, "id" | "_count">) => {
+  const addPackage = async (newPackage: Omit<Package, "id" | "stats">) => {
     try {
       const response = await fetch("/api/zisanpackages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // 🔐 actorId → header এ পাঠাচ্ছি (API এটাও পড়ে)
           "x-actor-id": user?.id || "",
         },
         body: JSON.stringify({
           ...newPackage,
-          // fallback হিসেবে body-তেও পাঠালাম (API দুটোই সাপোর্ট করে)
           actorId: user?.id || null,
         }),
       });
@@ -108,14 +99,24 @@ export function PackageCards() {
       }
 
       const createdPackage = await response.json();
-      // লোকালি prepend করলাম যাতে নতুনটা উপরে দেখা যায়
       setPackageList((prev) => [
-        { ...createdPackage, _count: { clients: 0, templates: 0 } },
+        {
+          ...createdPackage,
+          stats: {
+            clients: 0,
+            templates: 0,
+            activeTemplates: 0,
+            sitesAssets: 0,
+            teamMembers: 0,
+            assignments: 0,
+            tasks: 0,
+          },
+        },
         ...prev,
       ]);
       setIsModalOpen(false);
 
-      // সার্ভারকে সোর্স অফ ট্রুথ ধরে রিফেচ
+      // source of truth
       fetchPackages();
     } catch (error: any) {
       console.error("Error adding package:", error);
@@ -147,13 +148,11 @@ export function PackageCards() {
 
       const updated = await response.json();
 
-      // লোকাল স্টেট আপডেট
       setPackageList((prev) =>
         prev.map((pkg) => (pkg.id === id ? { ...pkg, ...updated } : pkg))
       );
       setEditingPackage(null);
 
-      // রিফেচ (count/relations fresh করার জন্য)
       fetchPackages();
     } catch (error: any) {
       console.error("Error updating package:", error);
@@ -188,7 +187,6 @@ export function PackageCards() {
       const response = await fetch(`/api/zisanpackages/${id}`, {
         method: "DELETE",
         headers: {
-          // 🔐 actorId header (API DELETE এটাও পড়ে)
           "x-actor-id": user?.id || "",
         },
       });
@@ -200,10 +198,7 @@ export function PackageCards() {
         );
       }
 
-      // লোকাল স্টেট থেকে সরিয়ে দাও
       setPackageList((prev) => prev.filter((pkg) => pkg.id !== id));
-
-      // রিফেচ — নিরাপদে সার্ভারের সাথে সিঙ্ক
       fetchPackages();
     } catch (error: any) {
       console.error("Error deleting package:", error);
@@ -214,15 +209,14 @@ export function PackageCards() {
   };
 
   const getPackageHealthScore = (pkg: Package) => {
-    const templates = pkg._count?.templates || 0;
-    const clients = pkg._count?.clients || 0;
-    const assignments = pkg._count?.assignments || 0;
-
+    const s = pkg.stats;
+    if (!s) return 0;
     let score = 0;
-    if (templates > 0) score += 30;
-    if (clients > 0) score += 30;
-    if (assignments > 0) score += 40;
-
+    if (s.templates > 0) score += 20;
+    if (s.activeTemplates > 0) score += 20;
+    if (s.clients > 0) score += 20;
+    if (s.assignments > 0) score += 20;
+    if (s.tasks > 0) score += 20;
     return Math.min(score, 100);
   };
 
@@ -238,30 +232,6 @@ export function PackageCards() {
     return "from-red-50 to-red-100 border-red-200";
   };
 
-  const getActiveTemplatesCount = (pkg: Package) => {
-    return (
-      pkg.templates?.filter((t) => t.status?.toLowerCase() === "active")
-        .length || 0
-    );
-  };
-
-  const getTotalSitesCount = (pkg: Package) => {
-    return (
-      pkg.templates?.reduce((total, template) => {
-        return total + (template._count?.sitesAssets || 0);
-      }, 0) || 0
-    );
-  };
-
-  const getTotalTeamMembersCount = (pkg: Package) => {
-    return (
-      pkg.templates?.reduce((total, template) => {
-        return total + (template._count?.templateTeamMembers || 0);
-      }, 0) || 0
-    );
-  };
-
-  // NEW: create permission
   const canCreate = hasPermissionClient(user?.permissions, "package_create");
 
   return (
@@ -309,10 +279,7 @@ export function PackageCards() {
               <FileText className="w-8 h-8 text-green-700" />
             </div>
             <div className="text-3xl font-bold text-green-900 mb-2">
-              {packageList.reduce(
-                (total, pkg) => total + (pkg._count?.templates || 0),
-                0
-              )}
+              {packageList.reduce((t, p) => t + (p.stats?.templates ?? 0), 0)}
             </div>
             <div className="text-sm text-green-700 font-medium">
               Total Templates
@@ -326,10 +293,7 @@ export function PackageCards() {
               <Users className="w-8 h-8 text-purple-700" />
             </div>
             <div className="text-3xl font-bold text-purple-900 mb-2">
-              {packageList.reduce(
-                (total, pkg) => total + (pkg._count?.clients || 0),
-                0
-              )}
+              {packageList.reduce((t, p) => t + (p.stats?.clients ?? 0), 0)}
             </div>
             <div className="text-sm text-purple-700 font-medium">
               Total Clients
@@ -344,7 +308,7 @@ export function PackageCards() {
             </div>
             <div className="text-3xl font-bold text-orange-900 mb-2">
               {packageList.reduce(
-                (total, pkg) => total + getActiveTemplatesCount(pkg),
+                (t, p) => t + (p.stats?.activeTemplates ?? 0),
                 0
               )}
             </div>
@@ -359,15 +323,12 @@ export function PackageCards() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {packageList.map((pkg) => {
           const healthScore = getPackageHealthScore(pkg);
-          const activeSites = getTotalSitesCount(pkg);
-          const teamMembers = getTotalTeamMembersCount(pkg);
 
           return (
             <Card
               key={pkg.id}
               className="group overflow-hidden bg-white shadow-lg hover:shadow-2xl transition-all duration-300 border-0 ring-1 ring-gray-200 hover:ring-blue-300 hover:scale-101"
             >
-              {/* Header with Gradient */}
               <CardHeader className="bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
                 <div className="relative">
@@ -392,7 +353,6 @@ export function PackageCards() {
                       </div>
                     </div>
 
-                    {/* Health Score Badge */}
                     <div
                       className={cn(
                         "px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-r",
@@ -410,7 +370,7 @@ export function PackageCards() {
                 </div>
               </CardHeader>
 
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-3 space-y-6">
                 {/* Description */}
                 {pkg.description ? (
                   <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
@@ -424,24 +384,24 @@ export function PackageCards() {
 
                 {/* Main Statistics Grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <div className="text-center p-2 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                     <div className="flex items-center justify-center gap-1 text-blue-600 mb-2">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="text-2xl font-bold text-blue-900">
-                      {pkg._count?.templates || 0}
+                      {pkg.stats?.templates ?? 0}
                     </div>
                     <div className="text-xs text-blue-700 font-medium">
                       Templates
                     </div>
                   </div>
 
-                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <div className="text-center p-2 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
                     <div className="flex items-center justify-center gap-1 text-green-600 mb-2">
                       <Users className="w-4 h-4" />
                     </div>
                     <div className="text-2xl font-bold text-green-900">
-                      {pkg._count?.clients || 0}
+                      {pkg.stats?.clients ?? 0}
                     </div>
                     <div className="text-xs text-green-700 font-medium">
                       Clients
@@ -456,40 +416,52 @@ export function PackageCards() {
                     Detailed Stats
                   </h4>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                      <div className="flex items-center justify-center gap-1 text-purple-600 mb-1">
-                        <Activity className="w-3 h-3" />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <div className="text-center p-2 rounded-md border bg-purple-50/50">
+                      <div className="flex items-center justify-center gap-1 text-purple-700 mb-0.5">
+                        <Activity className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-bold text-purple-900">
-                        {getActiveTemplatesCount(pkg)}
+                      <div className="text-base font-semibold text-purple-900 leading-tight">
+                        {pkg.stats?.activeTemplates ?? 0}
                       </div>
-                      <div className="text-xs text-purple-700 font-medium">
-                        Active
-                      </div>
-                    </div>
-
-                    <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-                      <div className="flex items-center justify-center gap-1 text-orange-600 mb-1">
-                        <Globe className="w-3 h-3" />
-                      </div>
-                      <div className="text-lg font-bold text-orange-900">
-                        {activeSites}
-                      </div>
-                      <div className="text-xs text-orange-700 font-medium">
-                        Sites
+                      <div className="text-[11px] text-purple-700">
+                        Active Template
                       </div>
                     </div>
 
-                    <div className="text-center p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
-                      <div className="flex items-center justify-center gap-1 text-indigo-600 mb-1">
-                        <Target className="w-3 h-3" />
+                    <div className="text-center p-2 rounded-md border bg-orange-50/50">
+                      <div className="flex items-center justify-center gap-1 text-orange-700 mb-0.5">
+                        <Globe className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-lg font-bold text-indigo-900">
-                        {teamMembers}
+                      <div className="text-base font-semibold text-orange-900 leading-tight">
+                        {pkg.stats?.sitesAssets ?? 0}
                       </div>
-                      <div className="text-xs text-indigo-700 font-medium">
-                        Team
+                      <div className="text-[11px] text-orange-700">
+                        Site Assets
+                      </div>
+                    </div>
+
+                    <div className="text-center p-2 rounded-md border bg-amber-50/50">
+                      <div className="flex items-center justify-center gap-1 text-amber-700 mb-0.5">
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="text-base font-semibold text-amber-900 leading-tight">
+                        {pkg.stats?.assignments ?? 0}
+                      </div>
+                      <div className="text-[11px] text-amber-700">
+                        Assignments
+                      </div>
+                    </div>
+
+                    <div className="text-center p-2 rounded-md border bg-teal-50/50">
+                      <div className="flex items-center justify-center gap-1 text-teal-700 mb-0.5">
+                        <Activity className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="text-base font-semibold text-teal-900 leading-tight">
+                        {pkg.stats?.tasks ?? 0}
+                      </div>
+                      <div className="text-[11px] text-teal-700">
+                        Total Tasks
                       </div>
                     </div>
                   </div>
@@ -516,7 +488,6 @@ export function PackageCards() {
               </CardContent>
 
               <CardFooter className="gap-4">
-                {/* Primary Action Buttons */}
                 <div className="flex gap-2 w-full">
                   <Button
                     variant="outline"
