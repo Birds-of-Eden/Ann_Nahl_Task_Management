@@ -249,6 +249,12 @@ const PERMS = [
   { id: "user_delete", name: "user_delete", description: "Can delete users" },
 
   { id: "view_sales", name: "view_sales", description: "Sidebar: Sales" },
+
+  {
+    id: "generate_biography",
+    name: "generate_biography",
+    description: "Generate biography using AI",
+  },
 ];
 
 async function seedPermissions() {
@@ -291,6 +297,7 @@ const ADMIN_PERMS: string[] = [
   "view_role_permissions",
   "view_teams_manage",
   "view_user_management",
+  "generate_biography",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
@@ -312,6 +319,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_activity_logs",
     "view_notifications",
     "chat_admin",
+    "generate_biography",
   ],
 
   agent: [

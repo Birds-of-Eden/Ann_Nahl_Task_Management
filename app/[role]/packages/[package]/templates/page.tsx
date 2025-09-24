@@ -755,7 +755,7 @@ export default function TemplateListPage() {
                   </CardContent>
 
                   <CardFooter className="p-4 pt-0">
-                    <div className="flex gap-1 w-full">
+                    <div className="flex gap-2 w-full ">
                       {/* View Button */}
                       <Button
                         variant="outline"
