@@ -707,12 +707,12 @@ export default function TemplateListPage() {
                             <Users className="h-3.5 w-3.5 text-orange-600" />
                           </span>
                           <span className="text-[11px] leading-none text-gray-600">
-                            Team
+                            Assets
                           </span>
                         </div>
                         <span className="text-sm font-semibold text-orange-700 tabular-nums">
-                          {template._count?.templateTeamMembers ??
-                            template.templateTeamMembers?.length ??
+                          {template._count?.sitesAssets ??
+                            template.sitesAssets?.length ??
                             0}
                         </span>
                       </div>
