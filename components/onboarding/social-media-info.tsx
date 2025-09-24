@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,6 +24,45 @@ export function SocialMediaInfo({ formData, updateFormData, onNext, onPrevious }
       { platform: "", url: "", username: "", email: "", phone: "", password: "", notes: "" },
     ]
   )
+
+  // Attempt to fetch existing social media links if a client id is present
+  useEffect(() => {
+    const existingId = (formData as any)?.id || (formData as any)?.clientId
+    // Only fetch if we have an id and current local state is empty or placeholder
+    const shouldFetch = Boolean(existingId) && (!formData.socialLinks || formData.socialLinks.length === 0)
+    if (!shouldFetch) return
+
+    let alive = true
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/clients?id=${existingId}`, { cache: "no-store" })
+        if (!res.ok) return
+        const client = await res.json()
+        const links = Array.isArray(client?.socialMedias)
+          ? client.socialMedias.map((sm: any) => ({
+              platform: sm.platform || "",
+              url: sm.url || "",
+              username: sm.username || "",
+              email: sm.email || "",
+              phone: sm.phone || "",
+              password: sm.password || "",
+              notes: sm.notes || "",
+            }))
+          : []
+        if (!alive) return
+        if (links.length > 0) {
+          setSocialLinks(links)
+          updateFormData({ socialLinks: links })
+        }
+      } catch (e) {
+        // Silent fail; we keep whatever is in formData
+      }
+    }
+    run()
+    return () => {
+      alive = false
+    }
+  }, [formData, updateFormData])
 
   // Frontend-defined platform options (string values stored to DB)
   const socialPlatforms = [
