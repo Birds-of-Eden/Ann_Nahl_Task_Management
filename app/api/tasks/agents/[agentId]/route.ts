@@ -273,8 +273,14 @@ export async function PATCH(
           details: {
             previousStatus: task.status,
             newStatus: updatedTask.status,
-            performanceRating: typeof performanceRating !== "undefined" ? performanceRating : undefined,
-            actualDurationMinutes: typeof actualDurationMinutes === "number" ? actualDurationMinutes : undefined,
+            performanceRating:
+              typeof performanceRating !== "undefined"
+                ? performanceRating
+                : undefined,
+            actualDurationMinutes:
+              typeof actualDurationMinutes === "number"
+                ? actualDurationMinutes
+                : undefined,
             completionLink: updatedTask.completionLink || undefined,
             username: updatedTask.username || undefined,
             email: updatedTask.email || undefined,
@@ -298,8 +304,8 @@ export async function PATCH(
     }
 
     // ✅ Notify Admins (সব status এ)
-    const admins = await prisma.user.findMany({
-      where: { role: { name: "admin" } },
+    const adminAndManagers = await prisma.user.findMany({
+      where: { role: { name: { in: ["admin", "manager"] } } },
       select: { id: true },
     });
 
@@ -313,7 +319,10 @@ export async function PATCH(
         : [];
 
     // যদি কারো notify করার থাকে
-    const notifyUsers = [...admins, ...qcUsers];
+    const notifyUsers = Array.from(
+      new Map([...adminAndManagers, ...qcUsers].map((u) => [u.id, u])).values()
+    );
+
     if (notifyUsers.length > 0) {
       const humanStatus: Record<string, string> = {
         pending: "Pending",

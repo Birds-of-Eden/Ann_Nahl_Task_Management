@@ -515,7 +515,7 @@ export function PackageCards() {
                 </div>
               </CardContent>
 
-              <CardFooter className="p-6 pt-0 space-y-3">
+              <CardFooter className="gap-4">
                 {/* Primary Action Buttons */}
                 <div className="flex gap-2 w-full">
                   <Button
@@ -526,6 +526,7 @@ export function PackageCards() {
                     <Eye className="h-4 w-4 mr-2" />
                     Templates
                   </Button>
+<<<<<<< HEAD
                   <Button
                     variant="outline"
                     className="flex-1 border-green-200 hover:border-green-300 hover:bg-green-50 hover:text-green-600 transition-all duration-200 bg-transparent rounded-lg"
@@ -534,6 +535,12 @@ export function PackageCards() {
                     <Info className="h-4 w-4 mr-2" />
                     Details
                   </Button>
+=======
+                </div>
+
+                {/* Management Buttons */}
+                <div className="flex gap-2 w-full">
+>>>>>>> 7c2415ed4bd375077fb094316032771d8ce53b9b
                   {hasPermissionClient(user?.permissions, "package_edit") && (
                     <Button
                       variant="outline"
@@ -544,6 +551,26 @@ export function PackageCards() {
                       Edit
                     </Button>
                   )}
+<<<<<<< HEAD
+=======
+                </div>
+                <div className="flex gap-2 w-full">
+                  {hasPermissionClient(user?.permissions, "package_delete") && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-red-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all duration-200 bg-transparent rounded-lg"
+                      onClick={() => deletePackage(pkg.id)}
+                      disabled={deletingId === pkg.id}
+                    >
+                      {deletingId === pkg.id ? (
+                        <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-red-300 border-t-red-600" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete
+                    </Button>
+                  )}
+>>>>>>> 7c2415ed4bd375077fb094316032771d8ce53b9b
                 </div>
               </CardFooter>
             </Card>

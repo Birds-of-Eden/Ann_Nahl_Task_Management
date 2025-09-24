@@ -8,40 +8,49 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FileText,
   Globe,
   Users,
-  Calendar,
-  Link,
   Target,
-  Clock4,
-  CheckCircle2,
   Clock,
+  CheckCircle2,
   AlertCircle,
   Share2,
   Package,
-  MapPin,
   Activity,
-  TrendingUp,
-  Star,
-  Eye,
-  X,
+  Palette,
+  Edit3,
+  PenTool,
+  Link2,
+  CheckSquare,
+  Video,
+  Monitor,
+  StarOff,
+  BarChart3,
+  Zap,
+  LayoutGrid,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TemplateSiteAsset {
   id: number;
-  type: "social_site" | "web2_site" | "other_asset";
+  type:
+    | "social_site"
+    | "web2_site"
+    | "other_asset"
+    | "graphics_design"
+    | "content_studio"
+    | "content_writing"
+    | "backlinks"
+    | "completed_com"
+    | "youtube_video_optimization"
+    | "monitoring"
+    | "review_removal"
+    | "summary_report";
   name: string;
   url?: string;
   description?: string;
@@ -97,32 +106,35 @@ export function TemplateViewModal({
   template,
 }: TemplateViewModalProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedSiteType, setSelectedSiteType] = useState<string | null>(null);
 
   if (!template) return null;
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedSiteType(null); // Reset filter when switching tabs
+  };
 
   const getStatusBadge = (status: string | null | undefined) => {
     if (!status) return null;
     const statusLower = status.toLowerCase();
     if (statusLower === "active") {
       return (
-        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200">
+        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 px-3 py-1">
           <CheckCircle2 className="w-3 h-3 mr-1" />
           Active
         </Badge>
       );
     } else if (statusLower === "draft") {
       return (
-        <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200">
+        <Badge className="bg-amber-100 text-amber-700 border-amber-200 px-3 py-1">
           <Clock className="w-3 h-3 mr-1" />
           Draft
         </Badge>
       );
     } else if (statusLower === "inactive") {
       return (
-        <Badge
-          variant="outline"
-          className="bg-slate-100 text-slate-600 border-slate-200"
-        >
+        <Badge className="bg-slate-100 text-slate-600 border-slate-200 px-3 py-1">
           <AlertCircle className="w-3 h-3 mr-1" />
           Inactive
         </Badge>
@@ -131,472 +143,478 @@ export function TemplateViewModal({
     return <Badge variant="outline">{status}</Badge>;
   };
 
-  const getSiteTypeIcon = (type: string, className = "w-4 h-4") => {
-    switch (type) {
-      case "social_site":
-        return <Share2 className={cn(className, "text-blue-600")} />;
-      case "web2_site":
-        return <Globe className={cn(className, "text-green-600")} />;
-      case "other_asset":
-        return <FileText className={cn(className, "text-purple-600")} />;
-      default:
-        return <FileText className={cn(className, "text-gray-600")} />;
-    }
+  const getSiteTypeConfig = (type: string) => {
+    const configs = {
+      social_site: { icon: Share2, color: "blue", label: "Social Media" },
+      web2_site: { icon: Globe, color: "green", label: "Web 2.0" },
+      other_asset: { icon: FileText, color: "purple", label: "Assets" },
+      graphics_design: { icon: Palette, color: "pink", label: "Design" },
+      content_studio: { icon: Edit3, color: "indigo", label: "Content Studio" },
+      content_writing: { icon: PenTool, color: "orange", label: "Writing" },
+      backlinks: { icon: Link2, color: "teal", label: "Backlinks" },
+      completed_com: { icon: CheckSquare, color: "lime", label: "Completed" },
+      youtube_video_optimization: {
+        icon: Video,
+        color: "red",
+        label: "YouTube",
+      },
+      monitoring: { icon: Monitor, color: "cyan", label: "Monitoring" },
+      review_removal: {
+        icon: StarOff,
+        color: "amber",
+        label: "Review Removal",
+      },
+      summary_report: { icon: BarChart3, color: "gray", label: "Reports" },
+    };
+
+    return (
+      configs[type as keyof typeof configs] || {
+        icon: FileText,
+        color: "gray",
+        label: "Other",
+      }
+    );
   };
 
-  const getSiteTypeLabel = (type: string) => {
-    switch (type) {
-      case "social_site":
-        return "Social Media";
-      case "web2_site":
-        return "Web 2.0 Site";
-      case "other_asset":
-        return "Additional Asset";
-      default:
-        return "Unknown";
-    }
+  const SiteTypeIcon = ({
+    type,
+    size = 16,
+  }: {
+    type: string;
+    size?: number;
+  }) => {
+    const Config = getSiteTypeConfig(type);
+    return (
+      <Config.icon size={size} className={cn(`text-${Config.color}-600`)} />
+    );
   };
 
-  const getSiteTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case "social_site":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "web2_site":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "other_asset":
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
-    }
-  };
+  // Group sites by type
+  const groupedSites =
+    template.sitesAssets?.reduce((acc, site) => {
+      if (!acc[site.type]) {
+        acc[site.type] = [];
+      }
+      acc[site.type].push(site);
+      return acc;
+    }, {} as Record<string, TemplateSiteAsset[]>) || {};
 
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    const names = name.split(" ");
-    return names
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  const socialSites = groupedSites.social_site || [];
+  const web2Sites = groupedSites.web2_site || [];
+  const otherAssets = groupedSites.other_asset || [];
 
-  const socialSites =
-    template.sitesAssets?.filter((site) => site.type === "social_site") || [];
-  const web2Sites =
-    template.sitesAssets?.filter((site) => site.type === "web2_site") || [];
-  const otherAssets =
-    template.sitesAssets?.filter((site) => site.type === "other_asset") || [];
+  const otherTasks = [
+    ...(groupedSites.graphics_design || []),
+    ...(groupedSites.content_studio || []),
+    ...(groupedSites.content_writing || []),
+    ...(groupedSites.backlinks || []),
+    ...(groupedSites.completed_com || []),
+    ...(groupedSites.youtube_video_optimization || []),
+    ...(groupedSites.monitoring || []),
+    ...(groupedSites.review_removal || []),
+    ...(groupedSites.summary_report || []),
+  ];
 
+  const totalSites = template.sitesAssets?.length || 0;
   const requiredSites =
-    template.sitesAssets?.filter((site) => site.isRequired) || [];
-  const optionalSites =
-    template.sitesAssets?.filter((site) => !site.isRequired) || [];
+    template.sitesAssets?.filter((site) => site.isRequired).length || 0;
+
+  // Filter sites for the "All Sites" tab based on the selected type
+  const filteredSites = selectedSiteType
+    ? template.sitesAssets?.filter((site) => site.type === selectedSiteType)
+    : template.sitesAssets;
+
+  const StatCard = ({
+    icon: Icon,
+    value,
+    label,
+    color = "blue",
+    trend,
+  }: {
+    icon: any;
+    value: number;
+    label: string;
+    color?: string;
+    trend?: string;
+  }) => (
+    <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className={`p-2 bg-${color}-100 rounded-lg`}>
+            <Icon className={`w-5 h-5 text-${color}-600`} />
+          </div>
+          {trend && (
+            <Badge
+              variant="outline"
+              className={`text-xs bg-${color}-50 border-${color}-200`}
+            >
+              {trend}
+            </Badge>
+          )}
+        </div>
+        <div className="mt-3">
+          <div className="text-2xl font-bold text-gray-900">{value}</div>
+          <div className="text-sm text-gray-600 font-medium">{label}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const SiteCard = ({ site }: { site: TemplateSiteAsset }) => {
+    const config = getSiteTypeConfig(site.type);
+    return (
+      <Card className="border-0 shadow-xs hover:shadow-sm transition-all duration-200 bg-white">
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div
+                className={`p-1.5 bg-${config.color}-100 rounded-md flex-shrink-0`}
+              >
+                <SiteTypeIcon type={site.type} size={14} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-medium text-gray-900 text-sm truncate">
+                  {site.name}
+                </h4>
+                {site.url && (
+                  <a
+                    href={site.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-gray-500 hover:text-gray-700 truncate block"
+                    title={site.url}
+                  >
+                    {new URL(site.url).hostname}
+                  </a>
+                )}
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs flex-shrink-0 ml-2",
+                site.isRequired
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-gray-50 text-gray-600 border-gray-200"
+              )}
+            >
+              {site.isRequired ? "Required" : "Optional"}
+            </Badge>
+          </div>
+
+          {site.description && (
+            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+              {site.description}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                {site.defaultPostingFrequency || 0}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {site.defaultIdealDurationMinutes || 0}m
+              </span>
+            </div>
+            <Badge
+              variant="outline"
+              className={`text-xs bg-${config.color}-50 border-${config.color}-200 text-${config.color}-700`}
+            >
+              {config.label}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl h-[90vh] overflow-hidden p-0">
-        {/* Header */}
-        <DialogHeader className="p-6 pb-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b">
-          <div className="flex items-start justify-between">
+      <DialogContent className="max-w-6xl h-[85vh] overflow-hidden p-0 bg-white flex flex-col">
+        {/* Header remains fixed at the top */}
+        <DialogHeader className="p-4 border-b bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-sm">
+                <FileText className="w-5 h-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
+                <DialogTitle className="text-xl font-bold text-gray-900">
                   {template.name}
                 </DialogTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-1">
                   {getStatusBadge(template.status)}
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-blue-50">
                     <Package className="w-3 h-3 mr-1" />
                     {template.package?.name || "No Package"}
                   </Badge>
+                  <span className="text-xs text-gray-500">
+                    {template.sitesAssets?.length || 0} total sites
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
           {template.description && (
-            <p className="text-gray-600 mt-3 leading-relaxed">
+            <p className="text-sm text-gray-600 mt-2 leading-relaxed">
               {template.description}
             </p>
           )}
         </DialogHeader>
 
-        {/* Content with Tabs */}
-        <div className="flex-1 overflow-hidden">
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="h-full flex flex-col"
-          >
-            <div className="px-6 border-b bg-white">
-              <TabsList className="grid w-full grid-cols-2 bg-gray-100">
-                <TabsTrigger
-                  value="overview"
-                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-                >
-                  <Activity className="w-4 h-4 mr-2" />
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger
-                  value="sites"
-                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-                >
-                  <Globe className="w-4 h-4 mr-2" />
-                  Sites & Assets
-                </TabsTrigger>
-              </TabsList>
-            </div>
+        {/* Tabs component wrapper to manage layout */}
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
+          {/* TabsList remains fixed below the header */}
+          <div className="px-4 border-b bg-slate-50">
+            <TabsList className="grid w-full text-white grid-cols-3 h-11 bg-blue-200 rounded-lg p-1 gap-1">
+              {/* Overview Tab */}
+              <TabsTrigger
+                value="overview"
+                className="text-slate-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md rounded-md text-sm font-medium transition-all duration-200"
+              >
+                <Activity className="w-4 h-4 mr-2" />
+                Overview
+              </TabsTrigger>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <TabsContent value="overview" className="mt-0 space-y-6">
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-                  <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
-                    <CardContent className="p-4 text-center">
-                      <div className="p-2 bg-blue-200 rounded-full w-fit mx-auto mb-2">
-                        <Share2 className="w-5 h-5 text-blue-700" />
-                      </div>
+              {/* All Sites Tab */}
+              <TabsTrigger
+                value="sites"
+                className="text-slate-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md rounded-md text-sm font-medium transition-all duration-200"
+              >
+                <LayoutGrid className="w-4 h-4 mr-2" />
+                All Sites ({totalSites})
+              </TabsTrigger>
+
+              {/* Tasks Tab */}
+              <TabsTrigger
+                value="otherTasks"
+                className="text-slate-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md rounded-md text-sm font-medium transition-all duration-200"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Tasks ({otherTasks.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* This container scrolls, holding all tab content */}
+          <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+            <TabsContent value="overview" className="mt-0 space-y-4">
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard
+                  icon={Share2}
+                  value={socialSites.length}
+                  label="Social Media"
+                  color="blue"
+                  trend={`${Math.round(
+                    (socialSites.length / (totalSites || 1)) * 100
+                  )}%`}
+                />
+                <StatCard
+                  icon={Globe}
+                  value={web2Sites.length}
+                  label="Web 2.0"
+                  color="green"
+                  trend={`${Math.round(
+                    (web2Sites.length / (totalSites || 1)) * 100
+                  )}%`}
+                />
+                <StatCard
+                  icon={FileText}
+                  value={otherAssets.length}
+                  label="Assets"
+                  color="purple"
+                  trend={`${Math.round(
+                    (otherAssets.length / (totalSites || 1)) * 100
+                  )}%`}
+                />
+                <StatCard
+                  icon={Zap}
+                  value={otherTasks.length}
+                  label="Other Tasks"
+                  color="orange"
+                  trend={`${Math.round(
+                    (otherTasks.length / (totalSites || 1)) * 100
+                  )}%`}
+                />
+              </div>
+
+              {/* Requirements Summary */}
+              <Card className="border-0 shadow-sm bg-white">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5 text-blue-600" />
+                    Requirements Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
                       <div className="text-2xl font-bold text-blue-900">
-                        {socialSites.length}
+                        {totalSites}
                       </div>
-                      <div className="text-xs text-blue-700 font-medium">
-                        Social Media
+                      <div className="text-sm text-blue-700">Total Sites</div>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-lg">
+                      <div className="text-2xl font-bold text-red-900">
+                        {requiredSites}
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-green-100">
-                    <CardContent className="p-4 text-center">
-                      <div className="p-2 bg-green-200 rounded-full w-fit mx-auto mb-2">
-                        <Globe className="w-5 h-5 text-green-700" />
-                      </div>
+                      <div className="text-sm text-red-700">Required</div>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
                       <div className="text-2xl font-bold text-green-900">
-                        {web2Sites.length}
+                        {totalSites - requiredSites}
                       </div>
-                      <div className="text-xs text-green-700 font-medium">
-                        Web 2.0 Sites
+                      <div className="text-sm text-green-700">Optional</div>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {template._count?.assignments || 0}
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="text-sm text-gray-700">Assignments</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                  <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
-                    <CardContent className="p-4 text-center">
-                      <div className="p-2 bg-purple-200 rounded-full w-fit mx-auto mb-2">
-                        <FileText className="w-5 h-5 text-purple-700" />
-                      </div>
-                      <div className="text-2xl font-bold text-purple-900">
-                        {otherAssets.length}
-                      </div>
-                      <div className="text-xs text-purple-700 font-medium">
-                        Additional Assets
-                      </div>
-                    </CardContent>
-                  </Card>
+            <TabsContent value="sites" className="mt-0 space-y-4">
+              {/* Site Type Filters */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <Badge
+                  onClick={() => setSelectedSiteType(null)}
+                  variant="outline"
+                  className={cn(
+                    "cursor-pointer text-sm py-1 px-3",
+                    !selectedSiteType
+                      ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100"
+                  )}
+                >
+                  All ({totalSites})
+                </Badge>
+                {Object.entries(groupedSites).map(([type, sites]) => {
+                  const config = getSiteTypeConfig(type);
+                  return (
+                    <Badge
+                      key={type}
+                      variant="outline"
+                      onClick={() =>
+                        setSelectedSiteType(
+                          type === selectedSiteType ? null : type
+                        )
+                      }
+                      className={cn(
+                        `cursor-pointer py-1 px-2 border-2`,
+                        `bg-${config.color}-50 border-${config.color}-200 text-${config.color}-800 hover:bg-${config.color}-100`,
+                        selectedSiteType === type &&
+                          `ring-2 ring-offset-1 ring-${config.color}-400 border-transparent`
+                      )}
+                    >
+                      <SiteTypeIcon type={type} size={14} />
+                      <span className="ml-1.5 font-medium">{config.label}</span>
+                      <span className="ml-2 bg-white/60 px-1.5 rounded-full text-xs font-semibold">
+                        {sites.length}
+                      </span>
+                    </Badge>
+                  );
+                })}
+              </div>
 
-                  <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
-                    <CardContent className="p-4 text-center">
-                      <div className="p-2 bg-orange-200 rounded-full w-fit mx-auto mb-2">
-                        <Users className="w-5 h-5 text-orange-700" />
-                      </div>
-                      <div className="text-2xl font-bold text-orange-900">
-                        {template._count?.templateTeamMembers || 0}
-                      </div>
-                      <div className="text-xs text-orange-700 font-medium">
-                        Team Members
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+              {/* All Sites Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredSites?.map((site) => (
+                  <SiteCard key={site.id} site={site} />
+                ))}
+              </div>
 
-                {/* Quick Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Target className="w-5 h-5 text-blue-600" />
-                        Quick Statistics
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
-                          Required Sites
-                        </span>
-                        <Badge className="bg-red-100 text-red-700">
-                          {requiredSites.length}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
-                          Optional Sites
-                        </span>
-                        <Badge className="bg-gray-100 text-gray-700">
-                          {optionalSites.length}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
-                          Total Assignments
-                        </span>
-                        <Badge className="bg-blue-100 text-blue-700">
-                          {template._count?.assignments || 0}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {!filteredSites?.length && (
+                <Card className="border-dashed border-2 border-gray-300 bg-white/50">
+                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                    <Globe className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No Sites Found
+                    </h3>
+                    <p className="text-gray-500">
+                      There are no sites matching the selected filter.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Package className="w-5 h-5 text-green-600" />
-                        Template Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <span className="text-sm text-gray-600">
-                          Template ID
-                        </span>
-                        <p className="font-mono text-sm bg-gray-100 p-2 rounded mt-1">
-                          {template.id}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Package</span>
-                        <p className="font-medium mt-1">
-                          {template.package?.name || "Not assigned"}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">
-                          Current Status
-                        </span>
-                        <div className="mt-1">
-                          {getStatusBadge(template.status)}
+            <TabsContent value="otherTasks" className="mt-0 space-y-4">
+              {/* Task Categories */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  "graphics_design",
+                  "content_studio",
+                  "content_writing",
+                  "backlinks",
+                  "completed_com",
+                  "youtube_video_optimization",
+                  "monitoring",
+                  "review_removal",
+                  "summary_report",
+                ].map((type) => {
+                  const config = getSiteTypeConfig(type);
+                  const sites = groupedSites[type] || [];
+                  if (sites.length === 0) return null;
+
+                  return (
+                    <Card
+                      key={type}
+                      className="border-0 shadow-sm bg-white text-center hover:shadow-md transition-shadow"
+                    >
+                      <CardContent className="p-4">
+                        <div
+                          className={`p-3 bg-${config.color}-100 rounded-full w-fit mx-auto mb-3`}
+                        >
+                          <SiteTypeIcon type={type} size={20} />
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
+                        <div className="text-lg font-bold text-gray-900">
+                          {sites.length}
+                        </div>
+                        <div className="text-sm text-gray-600 font-medium">
+                          {config.label}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
 
-              <TabsContent value="sites" className="mt-0 space-y-6">
-                {/* Site Type Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Social Media Sites */}
-                  <Card className="border-blue-200">
-                    <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-                      <CardTitle className="text-lg flex items-center gap-2 text-blue-800">
-                        <Share2 className="w-5 h-5" />
-                        Social Media Sites
-                        <Badge className="bg-blue-200 text-blue-800 ml-auto">
-                          {socialSites.length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3 max-h-64 overflow-y-auto">
-                      {socialSites.length > 0 ? (
-                        socialSites.map((site) => (
-                          <div
-                            key={site.id}
-                            className="p-3 border border-blue-100 rounded-lg bg-blue-50"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-medium text-blue-900">
-                                {site.name}
-                              </h4>
-                              <Badge
-                                className={cn(
-                                  "text-xs",
-                                  site.isRequired
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-600"
-                                )}
-                              >
-                                {site.isRequired ? "Required" : "Optional"}
-                              </Badge>
-                            </div>
-                            {site.url && (
-                              <a
-                                href={site.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:underline flex items-center gap-1 mb-2"
-                              >
-                                <Link className="w-3 h-3" />
-                                {new URL(site.url).hostname}
-                              </a>
-                            )}
-                            {site.description && (
-                              <p className="text-xs text-blue-700 mb-2">
-                                {site.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-3 text-xs text-blue-600">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3" />
-                                {site.defaultPostingFrequency || 0} posts
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock4 className="w-3 h-3" />
-                                {site.defaultIdealDurationMinutes || 0} mins
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-blue-600 text-center py-4">
-                          No social media sites configured
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
+              {/* Task Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {otherTasks.map((site) => (
+                  <SiteCard key={site.id} site={site} />
+                ))}
+              </div>
 
-                  {/* Web 2.0 Sites */}
-                  <Card className="border-green-200">
-                    <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
-                      <CardTitle className="text-lg flex items-center gap-2 text-green-800">
-                        <Globe className="w-5 h-5" />
-                        Web 2.0 Sites
-                        <Badge className="bg-green-200 text-green-800 ml-auto">
-                          {web2Sites.length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3 max-h-64 overflow-y-auto">
-                      {web2Sites.length > 0 ? (
-                        web2Sites.map((site) => (
-                          <div
-                            key={site.id}
-                            className="p-3 border border-green-100 rounded-lg bg-green-50"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-medium text-green-900">
-                                {site.name}
-                              </h4>
-                              <Badge
-                                className={cn(
-                                  "text-xs",
-                                  site.isRequired
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-600"
-                                )}
-                              >
-                                {site.isRequired ? "Required" : "Optional"}
-                              </Badge>
-                            </div>
-                            {site.url && (
-                              <a
-                                href={site.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-green-600 hover:underline flex items-center gap-1 mb-2"
-                              >
-                                <Link className="w-3 h-3" />
-                                {new URL(site.url).hostname}
-                              </a>
-                            )}
-                            {site.description && (
-                              <p className="text-xs text-green-700 mb-2">
-                                {site.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-3 text-xs text-green-600">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3" />
-                                {site.defaultPostingFrequency || 0} posts
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock4 className="w-3 h-3" />
-                                {site.defaultIdealDurationMinutes || 0} mins
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-green-600 text-center py-4">
-                          No Web 2.0 sites configured
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Additional Assets */}
-                  <Card className="border-purple-200">
-                    <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
-                      <CardTitle className="text-lg flex items-center gap-2 text-purple-800">
-                        <FileText className="w-5 h-5" />
-                        Additional Assets
-                        <Badge className="bg-purple-200 text-purple-800 ml-auto">
-                          {otherAssets.length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3 max-h-64 overflow-y-auto">
-                      {otherAssets.length > 0 ? (
-                        otherAssets.map((site) => (
-                          <div
-                            key={site.id}
-                            className="p-3 border border-purple-100 rounded-lg bg-purple-50"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-medium text-purple-900">
-                                {site.name}
-                              </h4>
-                              <Badge
-                                className={cn(
-                                  "text-xs",
-                                  site.isRequired
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-600"
-                                )}
-                              >
-                                {site.isRequired ? "Required" : "Optional"}
-                              </Badge>
-                            </div>
-                            {site.url && (
-                              <a
-                                href={site.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-purple-600 hover:underline flex items-center gap-1 mb-2"
-                              >
-                                <Link className="w-3 h-3" />
-                                {new URL(site.url).hostname}
-                              </a>
-                            )}
-                            {site.description && (
-                              <p className="text-xs text-purple-700 mb-2">
-                                {site.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-3 text-xs text-purple-600">
-                              <div className="flex items-center gap-1">
-                                <Target className="w-3 h-3" />
-                                {site.defaultPostingFrequency || 0} posts
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock4 className="w-3 h-3" />
-                                {site.defaultIdealDurationMinutes || 0} mins
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-purple-600 text-center py-4">
-                          No additional assets configured
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
+              {otherTasks.length === 0 && (
+                <Card className="border-dashed border-2 border-gray-300 bg-white/50">
+                  <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                    <Settings className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No Tasks Configured
+                    </h3>
+                    <p className="text-gray-500">
+                      This template doesn't have any additional tasks yet.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
