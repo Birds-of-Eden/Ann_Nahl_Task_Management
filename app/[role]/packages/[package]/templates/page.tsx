@@ -89,6 +89,15 @@ interface Template {
     templateTeamMembers: number;
     assignments: number;
   };
+  assignedClients?: Array<{
+    id: string;
+    name: string | null;
+    company: string | null;
+    avatar?: string | null;
+    status?: string | null;
+  }>;
+  assignedClientsCount?: number;
+  tasksCount: number;
 }
 
 type FilterStatus = "all" | "active" | "draft" | "inactive";
@@ -632,10 +641,22 @@ export default function TemplateListPage() {
 
                     {/* Detailed Site Statistics */}
                     <div className="space-y-3">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
-                        <Target className="w-3 h-3" />
-                        Site Breakdown
-                      </h4>
+                      <div className="flex justify-between">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          Site Breakdown
+                        </h4>
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className="p-1.5 bg-amber-100 rounded-md">
+                            <Users className="w-3 h-3 text-amber-600" />
+                          </div>
+                          <span className="text-gray-600">Clients:</span>
+                          <span className="font-semibold text-amber-700">
+                            {template.assignedClientsCount ?? 0}
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-3 gap-3">
                         <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
                           <div className="flex items-center justify-center gap-1 text-blue-600 mb-1">
@@ -673,31 +694,68 @@ export default function TemplateListPage() {
                       </div>
                     </div>
 
-                    {/* Team & Assignment Stats */}
-                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="p-1.5 bg-orange-100 rounded-md">
-                          <Users className="w-3 h-3 text-orange-600" />
+                    {/* Team, Assignments & Tasks — compact chips */}
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+                      {/* Team */}
+                      <div
+                        className="group flex items-center justify-between rounded-lg border bg-white px-2.5 py-2 hover:shadow-sm transition"
+                        aria-label="Team members on this template"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-orange-50 border border-orange-200">
+                            <Users className="h-3.5 w-3.5 text-orange-600" />
+                          </span>
+                          <span className="text-[11px] leading-none text-gray-600">
+                            Team
+                          </span>
                         </div>
-                        <span className="text-gray-600">Team:</span>
-                        <span className="font-semibold text-orange-600">
-                          {template._count?.templateTeamMembers || 0}
+                        <span className="text-sm font-semibold text-orange-700 tabular-nums">
+                          {template._count?.templateTeamMembers ??
+                            template.templateTeamMembers?.length ??
+                            0}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="p-1.5 bg-indigo-100 rounded-md">
-                          <Activity className="w-3 h-3 text-indigo-600" />
+
+                      {/* Assignments */}
+                      <div
+                        className="group flex items-center justify-between rounded-lg border bg-white px-2.5 py-2 hover:shadow-sm transition"
+                        aria-label="Assignments on this template"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-50 border border-indigo-200">
+                            <Activity className="h-3.5 w-3.5 text-indigo-600" />
+                          </span>
+                          <span className="text-[11px] leading-none text-gray-600">
+                            Assignments
+                          </span>
                         </div>
-                        <span className="text-gray-600">Tasks:</span>
-                        <span className="font-semibold text-indigo-600">
-                          {template._count?.assignments || 0}
+                        <span className="text-sm font-semibold text-indigo-700 tabular-nums">
+                          {template._count?.assignments ?? 0}
+                        </span>
+                      </div>
+
+                      {/* Tasks */}
+                      <div
+                        className="group flex items-center justify-between rounded-lg border bg-white px-2.5 py-2 hover:shadow-sm transition"
+                        aria-label="Tasks on this template"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-blue-50 border border-blue-200">
+                            <Target className="h-3.5 w-3.5 text-blue-600" />
+                          </span>
+                          <span className="text-[11px] leading-none text-gray-600">
+                            Tasks
+                          </span>
+                        </div>
+                        <span className="text-sm font-semibold text-blue-700 tabular-nums">
+                          {template.tasksCount ?? 0}
                         </span>
                       </div>
                     </div>
                   </CardContent>
 
                   <CardFooter className="p-4 pt-0">
-                    <div className="flex gap-1 w-full">
+                    <div className="flex gap-2 w-full ">
                       {/* View Button */}
                       <Button
                         variant="outline"
