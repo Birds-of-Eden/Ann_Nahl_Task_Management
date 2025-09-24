@@ -2,12 +2,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// GET /api/clients - Get all clients (with clientUserId attached)
+// Helper to normalize platform values
+const normalizePlatform = (input: unknown): string => {
+  const raw = String(input ?? "").trim();
+  return raw || "OTHER";
+};
+
+// GET /api/clients - Get all clients (with clientUserId attached) or a single client by id
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
     const packageId = searchParams.get("packageId");
     const amId = searchParams.get("amId");
+
+    if (id) {
+      const client = await prisma.client.findUnique({
+        where: { id },
+        include: {
+          socialMedias: true,
+          accountManager: { select: { id: true, name: true, email: true } },
+        },
+      });
+      if (!client) return NextResponse.json(null);
+      const user = await prisma.user.findFirst({
+        where: { clientId: id, role: { name: "client" } },
+        select: { id: true },
+      });
+      return NextResponse.json({ ...client, clientUserId: user?.id ?? null });
+    }
 
     const clients = await prisma.client.findMany({
       where: {
@@ -17,7 +40,7 @@ export async function GET(req: Request) {
       include: {
         socialMedias: true,
         accountManager: { select: { id: true, name: true, email: true } },
-        // (optional) include other relations if you need them in the grid:
+        // (optional) include other relations if needed
         // package: { select: { id: true, name: true } },
         // tasks: true,
       },
@@ -27,17 +50,15 @@ export async function GET(req: Request) {
       return NextResponse.json([]);
     }
 
-    // Map each client to its primary client-role user (if any)
     const clientIds = clients.map((c) => c.id);
     const clientUsers = await prisma.user.findMany({
       where: {
         clientId: { in: clientIds },
-        role: { name: "client" }, // only client-role users
+        role: { name: "client" },
       },
       select: { id: true, clientId: true },
     });
 
-    // If multiple users exist for a single client, pick the first we encounter (can be customized)
     const clientIdToUserId = new Map<string | number, string>();
     for (const u of clientUsers) {
       const key = u.clientId as unknown as string | number;
@@ -48,7 +69,6 @@ export async function GET(req: Request) {
 
     const result = clients.map((c) => ({
       ...c,
-      // Attach the linked client-role user id (or null)
       clientUserId: clientIdToUserId.get(c.id) ?? null,
     }));
 
@@ -61,7 +81,7 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/clients - Create new client (kept from your version, unchanged)
+// POST /api/clients - Create new client
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -93,6 +113,7 @@ export async function POST(req: NextRequest) {
       startDate,
       dueDate,
       socialLinks = [],
+      otherField = [],
 
       // NEW field
       amId,
@@ -111,11 +132,6 @@ export async function POST(req: NextRequest) {
         );
       }
     }
-
-    const normalizePlatform = (input: unknown): string => {
-      const raw = String(input ?? "").trim();
-      return raw || "OTHER";
-    };
 
     const client = await prisma.client.create({
       data: {
@@ -138,12 +154,13 @@ export async function POST(req: NextRequest) {
         companyaddress,
         biography,
         imageDrivelink,
-        avatar, // still a String? in the schema
+        avatar,
         progress,
         status,
         packageId,
         startDate: startDate ? new Date(startDate) : undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
+        otherField: Array.isArray(otherField) ? otherField : [],
 
         // NEW: link AM
         amId: amId || undefined,
@@ -154,7 +171,7 @@ export async function POST(req: NextRequest) {
                 .filter((l: any) => l && l.platform && l.url)
                 .map((l: any) => ({
                   platform: normalizePlatform(l.platform) as any,
-                  url: l.url as string,
+                  url: String(l.url),
                   username: l.username ?? null,
                   email: l.email ?? null,
                   phone: l.phone ?? null,
@@ -179,6 +196,105 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// PUT /api/clients?id=CLIENT_ID - Update existing client (including otherField and socialMedias)
+export async function PUT(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing client id" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const {
+      name,
+      birthdate,
+      company,
+      designation,
+      location,
+      email,
+      phone,
+      password,
+      recoveryEmail,
+      website,
+      website2,
+      website3,
+      companywebsite,
+      companyaddress,
+      biography,
+      imageDrivelink,
+      avatar,
+      progress,
+      status,
+      packageId,
+      startDate,
+      dueDate,
+      socialLinks = [],
+      otherField = [],
+      amId,
+    } = body;
+
+    // Replace social medias with the provided set
+    await prisma.socialMedia.deleteMany({ where: { clientId: id } });
+
+    const updated = await prisma.client.update({
+      where: { id },
+      data: {
+        name,
+        birthdate: birthdate ? new Date(birthdate) : null,
+        company,
+        designation,
+        location,
+        email,
+        phone,
+        password,
+        recoveryEmail,
+        website,
+        website2,
+        website3,
+        companywebsite,
+        companyaddress,
+        biography,
+        imageDrivelink,
+        avatar,
+        progress,
+        status,
+        packageId,
+        startDate: startDate ? new Date(startDate) : null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        otherField: Array.isArray(otherField) ? otherField : [],
+        amId: amId ?? null,
+        socialMedias: {
+          create: Array.isArray(socialLinks)
+            ? socialLinks
+                .filter((l: any) => l && l.platform && l.url)
+                .map((l: any) => ({
+                  platform: normalizePlatform(l.platform) as any,
+                  url: String(l.url),
+                  username: l.username ?? null,
+                  email: l.email ?? null,
+                  phone: l.phone ?? null,
+                  password: l.password ?? null,
+                  notes: l.notes ?? null,
+                }))
+            : [],
+        },
+      },
+      include: {
+        socialMedias: true,
+        accountManager: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
 
 // DELETE /api/clients?id=CLIENT_ID  (also accepts { id } in JSON body)
 export async function DELETE(req: NextRequest) {
