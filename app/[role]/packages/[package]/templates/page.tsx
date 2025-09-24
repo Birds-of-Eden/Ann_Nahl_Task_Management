@@ -36,6 +36,7 @@ import {
   Star,
   Activity,
   Target,
+  Copy,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { hasPermissionClient } from "@/lib/permissions-client";
@@ -111,6 +112,8 @@ export default function TemplateListPage() {
   const [assigningTemplate, setAssigningTemplate] = useState<Template | null>(
     null
   );
+
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const fetchPackageName = async (pkgId: string) => {
     try {
@@ -233,6 +236,39 @@ export default function TemplateListPage() {
       alert("An error occurred while deleting.");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const duplicateTemplate = async (templateId: string) => {
+    const ok = confirm(
+      "Duplicate this template? A draft copy will be created."
+    );
+    if (!ok) return;
+
+    setDuplicatingId(templateId);
+    try {
+      const res = await fetch(
+        `/api/templates/${templateId}/duplicate?actorId=${user?.id ?? ""}`,
+        {
+          method: "POST",
+          headers: {
+            "x-actor-id": user?.id ?? "",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e?.message || "Duplication failed");
+      }
+
+      // success: reload list
+      await fetchTemplates(packageId);
+    } catch (err: any) {
+      alert(err?.message || "Duplication failed");
+      console.error(err);
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -660,15 +696,16 @@ export default function TemplateListPage() {
                     </div>
                   </CardContent>
 
-                  <CardFooter className="p-6 pt-0">
-                    <div className="flex gap-2 w-full">
+                  <CardFooter className="p-4 pt-0">
+                    <div className="flex gap-1 w-full">
                       {/* View Button */}
                       <Button
                         variant="outline"
-                        className="flex-1 border-blue-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 bg-transparent rounded-lg"
+                        size="sm"
+                        className="border-blue-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 bg-transparent rounded-lg"
                         onClick={() => setViewingTemplate(template)}
                       >
-                        <Eye className="w-4 h-4 mr-2" />
+                        <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
 
@@ -678,10 +715,11 @@ export default function TemplateListPage() {
                       ) && (
                         <Button
                           variant="outline"
-                          className="flex-1 border-green-200 hover:border-green-300 hover:bg-green-50 hover:text-green-600 transition-all duration-200 bg-transparent rounded-lg"
+                          size="sm"
+                          className="border-green-200 hover:border-green-300 hover:bg-green-50 hover:text-green-600 transition-all duration-200 bg-transparent rounded-lg"
                           onClick={() => setEditingTemplate(template)}
                         >
-                          <Edit3 className="w-4 h-4 mr-2" />
+                          <Edit3 className="w-4 h-4 mr-1" />
                           Edit
                         </Button>
                       )}
@@ -713,6 +751,23 @@ export default function TemplateListPage() {
                       >
                         <Users className="w-4 h-4 mr-1" />
                         Assign
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-teal-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600 transition-all duration-200 bg-transparent rounded-lg px-3"
+                        onClick={() => duplicateTemplate(template.id)}
+                        disabled={duplicatingId === template.id}
+                      >
+                        {duplicatingId === template.id ? (
+                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />
+                        ) : (
+                          <Copy className="w-4 h-4 mr-1" />
+                        )}
+                        {duplicatingId === template.id
+                          ? "Duplicating..."
+                          : "Duplicate"}
                       </Button>
                     </div>
                   </CardFooter>
