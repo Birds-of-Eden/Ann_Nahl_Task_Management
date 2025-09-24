@@ -290,24 +290,79 @@ export async function DELETE(
       null;
 
     await prisma.$transaction(async (tx) => {
+      // 1) Verify exists
       const existing = await tx.template.findUnique({
         where: { id: templateId },
         select: { id: true, name: true, packageId: true },
       });
       if (!existing) throw new Error("NOT_FOUND");
 
-      // First, delete dependent records
-      // First, delete dependent records (capture counts)
-      const [assetsDel, teamDel, assignDel] = await Promise.all([
-        tx.templateSiteAsset.deleteMany({ where: { templateId } }),
-        tx.templateTeamMember.deleteMany({ where: { templateId } }),
-        tx.assignment.deleteMany({ where: { templateId } }),
+      // 2) Pre-compute child counts for audit (purely informational)
+      const [
+        siteAssetsCount,
+        teamMembersCount,
+        assignmentsCount,
+        tasksCount,
+        settingsCount,
+        commentsCount,
+        reportsCount,
+        notificationsCount,
+      ] = await Promise.all([
+        tx.templateSiteAsset.count({ where: { templateId } }),
+        tx.templateTeamMember.count({ where: { templateId } }),
+        tx.assignment.count({ where: { templateId } }),
+        tx.task.count({
+          where: {
+            OR: [
+              { assignment: { templateId } }, // tasks created via assignments
+              { templateSiteAsset: { templateId } }, // tasks created via assets
+            ],
+          },
+        }),
+        tx.assignmentSiteAssetSetting.count({
+          where: {
+            OR: [
+              { assignment: { templateId } },
+              { templateSiteAsset: { templateId } },
+            ],
+          },
+        }),
+        tx.comment.count({
+          where: {
+            task: {
+              OR: [
+                { assignment: { templateId } },
+                { templateSiteAsset: { templateId } },
+              ],
+            },
+          },
+        }),
+        tx.report.count({
+          where: {
+            task: {
+              OR: [
+                { assignment: { templateId } },
+                { templateSiteAsset: { templateId } },
+              ],
+            },
+          },
+        }),
+        tx.notification.count({
+          where: {
+            task: {
+              OR: [
+                { assignment: { templateId } },
+                { templateSiteAsset: { templateId } },
+              ],
+            },
+          },
+        }),
       ]);
 
-      // Then delete the template
+      // 3) Single call — DB cascades will delete EVERYTHING downstream
       await tx.template.delete({ where: { id: templateId } });
 
-      // Audit log with child delete counts
+      // 4) Audit log
       await tx.activityLog.create({
         data: {
           id: crypto.randomUUID(),
@@ -318,10 +373,16 @@ export async function DELETE(
           details: {
             name: existing.name,
             packageId: existing.packageId ?? null,
-            deletedChildren: {
-              siteAssets: assetsDel.count,
-              teamMembers: teamDel.count,
-              assignments: assignDel.count,
+            // purely informational snapshot of what got removed
+            deletedCounts: {
+              siteAssets: siteAssetsCount,
+              teamMembers: teamMembersCount,
+              assignments: assignmentsCount,
+              tasks: tasksCount,
+              assignmentSiteAssetSettings: settingsCount,
+              comments: commentsCount,
+              reports: reportsCount,
+              notifications: notificationsCount,
             },
           },
         },
@@ -341,10 +402,7 @@ export async function DELETE(
     return NextResponse.json(
       {
         message: "Failed to delete template",
-        error:
-          process.env.NODE_ENV === "development"
-            ? (error as any)?.message
-            : undefined,
+        // no env branching; same behavior for dev/prod
       },
       { status: 500 }
     );
