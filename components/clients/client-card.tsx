@@ -30,6 +30,7 @@ import { hasPermissionClient } from "@/lib/permissions-client";
 import { useAuth } from "@/context/auth-context";
 import ImpersonateButton from "@/components/users/ImpersonateButton";
 import { handleDeleteClient } from "./handleDeleteClient";
+import DangerDeleteClientModal from "./DangerDeleteClientModal";
 
 interface ClientCardProps {
   clientId: string;
@@ -51,6 +52,7 @@ export function ClientCard({
 
   const [deleted, setDeleted] = useState(false); // ✅ add
   const [isDeleting, setIsDeleting] = useState(false); // (optional UX)
+  const [openDanger, setOpenDanger] = useState(false);
 
   // Fetch full client details from API
   useEffect(() => {
@@ -246,16 +248,16 @@ export function ClientCard({
   const swrKey = "/api/clients";
 
   // ✅ Delete handler — optimistic hide + SWR mutate + server refresh
-  const onDelete = async () => {
-    if (isDeleting) return;
+  async function handleDelete() {
     setIsDeleting(true);
     const ok = await handleDeleteClient(clientId, swrKey);
     if (ok) {
-      setDeleted(true); // সাথে সাথে কার্ড লুকাবে
-      router.refresh(); // সার্ভার-সাইড ডেটা রিফ্রেশ
+      setDeleted(true);
+      router.refresh();
+      setOpenDanger(false);
     }
     setIsDeleting(false);
-  };
+  }
 
   const handleViewDetails = () => {
     if (onViewDetails) {
@@ -423,22 +425,22 @@ export function ClientCard({
             "client_card_client_view"
           ) && ( */}
           <Button
-            onClick={onDelete}
+            onClick={() => setOpenDanger(true)}
             disabled={isDeleting}
             className="
-                flex-1
-                bg-gradient-to-r from-rose-500 to-red-500
-                hover:from-rose-600 hover:to-red-600
-                text-white
-                shadow-md
-                rounded-lg
-                px-5 py-2.5
-                transition-all duration-300
-              "
+            flex-1
+            bg-gradient-to-r from-rose-500 to-red-500
+            hover:from-rose-600 hover:to-red-600
+            text-white
+            shadow-md
+            rounded-lg
+            px-5 py-2.5
+            transition-all duration-300"
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            {isDeleting ? "Deleting..." : "Delete"}
+            Delete
           </Button>
+
           {/* )} */}
 
           {hasPermissionClient(user?.permissions, "client_card_task_view") && (
@@ -461,6 +463,15 @@ export function ClientCard({
           )}
         </div>
       </CardFooter>
+
+      <DangerDeleteClientModal
+        open={openDanger}
+        onOpenChange={setOpenDanger}
+        clientId={clientId}
+        clientName={client.name}
+        isDeleting={isDeleting}
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }

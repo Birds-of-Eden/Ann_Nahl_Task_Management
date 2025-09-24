@@ -7,11 +7,6 @@ export async function handleDeleteClient(
   clientId: string,
   swrKey: string = "/api/clients" // ✅ add
 ): Promise<boolean> {
-  const confirmed = window.confirm(
-    "Delete this client and all related data? This cannot be undone."
-  );
-  if (!confirmed) return false; // ✅ return boolean
-
   try {
     const res = await fetch(`/api/clients?id=${encodeURIComponent(clientId)}`, {
       method: "DELETE",
