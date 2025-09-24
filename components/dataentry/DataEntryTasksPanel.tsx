@@ -536,7 +536,7 @@ export default function DataEntryTasksPanel({
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
+            <DialogTitle>Complete Task again</DialogTitle>
             <DialogDescription>Provide completion link, credentials, who did it, and the completion date. It will be auto-QC approved.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">

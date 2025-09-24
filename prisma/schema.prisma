@@ -418,7 +418,8 @@ model Task {
   qcReview              Json?
   qcTotalScore          Int?             @default(0)
   pauseReasons          Json?            @default("[]")
-  socialCommunications Json? @default("[]") // 👈 NEW
+  socialCommunications Json? @default("[]")
+  dataEntryReport       Json?
 
   assignment            Assignment?        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   client                Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)

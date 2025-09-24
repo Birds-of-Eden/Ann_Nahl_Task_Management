@@ -32,10 +32,15 @@ export type DETask = {
   completedAt?: string | null;
 };
 
-export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: string }) {
+interface DataEntryCompleteTasksPanelProps {
+  clientId: string;
+}
+
+export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompleteTasksPanelProps) {
   const router = useRouter();
   const { user } = useUserSession();
   const [loading, setLoading] = useState(false);
+  const [clientName, setClientName] = useState<string>("");
   const [tasks, setTasks] = useState<DETask[]>([]);
   const [agents, setAgents] = useState<Array<{ id: string; name?: string | null; email?: string | null }>>([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
@@ -55,6 +60,12 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     if (!clientId) return;
     setLoading(true);
     try {
+      // Fetch client details
+      const clientRes = await fetch(`/api/clients/${clientId}`);
+      if (clientRes.ok) {
+        const clientData = await clientRes.json();
+        setClientName(clientData.name || '');
+      }
       const res = await fetch(`/api/tasks/client/${clientId}`, { cache: "no-store" });
       const data = await res.json();
       const mine = (data as any[]).filter((t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id);
@@ -263,7 +274,17 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
   return (
     <Card className="border-0 shadow-2xl overflow-hidden bg-white/90 backdrop-blur">
       <div className="flex items-center justify-between pb-2">
-        <h2 className="text-2xl font-bold pl-6">Data Entry — Complete Tasks</h2>
+        <h2 className="text-2xl font-bold p-2 rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white">
+          {clientId ? (
+            clientName ? (
+              `${clientName}`
+            ) : (
+              `Client ${clientId}`
+            )
+          ) : (
+            "All Clients"
+          )} — Complete Tasks
+        </h2>
         {/* Some Statistics */}
         <BackgroundGradient className="flex gap-3 items-center rounded-xl p-4">
           <div className="text-2xl font-bold uppercase tracking-wide text-slate-900">Total - </div>
