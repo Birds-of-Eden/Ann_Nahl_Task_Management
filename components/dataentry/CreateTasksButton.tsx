@@ -21,7 +21,7 @@ export default function CreateTasksButton({
   const createTasks = async () => {
     setIsCreating(true);
     try {
-      const response = await fetch("/api/tasks/create-posting-tasks", {
+      const response = await fetch("/api/tasks/create-dataentry-posting-tasks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,7 +66,7 @@ export default function CreateTasksButton({
                   })(),
           }));
 
-          const distRes = await fetch(`/api/tasks/distribute`, {
+          const distRes = await fetch(`/api/tasks/dataentry-distribute`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ clientId, assignments }),
