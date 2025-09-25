@@ -1,3 +1,4 @@
+// app/[role]/distribution/client-agent/[clientId]/page/tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -560,18 +561,15 @@ export default function TaskDistributionForClient() {
       return;
     }
 
-    if (!categoryDueDate) {
-      toast.warning("⚠️ Due Date Required", {
-        description: "Please select a due date for this category’s tasks",
-      });
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const endOfDay = new Date(categoryDueDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      const formattedDueDate = endOfDay.toISOString();
+      // Only compute a due date if user selected one (optional)
+      let formattedDueDate: string | undefined = undefined;
+      if (categoryDueDate) {
+        const endOfDay = new Date(categoryDueDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        formattedDueDate = endOfDay.toISOString();
+      }
 
       const requestBody = {
         clientId,
@@ -834,7 +832,7 @@ export default function TaskDistributionForClient() {
                   {/* Due Date */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">
-                      Due Date for All Tasks in {selectedCategory}
+                      Due Date for All Tasks in {selectedCategory} <span className="text-green-500">( Optional )</span>
                     </label>
                     <Popover
                       open={duePickerOpen}
@@ -992,20 +990,17 @@ export default function TaskDistributionForClient() {
                       onClick={submitTaskDistribution}
                       disabled={
                         submitting ||
-                        categoryAssignments.length === 0 ||
-                        !categoryDueDate
+                        categoryAssignments.length === 0
                       }
                       className={cn(
                         "w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-600",
                         (submitting ||
-                          categoryAssignments.length === 0 ||
-                          !categoryDueDate) &&
+                          categoryAssignments.length === 0) &&
                           "opacity-60 cursor-not-allowed"
                       )}
                       aria-disabled={
                         submitting ||
-                        categoryAssignments.length === 0 ||
-                        !categoryDueDate
+                        categoryAssignments.length === 0
                       }
                     >
                       {submitting ? (
