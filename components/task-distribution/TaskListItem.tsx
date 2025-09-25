@@ -95,6 +95,7 @@ export const TaskListItem = memo(function TaskListItem({
   const SiteIcon = siteTypeIcons[siteType as keyof typeof siteTypeIcons];
   const shouldDisableDropdown =
     isMultipleSelected && isSelected && !isFirstSelectedTask;
+  const isLinkedToFirst = shouldDisableDropdown;
 
   const handleAssignmentChange = (agentId: string) => {
     onTaskAssignment(task.id, agentId, isMultipleSelected, isFirstSelectedTask);
@@ -325,14 +326,29 @@ export const TaskListItem = memo(function TaskListItem({
                         <span className="text-sm font-semibold text-blue-600 shrink-0">
                           Choose Agent List:
                         </span>
+
                         <Select
                           value={agentSource}
                           onValueChange={(v: "team" | "all") =>
                             setAgentSource(v)
                           }
                         >
-                          <SelectTrigger className="h-9 text-xs sm:text-sm w-full sm:max-w-[180px] rounded-lg">
-                            <SelectValue placeholder="Select list" />
+                          <SelectTrigger
+                            disabled={isLinkedToFirst}
+                            className={[
+                              "border-2 border-blue-300 hover:border-blue-500 h-9 text-xs sm:text-sm w-full sm:max-w-[180px] rounded-lg",
+                              isLinkedToFirst
+                                ? "opacity-60 cursor-not-allowed"
+                                : "",
+                            ].join(" ")}
+                          >
+                            <SelectValue
+                              placeholder={
+                                isLinkedToFirst
+                                  ? "Linked to first task"
+                                  : "Select list"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
                             <SelectItem value="team">Team Agents</SelectItem>
@@ -346,6 +362,11 @@ export const TaskListItem = memo(function TaskListItem({
                             : allAgents.length}{" "}
                           available
                         </span>
+                        {isLinkedToFirst && (
+                          <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-200 text-slate-700 border border-slate-300">
+                            Linked
+                          </span>
+                        )}
                       </div>
 
                       {isFirstSelectedTask && isMultipleSelected && (
