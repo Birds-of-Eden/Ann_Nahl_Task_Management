@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
       name,
       birthdate,
       company,
+      gender,
       designation,
       location,
 
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
         name,
         birthdate: birthdate ? new Date(birthdate) : undefined,
         company,
+        gender,
         designation,
         location,
 
