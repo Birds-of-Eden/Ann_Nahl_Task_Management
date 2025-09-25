@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArticleTopic } from "@/types/onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +26,6 @@ import {
   BadgeCheck,
   Sparkles,
   Clock,
-  BookOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AssignmentPreview } from "./assignment-preview";
@@ -588,7 +586,7 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
           {(avatarPreviewUrl || formData.imageDrivelink) && (
             <ReviewSectionCard
               icon={ImageIcon}
-              title="Media Assets"
+              title="Image Drive Link"
               gradient="from-amber-50 to-orange-50"
             >
               <div className="space-y-4">
@@ -630,29 +628,6 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
           )}
         </div>
       </div>
-
-      {/* Article Topics */}
-      {formData.articleTopics.length > 0 && (
-        <ReviewSectionCard
-          icon={BookOpen}
-          title="Article Topics"
-          gradient="from-amber-50 to-orange-50"
-        >
-          <div className="space-y-4">
-            {formData.articleTopics.map((topic: ArticleTopic, index: number) => (
-              <div
-                key={index}
-                className="p-4 bg-white rounded-2xl border border-slate-200 hover:shadow-md transition-shadow"
-              >
-                <p className="font-semibold text-slate-800 text-sm mb-2">
-                  {topic.topicname}
-                </p>
-              </div>
-            ))}
-          </div>
-        </ReviewSectionCard>
-      )}
-
       {/* Assignment Preview */}
       {formData.templateId && (
         <ReviewSectionCard

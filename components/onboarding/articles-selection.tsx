@@ -89,14 +89,14 @@ export function ArticlesSelection({
             {topics!.map((topic, idx) => (
               <div
                 key={`${topic.topicname}-${idx}`}
-                className="flex items-center p-4 border rounded-md hover:bg-gray-50 transition-colors"
+                className="flex items-center p-4 gap-4 border rounded-md hover:bg-gray-50 transition-colors"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <Label className="text-base font-medium">
                       Article Topic
                     </Label>
-                    <input
+                    <textarea
                       className="flex-1 border rounded-md px-3 py-2"
                       value={topic.topicname}
                       onChange={(e) =>
@@ -110,6 +110,7 @@ export function ArticlesSelection({
                   variant="outline"
                   size="sm"
                   onClick={() => handleRemoveTopic(idx)}
+                  className="bg-red-500 hover:bg-red-600 text-white hover:text-white"
                 >
                   Remove
                 </Button>
@@ -118,7 +119,7 @@ export function ArticlesSelection({
           </div>
         )}
         <div className="mt-4">
-          <Button variant="outline" onClick={handleAddTopic}>
+          <Button variant="outline" onClick={handleAddTopic} className="bg-green-500 hover:bg-green-600 text-white hover:text-white">
             Add Topic
           </Button>
         </div>
