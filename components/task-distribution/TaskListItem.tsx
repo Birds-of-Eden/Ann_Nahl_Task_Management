@@ -259,10 +259,10 @@ export const TaskListItem = memo(function TaskListItem({
             </div>
           </div>
 
-          <div className="w-72">
+          <div className="w-full max-w-md">
             {task.assignedTo ? (
-              // Already assigned
-              <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-emerald-100 via-green-50 to-teal-100 rounded-xl border border-emerald-300 shadow-sm">
+              /* Already assigned */
+              <div className="flex items-center gap-3 p-3 rounded-xl border shadow-sm bg-gradient-to-r from-emerald-100 via-green-50 to-teal-100 border-emerald-300">
                 <AvatarWithFallback
                   name={
                     task.assignedTo.name ||
@@ -276,7 +276,7 @@ export const TaskListItem = memo(function TaskListItem({
                   size="h-7 w-7"
                   textClass="text-xs"
                 />
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-emerald-900 truncate">
                     {task.assignedTo.name}
                   </p>
@@ -284,10 +284,11 @@ export const TaskListItem = memo(function TaskListItem({
                 <CheckCircle2 className="h-5 w-5 text-emerald-700" />
               </div>
             ) : assignment ? (
-              // Preview chosen agent
-              <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 rounded-xl border border-blue-300 shadow-sm">
+              /* Preview chosen agent */
+              <div className="flex items-center gap-3 p-3 rounded-xl border shadow-sm bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 border-blue-300">
                 {(() => {
-                  const ag: any = baseList.find(
+                  const combinedAgents = [...teamAgents, ...allAgents];
+                  const ag: any = combinedAgents.find(
                     (a: any) => a.id === assignment.agentId
                   );
                   const display =
@@ -304,7 +305,7 @@ export const TaskListItem = memo(function TaskListItem({
                         size="h-7 w-7"
                         textClass="text-xs"
                       />
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-blue-900 truncate">
                           {display}
                         </p>
@@ -317,45 +318,57 @@ export const TaskListItem = memo(function TaskListItem({
             ) : (
               <>
                 {isSelected ? (
-                  <>
-                    {/* Per-row source toggle */}
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-800">
-                        Choose Agent List:
-                      </span>
-                      <Select
-                        value={agentSource}
-                        onValueChange={(v: "team" | "all") => setAgentSource(v)}
-                      >
-                        <SelectTrigger className="h-8 text-xs w-44">
-                          <SelectValue placeholder="Select list" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="team">Team Agents</SelectItem>
-                          <SelectItem value="all">All Agents</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <span className="text-[11px] text-slate-600">
-                        {agentSource === "team"
-                          ? teamAgents.length
-                          : allAgents.length}{" "}
-                        available
-                      </span>
+                  <div className="flex flex-col gap-2">
+                    {/* Top row: Source select + available count + (optional) Bulk chip */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="flex items-center gap-2 sm:flex-1">
+                        <span className="text-sm font-semibold text-blue-600 shrink-0">
+                          Choose Agent List:
+                        </span>
+                        <Select
+                          value={agentSource}
+                          onValueChange={(v: "team" | "all") =>
+                            setAgentSource(v)
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-xs sm:text-sm w-full sm:max-w-[180px] rounded-lg">
+                            <SelectValue placeholder="Select list" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="team">Team Agents</SelectItem>
+                            <SelectItem value="all">All Agents</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <span className="text-[11px] text-slate-600  px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
+                          {agentSource === "team"
+                            ? teamAgents.length
+                            : allAgents.length}{" "}
+                          available
+                        </span>
+                      </div>
+
+                      {isFirstSelectedTask && isMultipleSelected && (
+                        <span className="inline-flex items-center self-start sm:self-auto gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full shadow bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white">
+                          Bulk
+                        </span>
+                      )}
                     </div>
 
-                    {/* Assign-to dropdown */}
-                    <div className="relative">
+                    {/* Bottom row: Assign-to select (grows) */}
+                    <div className="flex items-center">
                       <Select
                         value=""
                         onValueChange={handleAssignmentChange}
                         disabled={shouldDisableDropdown}
                       >
                         <SelectTrigger
-                          className={`h-10 text-xs transition-all duration-200 rounded-xl shadow-sm ${
+                          className={[
+                            "h-10 text-sm w-full rounded-xl transition-all duration-200 shadow-sm",
                             shouldDisableDropdown
                               ? "border-gray-300 bg-gradient-to-r from-gray-50 to-slate-50 text-gray-500 cursor-not-allowed"
-                              : "border-2 border-blue-300 hover:border-blue-500 bg-gradient-to-r from-white to-blue-50 hover:shadow-md"
-                          }`}
+                              : "border-2 border-blue-300 hover:border-blue-500 bg-gradient-to-r from-white to-blue-50 hover:shadow-md",
+                          ].join(" ")}
                         >
                           <SelectValue
                             placeholder={
@@ -368,8 +381,9 @@ export const TaskListItem = memo(function TaskListItem({
                           />
                         </SelectTrigger>
 
-                        <SelectContent className="rounded-xl border-2 shadow-xl p-2">
-                          <div className="px-3 py-2 mb-1 text-[11px] text-slate-600 bg-slate-50 border rounded-lg">
+                        <SelectContent className="rounded-xl border-2 shadow-xl p-2 w-[min(28rem,90vw)]">
+                          {/* Legend bar */}
+                          <div className="px-3 py-2 mb-2 text-[11px] text-slate-600 bg-slate-50 border rounded-lg">
                             <div className="flex items-center gap-3">
                               <span className="inline-flex items-center gap-1">
                                 <span className="h-2 w-2 rounded-full bg-slate-400" />{" "}
@@ -391,65 +405,62 @@ export const TaskListItem = memo(function TaskListItem({
                             </div>
                           </div>
 
-                          {filteredAgents.map((agent: any) => {
-                            const display =
-                              agent.name ||
-                              `${agent.firstName ?? ""} ${
-                                agent.lastName ?? ""
-                              }`.trim() ||
-                              agent.email ||
-                              "Agent";
-                            const initials = getInitialsFromParts(
-                              agent.firstName,
-                              agent.lastName,
-                              agent.name || agent.email
-                            );
-                            const bg = nameToColor(display);
+                          {/* Agent list */}
+                          <div className="flex flex-col gap-1 max-h-[320px] overflow-auto pr-1">
+                            {filteredAgents.map((agent: any) => {
+                              const display =
+                                agent.name ||
+                                `${agent.firstName ?? ""} ${
+                                  agent.lastName ?? ""
+                                }`.trim() ||
+                                agent.email ||
+                                "Agent";
+                              const initials = getInitialsFromParts(
+                                agent.firstName,
+                                agent.lastName,
+                                agent.name || agent.email
+                              );
+                              const bg = nameToColor(display);
 
-                            return (
-                              <SelectItem
-                                key={agent.id}
-                                value={agent.id}
-                                className="p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50 hover:to-purple-50 rounded-lg m-1"
-                              >
-                                <div className="flex items-start gap-2">
-                                  <Avatar className="h-6 w-6 ring-2 ring-blue-300 shadow-sm">
-                                    {agent.image ? (
-                                      <AvatarImage
-                                        src={agent.image}
-                                        alt={display}
-                                      />
-                                    ) : null}
-                                    <AvatarFallback
-                                      style={{ backgroundColor: bg }}
-                                      className="text-white text-[10px] font-bold"
-                                    >
-                                      {initials || "A"}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1">
-                                    <div className="text-xs font-semibold text-slate-900">
-                                      {display}
+                              return (
+                                <SelectItem
+                                  key={agent.id}
+                                  value={agent.id}
+                                  className="rounded-lg m-0 px-2 py-2 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50 hover:to-purple-50"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Avatar className="h-7 w-7 ring-2 ring-blue-300 shadow-sm">
+                                      {agent.image ? (
+                                        <AvatarImage
+                                          src={agent.image}
+                                          alt={display}
+                                        />
+                                      ) : null}
+                                      <AvatarFallback
+                                        style={{ backgroundColor: bg }}
+                                        className="text-white text-[10px] font-bold"
+                                      >
+                                        {initials || "A"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-[13px] font-semibold text-slate-900 truncate">
+                                        {display}
+                                      </div>
+                                      <LoadChips {...agent} />
                                     </div>
-                                    <LoadChips {...agent} />
                                   </div>
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
+                                </SelectItem>
+                              );
+                            })}
+                          </div>
                         </SelectContent>
                       </Select>
-
-                      {isFirstSelectedTask && isMultipleSelected && (
-                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white text-[10px] px-2.5 py-1 rounded-full shadow-lg font-bold">
-                          Bulk
-                        </div>
-                      )}
                     </div>
-                  </>
+                  </div>
                 ) : (
-                  // Not selected → ask to select first
-                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-gray-100 to-slate-100 rounded-xl border border-gray-300 shadow-sm">
+                  /* Not selected → ask to select first */
+                  <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-300 shadow-sm bg-gradient-to-r from-gray-100 to-slate-100">
                     <User className="h-4 w-4 text-gray-500" />
                     <span className="text-xs text-gray-700 font-medium">
                       Select to assign
