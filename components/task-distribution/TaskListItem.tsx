@@ -26,6 +26,7 @@ import {
   siteTypeIcons,
   statusColors,
 } from "./task-constants";
+
 import {
   nameToColor,
   getInitialsFromName,
@@ -36,11 +37,11 @@ interface TaskListItemProps {
   task: Task;
   siteType: string;
 
-  // NEW: both pools per row
+  // Both pools
   teamAgents: Agent[];
   allAgents: Agent[];
 
-  // keep for compatibility
+  // kept for compatibility
   agents: Agent[];
 
   isSelected: boolean;
@@ -72,12 +73,12 @@ export const TaskListItem = memo(function TaskListItem({
   onTaskAssignment,
   onNoteChange,
 }: TaskListItemProps) {
-  // NEW: per-row source selector
+  // Per-row source selector
   const [agentSource, setAgentSource] = useState<"team" | "all">("team");
   const baseList = agentSource === "team" ? teamAgents : allAgents;
 
   const filteredAgents = useMemo(() => {
-    const categoryMap: { [key: string]: string } = {
+    const categoryMap: Record<string, string> = {
       social_site: "social",
       web2_site: "web2",
       other_asset: "general",
@@ -85,8 +86,8 @@ export const TaskListItem = memo(function TaskListItem({
     const targetCategory = categoryMap[siteType] || "general";
     return baseList.filter((agent: any) => {
       return (
-        agent.category?.toLowerCase() === targetCategory ||
-        agent.role?.name?.toLowerCase() === "agent"
+        agent?.category?.toLowerCase() === targetCategory ||
+        agent?.role?.name?.toLowerCase() === "agent"
       );
     });
   }, [baseList, siteType]);
@@ -260,6 +261,7 @@ export const TaskListItem = memo(function TaskListItem({
 
           <div className="w-72">
             {task.assignedTo ? (
+              // Already assigned
               <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-emerald-100 via-green-50 to-teal-100 rounded-xl border border-emerald-300 shadow-sm">
                 <AvatarWithFallback
                   name={
@@ -282,6 +284,7 @@ export const TaskListItem = memo(function TaskListItem({
                 <CheckCircle2 className="h-5 w-5 text-emerald-700" />
               </div>
             ) : assignment ? (
+              // Preview chosen agent
               <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 rounded-xl border border-blue-300 shadow-sm">
                 {(() => {
                   const ag: any = baseList.find(
@@ -313,133 +316,146 @@ export const TaskListItem = memo(function TaskListItem({
               </div>
             ) : (
               <>
-                {/* NEW: per-row source toggle */}
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-800">
-                    Choose Agent List:
-                  </span>
-                  <Select
-                    value={agentSource}
-                    onValueChange={(v: "team" | "all") => setAgentSource(v)}
-                  >
-                    <SelectTrigger className="h-8 text-xs w-44">
-                      <SelectValue placeholder="Select list" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="team">Team Agents</SelectItem>
-                      <SelectItem value="all">All Agents</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-[11px] text-slate-600">
-                    {agentSource === "team"
-                      ? teamAgents.length
-                      : allAgents.length}{" "}
-                    available
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <Select
-                    value=""
-                    onValueChange={handleAssignmentChange}
-                    disabled={shouldDisableDropdown}
-                  >
-                    <SelectTrigger
-                      className={`h-10 text-xs transition-all duration-200 rounded-xl shadow-sm ${
-                        shouldDisableDropdown
-                          ? "border-gray-300 bg-gradient-to-r from-gray-50 to-slate-50 text-gray-500 cursor-not-allowed"
-                          : "border-2 border-blue-300 hover:border-blue-500 bg-gradient-to-r from-white to-blue-50 hover:shadow-md"
-                      }`}
-                    >
-                      <SelectValue
-                        placeholder={
-                          shouldDisableDropdown
-                            ? "Controlled by first task..."
-                            : isFirstSelectedTask && isMultipleSelected
-                            ? "Choose agent for multiple tasks..."
-                            : "Choose agent..."
-                        }
-                      />
-                    </SelectTrigger>
-
-                    <SelectContent className="rounded-xl border-2 shadow-xl p-2">
-                      <div className="px-3 py-2 mb-1 text-[11px] text-slate-600 bg-slate-50 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-2 w-2 rounded-full bg-slate-400" />{" "}
-                            P
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-2 w-2 rounded-full bg-indigo-500" />{" "}
-                            IP
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-2 w-2 rounded-full bg-rose-500" />{" "}
-                            O
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-2 w-2 rounded-full bg-orange-500" />{" "}
-                            R
-                          </span>
-                          <span className="ml-auto">Active / W</span>
-                        </div>
-                      </div>
-
-                      {filteredAgents.map((agent: any) => {
-                        const display =
-                          agent.name ||
-                          `${agent.firstName ?? ""} ${
-                            agent.lastName ?? ""
-                          }`.trim() ||
-                          agent.email ||
-                          "Agent";
-                        const initials = getInitialsFromParts(
-                          agent.firstName,
-                          agent.lastName,
-                          agent.name || agent.email
-                        );
-                        const bg = nameToColor(display);
-
-                        return (
-                          <SelectItem
-                            key={agent.id}
-                            value={agent.id}
-                            className="p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50 hover:to-purple-50 rounded-lg m-1"
-                          >
-                            <div className="flex items-start gap-2">
-                              <Avatar className="h-6 w-6 ring-2 ring-blue-300 shadow-sm">
-                                {agent.image ? (
-                                  <AvatarImage
-                                    src={agent.image}
-                                    alt={display}
-                                  />
-                                ) : null}
-                                <AvatarFallback
-                                  style={{ backgroundColor: bg }}
-                                  className="text-white text-[10px] font-bold"
-                                >
-                                  {initials || "A"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1">
-                                <div className="text-xs font-semibold text-slate-900">
-                                  {display}
-                                </div>
-                                <LoadChips {...agent} />
-                              </div>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-
-                  {isFirstSelectedTask && isMultipleSelected && (
-                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white text-[10px] px-2.5 py-1 rounded-full shadow-lg font-bold">
-                      Bulk
+                {isSelected ? (
+                  <>
+                    {/* Per-row source toggle */}
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-800">
+                        Choose Agent List:
+                      </span>
+                      <Select
+                        value={agentSource}
+                        onValueChange={(v: "team" | "all") => setAgentSource(v)}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-44">
+                          <SelectValue placeholder="Select list" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="team">Team Agents</SelectItem>
+                          <SelectItem value="all">All Agents</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-[11px] text-slate-600">
+                        {agentSource === "team"
+                          ? teamAgents.length
+                          : allAgents.length}{" "}
+                        available
+                      </span>
                     </div>
-                  )}
-                </div>
+
+                    {/* Assign-to dropdown */}
+                    <div className="relative">
+                      <Select
+                        value=""
+                        onValueChange={handleAssignmentChange}
+                        disabled={shouldDisableDropdown}
+                      >
+                        <SelectTrigger
+                          className={`h-10 text-xs transition-all duration-200 rounded-xl shadow-sm ${
+                            shouldDisableDropdown
+                              ? "border-gray-300 bg-gradient-to-r from-gray-50 to-slate-50 text-gray-500 cursor-not-allowed"
+                              : "border-2 border-blue-300 hover:border-blue-500 bg-gradient-to-r from-white to-blue-50 hover:shadow-md"
+                          }`}
+                        >
+                          <SelectValue
+                            placeholder={
+                              shouldDisableDropdown
+                                ? "Controlled by first task..."
+                                : isFirstSelectedTask && isMultipleSelected
+                                ? "Choose agent for multiple tasks..."
+                                : "Choose agent..."
+                            }
+                          />
+                        </SelectTrigger>
+
+                        <SelectContent className="rounded-xl border-2 shadow-xl p-2">
+                          <div className="px-3 py-2 mb-1 text-[11px] text-slate-600 bg-slate-50 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-slate-400" />{" "}
+                                P
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-indigo-500" />{" "}
+                                IP
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-rose-500" />{" "}
+                                O
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full bg-orange-500" />{" "}
+                                R
+                              </span>
+                              <span className="ml-auto">Active / W</span>
+                            </div>
+                          </div>
+
+                          {filteredAgents.map((agent: any) => {
+                            const display =
+                              agent.name ||
+                              `${agent.firstName ?? ""} ${
+                                agent.lastName ?? ""
+                              }`.trim() ||
+                              agent.email ||
+                              "Agent";
+                            const initials = getInitialsFromParts(
+                              agent.firstName,
+                              agent.lastName,
+                              agent.name || agent.email
+                            );
+                            const bg = nameToColor(display);
+
+                            return (
+                              <SelectItem
+                                key={agent.id}
+                                value={agent.id}
+                                className="p-3 hover:bg-gradient-to-r hover:from-blue-50 hover:via-indigo-50 hover:to-purple-50 rounded-lg m-1"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <Avatar className="h-6 w-6 ring-2 ring-blue-300 shadow-sm">
+                                    {agent.image ? (
+                                      <AvatarImage
+                                        src={agent.image}
+                                        alt={display}
+                                      />
+                                    ) : null}
+                                    <AvatarFallback
+                                      style={{ backgroundColor: bg }}
+                                      className="text-white text-[10px] font-bold"
+                                    >
+                                      {initials || "A"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <div className="text-xs font-semibold text-slate-900">
+                                      {display}
+                                    </div>
+                                    <LoadChips {...agent} />
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+
+                      {isFirstSelectedTask && isMultipleSelected && (
+                        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white text-[10px] px-2.5 py-1 rounded-full shadow-lg font-bold">
+                          Bulk
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  // Not selected → ask to select first
+                  <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-gray-100 to-slate-100 rounded-xl border border-gray-300 shadow-sm">
+                    <User className="h-4 w-4 text-gray-500" />
+                    <span className="text-xs text-gray-700 font-medium">
+                      Select to assign
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>
