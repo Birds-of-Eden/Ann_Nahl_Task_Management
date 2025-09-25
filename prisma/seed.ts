@@ -255,6 +255,11 @@ const PERMS = [
     name: "generate_biography",
     description: "Generate biography using AI",
   },
+  {
+    id: "delete_article_topic",
+    name: "delete_article_topic",
+    description: "Delete article topics",
+  },
 ];
 
 async function seedPermissions() {
@@ -298,6 +303,7 @@ const ADMIN_PERMS: string[] = [
   "view_teams_manage",
   "view_user_management",
   "generate_biography",
+  "delete_article_topic",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {

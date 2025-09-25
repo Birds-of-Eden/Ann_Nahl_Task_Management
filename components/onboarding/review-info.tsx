@@ -25,7 +25,8 @@ import {
     Building,
     BadgeCheck,
     Sparkles,
-    Clock
+    Clock,
+    BookOpen
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AssignmentPreview } from "./assignment-preview";
@@ -35,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 type AMUser = { id: string; name: string | null; email: string | null };
 type SocialLink = { platform: string; url: string };
 type OtherField = { title: string; data: string };
+type ArticleTopic = { topicname: string };
 
 interface OnboardingData {
     name: string;
@@ -62,6 +64,7 @@ interface OnboardingData {
     templateId?: string;
     startDate?: string;
     dueDate?: string;
+    articleTopics?: ArticleTopic[];
     amId?: string;
     socialLinks?: SocialLink[];
     otherField?: OtherField[];
@@ -276,6 +279,17 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
                 { label: "Third Website", value: formData.website3, icon: Globe },
                 { label: "Company Website", value: formData.companywebsite, icon: Building },
                 { label: "Company Address", value: formData.companyaddress, icon: MapPin },
+            ].filter(item => item.value),
+        });
+
+        // Article Topics
+        reviewSections.push({
+            id: 'article-topics',
+            icon: BookOpen,
+            title: "Article Topics",
+            gradient: "from-amber-50 to-orange-50",
+            items: [
+                { label: "Article Topics", value: formData.articleTopics?.map(topic => topic.topicname).join(", "), icon: BookOpen },
             ].filter(item => item.value),
         });
 

@@ -15,6 +15,9 @@ export interface OnboardingFormData {
   dueDate?: string;
   profilePicture?: File;
   
+  // Optional: reference to an existing client to fetch dynamic data (e.g., articleTopics)
+  clientId?: string;
+  
   // Contact Information
   email?: string;
   phone?: string;
@@ -47,7 +50,21 @@ export interface OnboardingFormData {
   
   // Progress
   progress: number;
+
+  // UI state: selected article ids (indexes in dynamic list)
+  selectedArticles: number[];
+
+  // Locally managed article topics (for ArticlesSelection step)
+  articleTopics?: ArticleTopic[];
 }
+
+// Shared type for article topics used in onboarding flows
+export type ArticleTopic = {
+  topicname: string;
+  status?: string;
+  usedDate?: string | null;
+  usedCount?: number;
+};
 
 export interface StepProps {
   formData: OnboardingFormData;

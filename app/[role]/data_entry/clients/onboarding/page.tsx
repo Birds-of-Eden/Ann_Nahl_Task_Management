@@ -12,6 +12,7 @@ import { StepIndicator } from "@/components/onboarding/step-indicator";
 import { BiographyInfo } from "@/components/onboarding/biography-info";
 import { ImageGallery } from "@/components/onboarding/image-gallery";
 import { PackageInfo } from "@/components/onboarding/package-info";
+import { ArticlesSelection } from "@/components/onboarding/articles-selection";
 import { TemplateSelection } from "@/components/onboarding/template-selection";
 import type { OnboardingFormData } from "@/types/onboarding";
 
@@ -24,7 +25,8 @@ const steps = [
   { id: 6, title: "Other Info", component: OtherInfo },
   { id: 7, title: "Package", component: PackageInfo },
   { id: 8, title: "Template", component: TemplateSelection },
-  { id: 9, title: "Review", component: DataEntryReviewInfo },
+  { id: 9, title: "Articles Selection", component: ArticlesSelection },
+  { id: 10, title: "Review", component: DataEntryReviewInfo },
 ];
 
 export default function OnboardingPage() {
