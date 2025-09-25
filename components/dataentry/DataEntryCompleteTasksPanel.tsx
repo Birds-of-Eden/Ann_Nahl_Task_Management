@@ -1,3 +1,4 @@
+//app/com
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -154,7 +155,7 @@ export default function DataEntryCompleteTasksPanel({
   }, [clientId]);
 
   const loadStats = async () => {
-    if (!clientId || !user?.id) return;
+    if (!clientId) return;
 
     try {
       const today = new Date();
@@ -163,9 +164,9 @@ export default function DataEntryCompleteTasksPanel({
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(today.getDate() - 30);
 
-      // Fetch tasks with data entry reports including the current user's ID
+      // Fetch tasks with data entry reports
       const res = await fetch(
-        `/api/tasks/data-entry-reports?clientId=${clientId}&userId=${user.id}&pageSize=1000`
+        `/api/tasks/data-entry-reports?clientId=${clientId}&pageSize=1000`
       );
 
       if (!res.ok) {
@@ -181,14 +182,16 @@ export default function DataEntryCompleteTasksPanel({
         throw new Error("Invalid response data");
       }
 
-      // Get the count of tasks completed by the current user from the API response 
-      const completedByUser = response.completedByUserCount || 0;
-
       // Calculate statistics
       const total = data.length;
       const completed = data.filter(
         (t: any) => t.dataEntryStatus === "completed"
       ).length;
+      // Per-user completed: strictly match JSON dataEntryReport.completedByUserId to logged-in user ID
+      const completedByMe = data.reduce((acc: number, t: any) => {
+        const rid = t?.dataEntryReport?.completedByUserId;
+        return acc + (user?.id && rid === user.id ? 1 : 0);
+      }, 0);
       const last7Days = data.filter(
         (t: any) =>
           t.dataEntryCompletedAt &&
@@ -216,12 +219,11 @@ export default function DataEntryCompleteTasksPanel({
 
       setStats((prev) => ({
         ...prev,
-        dataEntryCompleted: completedByUser, // Use the count from the API
+        dataEntryCompleted: completedByMe,
         last7Days,
         last30Days,
         byStatus,
         byPriority,
-        completedByUser, // Add the count to the stats object
       }));
     } catch (error) {
       console.error("Failed to load statistics:", error);
@@ -447,7 +449,9 @@ export default function DataEntryCompleteTasksPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "completed",
+          // Agent's actual completion time from DatePicker
           completedAt: completedAt.toISOString(),
+          // Server will set dataEntryReport.completedAt
           dataEntryReport: {
             completedByUserId: user.id,
             completedByName:
@@ -534,24 +538,17 @@ export default function DataEntryCompleteTasksPanel({
             <CardTitle className="text-sm font-medium text-green-700">
               Total Completed
             </CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <BarChart3 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-green-900">
-                {stats.completed}
+            <div>
+              <div className="text-2xl font-bold text-green-900">
+                {stats.dataEntryCompleted}
               </div>
-              <span className="text-sm text-green-600">tasks</span>
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              {stats.byStatus.completed || 0} completed •{" "}
-              {stats.byStatus.qc_approved || 0} approved
-            </p>
-            {stats.last7Days > 0 && (
-              <p className="text-xs text-green-500 mt-1">
-                {stats.last7Days} completed in last 7 days
+              <p className="text-xs text-green-700 mt-1">
+                Completed by you (Data Entry)
               </p>
-            )}
+            </div>
           </CardContent>
         </Card>
 
@@ -830,7 +827,7 @@ export default function DataEntryCompleteTasksPanel({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block flex items-center gap-2">
+                <label className="text-sm font-medium mb-1 flex items-center gap-2">
                   <UserRound className="h-4 w-4" />
                   Done by (agent)
                 </label>

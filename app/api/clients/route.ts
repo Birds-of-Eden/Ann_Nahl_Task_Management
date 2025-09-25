@@ -92,7 +92,6 @@ export async function POST(req: NextRequest) {
       company,
       designation,
       location,
-      gender,
 
       // NEW fields
       email,
@@ -141,7 +140,6 @@ export async function POST(req: NextRequest) {
         company,
         designation,
         location,
-        gender,
 
         // NEW fields saved
         email,
