@@ -257,6 +257,8 @@ model Client {
   biography      String?
   imageDrivelink String?
 
+  articleTopics Json?
+
   companywebsite String?
   companyaddress String?
   avatar         String?

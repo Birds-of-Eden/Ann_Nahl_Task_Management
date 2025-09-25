@@ -13,6 +13,7 @@ import { SocialProfile } from "./social-profile"
 import { Tasks } from "./task"
 import { Client } from "@/types/client"
 import { OtherInformation } from "./otherInformation"
+import { ArticleTopics } from "./articleTopics"
 
 interface ClientDashboardProps {
   clientData: Client
@@ -200,7 +201,7 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
       {/* Main Content */}
       <div className="px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
+          <TabsList className="grid w-full grid-cols-7 bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
             <TabsTrigger value="profile" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
               Profile
             </TabsTrigger>
@@ -212,6 +213,9 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
             </TabsTrigger>
             <TabsTrigger value="drive-image" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
               Drive Image
+            </TabsTrigger>
+            <TabsTrigger value="article-topics" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+              Article Topics
             </TabsTrigger>
             <TabsTrigger
               value="social-profile"
@@ -238,6 +242,10 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
 
           <TabsContent value="drive-image">
             <DriveImage clientData={clientData} />
+          </TabsContent>
+
+          <TabsContent value="article-topics">
+            <ArticleTopics clientData={clientData} />
           </TabsContent>
 
           <TabsContent value="social-profile">
