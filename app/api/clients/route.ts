@@ -7,6 +7,78 @@ const normalizePlatform = (input: unknown): string => {
   const raw = String(input ?? "").trim();
   return raw || "OTHER";
 };
+// Helper: allowed statuses for article topic usage
+const ARTICLE_TOPIC_STATUSES = new Set([
+  "Used 1",
+  "Used 2",
+  "Used 3",
+  "Used 4",
+  "Used 5",
+  "Used 6",
+  "Used 7",
+  "Used 8",
+  "Used 9",
+  "Used 10",
+  "More then 10",
+  "Not yet Used",
+]);
+
+type ArticleTopic = {
+  topicname: string;
+  status: string; // constrained at runtime via ARTICLE_TOPIC_STATUSES
+  usedDate?: string | null; // ISO string or null
+  usedCount?: number; // derived/validated number
+};
+
+// Normalize and validate articleTopics input from request body
+const normalizeArticleTopics = (input: unknown): ArticleTopic[] => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item) => {
+      const topicname = String((item as any)?.topicname ?? "").trim();
+      if (!topicname) return null;
+
+      const rawStatus = String((item as any)?.status ?? "").trim();
+      const status = ARTICLE_TOPIC_STATUSES.has(rawStatus)
+        ? rawStatus
+        : "Not yet Used";
+
+      // usedCount normalization
+      let usedCount: number | undefined = undefined;
+      const rawCount = (item as any)?.usedCount;
+      if (rawCount !== undefined && rawCount !== null && !Number.isNaN(Number(rawCount))) {
+        usedCount = Math.max(0, Number(rawCount));
+      } else {
+        // derive from status if not explicitly provided
+        const match = /^Used\s+(\d+)$/.exec(status);
+        if (match) {
+          usedCount = Number(match[1]);
+        } else if (status === "More then 10") {
+          usedCount = 11;
+        } else if (status === "Not yet Used") {
+          usedCount = 0;
+        }
+      }
+
+      // usedDate normalization -> ISO string or null
+      let usedDate: string | null | undefined = undefined;
+      const rawDate = (item as any)?.usedDate;
+      if (rawDate === null) {
+        usedDate = null;
+      } else if (rawDate !== undefined) {
+        const d = new Date(rawDate);
+        usedDate = isNaN(d.getTime()) ? null : d.toISOString();
+      }
+
+      return {
+        topicname,
+        status,
+        usedDate: usedDate ?? null,
+        usedCount: usedCount ?? 0,
+      } as ArticleTopic;
+    })
+    .filter(Boolean) as ArticleTopic[];
+};
 
 // GET /api/clients - Get all clients (with clientUserId attached) or a single client by id
 export async function GET(req: Request) {
@@ -115,6 +187,8 @@ export async function POST(req: NextRequest) {
       dueDate,
       socialLinks = [],
       otherField = [],
+      // NEW: article topics
+      articleTopics,
 
       // NEW field
       amId,
@@ -163,6 +237,9 @@ export async function POST(req: NextRequest) {
         startDate: startDate ? new Date(startDate) : undefined,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         otherField: Array.isArray(otherField) ? otherField : [],
+
+        // Save normalized article topics (default empty array if not provided)
+        articleTopics: normalizeArticleTopics(articleTopics),
 
         // NEW: link AM
         amId: amId || undefined,
@@ -235,6 +312,8 @@ export async function PUT(req: NextRequest) {
       socialLinks = [],
       otherField = [],
       amId,
+      // NEW: article topics
+      articleTopics,
     } = body;
 
     // Replace social medias with the provided set
@@ -266,6 +345,8 @@ export async function PUT(req: NextRequest) {
         startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         otherField: Array.isArray(otherField) ? otherField : [],
+        // Only update articleTopics when provided in payload
+        articleTopics: articleTopics !== undefined ? normalizeArticleTopics(articleTopics) : undefined,
         amId: amId ?? null,
         socialMedias: {
           create: Array.isArray(socialLinks)
