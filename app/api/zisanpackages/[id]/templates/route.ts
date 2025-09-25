@@ -3,76 +3,6 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// export async function GET(
-//   _: Request,
-//   { params }: { params: Promise<{ id: string }> }
-// ) {
-//   try {
-//     const { id: packageId } = await params;
-
-//     // 1) Load templates with _count
-//     const templates = await prisma.template.findMany({
-//       where: { packageId },
-//       include: {
-//         package: true,
-//         templateTeamMembers: { include: { agent: true } },
-//         sitesAssets: true,
-//         _count: {
-//           select: {
-//             sitesAssets: true,
-//             templateTeamMembers: true,
-//             assignments: true, // <-- for "Assignments" count
-//           },
-//         },
-//       },
-//       orderBy: { name: "asc" },
-//     });
-
-//     // 2) for each template, find DISTINCT clients assigned via assignments
-//     const enriched = await Promise.all(
-//       templates.map(async (t) => {
-//         // DISTINCT client ids for this template
-//         const groups = await prisma.assignment.groupBy({
-//           by: ["clientId"],
-//           where: { templateId: t.id, clientId: { not: null } },
-//         });
-
-//         const clientIds = groups
-//           .map((g) => g.clientId)
-//           .filter((cid): cid is string => Boolean(cid));
-
-//         // fetch minimal client info to show on card
-//         const clients =
-//           clientIds.length > 0
-//             ? await prisma.client.findMany({
-//                 where: { id: { in: clientIds } },
-//                 select: {
-//                   id: true,
-//                   name: true,
-//                   company: true,
-//                   avatar: true,
-//                   status: true,
-//                 },
-//               })
-//             : [];
-
-//         return {
-//           ...t,
-//           assignedClients: clients,
-//           assignedClientsCount: clients.length,
-//         };
-//       })
-//     );
-
-//     return NextResponse.json(enriched);
-//   } catch (error) {
-//     return NextResponse.json(
-//       { error: "Failed to fetch templates for this package" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -80,28 +10,37 @@ export async function GET(
   try {
     const { id: packageId } = await params;
 
-    // 1) Load templates with _count
+    // 1) Load templates with _count and sitesAssets (with their own _count)
     const templates = await prisma.template.findMany({
       where: { packageId },
       include: {
         package: true,
         templateTeamMembers: { include: { agent: true } },
-        sitesAssets: true,
+        sitesAssets: {
+          include: {
+            _count: {
+              select: {
+                tasks: true,
+                assignmentSettings: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             sitesAssets: true,
             templateTeamMembers: true,
-            assignments: true, // <-- for "Assignments" count
+            assignments: true,
           },
         },
       },
       orderBy: { name: "asc" },
     });
 
-    // 2) for each template, find DISTINCT clients assigned via assignments
+    // 2) Enrich each template (clients, tasksCount, plus a small breakdown for site assets)
     const enriched = await Promise.all(
       templates.map(async (t) => {
-        // DISTINCT client ids for this template
+        // DISTINCT clients attached via assignments
         const groups = await prisma.assignment.groupBy({
           by: ["clientId"],
           where: { templateId: t.id, clientId: { not: null } },
@@ -111,7 +50,6 @@ export async function GET(
           .map((g) => g.clientId)
           .filter((cid): cid is string => Boolean(cid));
 
-        // fetch minimal client info to show on card
         const clients =
           clientIds.length > 0
             ? await prisma.client.findMany({
@@ -126,16 +64,31 @@ export async function GET(
               })
             : [];
 
-        // NEW: tasksCount (ONLY tasks under assignments of this template)
+        // Tasks under assignments of this template
         const tasksCount = await prisma.task.count({
           where: { assignment: { templateId: t.id } },
         });
 
+        // Optional: compact breakdown of site assets by type from what's already included
+        const siteAssetsByType = t.sitesAssets.reduce<Record<string, number>>(
+          (acc, a) => {
+            acc[a.type] = (acc[a.type] ?? 0) + 1;
+            return acc;
+          },
+          {}
+        );
+
         return {
           ...t,
+          // keep the full list of TemplateSiteAsset rows (each with its _count)
+          sitesAssets: t.sitesAssets,
+          // quick totals for convenience
+          siteAssetsCount: t._count.sitesAssets,
+          siteAssetsByType,
+          // assignment-related enrichments
           assignedClients: clients,
           assignedClientsCount: clients.length,
-          tasksCount, // 👈 add this
+          tasksCount,
         };
       })
     );

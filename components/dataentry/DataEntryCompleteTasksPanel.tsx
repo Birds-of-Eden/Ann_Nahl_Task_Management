@@ -5,16 +5,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { CheckCircle2, UserRound } from "lucide-react";
+import {
+  CheckCircle2,
+  UserRound,
+  Search,
+  Calendar,
+  BarChart3,
+  AlertCircle,
+} from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
-import { BackgroundGradient } from "../ui/background-gradient";
 import CreateTasksButton from "./CreateTasksButton";
 
 export type DETask = {
@@ -27,27 +46,79 @@ export type DETask = {
   username?: string | null;
   password?: string | null;
   category?: { id: string; name: string } | null;
-  assignedTo?: { id: string; name?: string | null; email?: string | null } | null;
+  assignedTo?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
   dueDate?: string | null;
   completedAt?: string | null;
+  // Persisted JSON: { completedByUserId, completedByName, completedAt, status }
+  dataEntryReport?: any;
 };
 
-interface DataEntryCompleteTasksPanelProps {
-  clientId: string;
+// Status badge variant mapping
+const statusVariant: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  pending: "outline",
+  in_progress: "secondary",
+  completed: "default",
+  qc_approved: "default",
+  rejected: "destructive",
+};
+
+// Priority color mapping
+const priorityColor: Record<string, string> = {
+  high: "text-red-600",
+  medium: "text-yellow-600",
+  low: "text-green-600",
+};
+
+interface TaskStats {
+  total: number;
+  completed: number;
+  pending: number;
+  inProgress: number;
+  overdue: number;
+  dataEntryCompleted: number;
+  last7Days: number;
+  last30Days: number;
+  byStatus: Record<string, number>;
+  byPriority: Record<string, number>;
 }
 
-export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompleteTasksPanelProps) {
+export default function DataEntryCompleteTasksPanel({
+  clientId,
+}: {
+  clientId: string;
+}) {
   const router = useRouter();
   const { user } = useUserSession();
   const [loading, setLoading] = useState(false);
-  const [clientName, setClientName] = useState<string>("");
   const [tasks, setTasks] = useState<DETask[]>([]);
-  const [agents, setAgents] = useState<Array<{ id: string; name?: string | null; email?: string | null }>>([]);
+  const [agents, setAgents] = useState<
+    Array<{ id: string; name?: string | null; email?: string | null }>
+  >([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
+  const [stats, setStats] = useState<TaskStats>({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+    overdue: 0,
+    dataEntryCompleted: 0,
+    last7Days: 0,
+    last30Days: 0,
+    byStatus: {},
+    byPriority: {},
+  });
 
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [selected, setSelected] = useState<DETask | null>(null);
-
   const [link, setLink] = useState("");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -55,35 +126,171 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
   const [doneBy, setDoneBy] = useState<string>("");
   const [completedAt, setCompletedAt] = useState<Date | undefined>(undefined);
   const [openDate, setOpenDate] = useState(false);
+  const [clientName, setClientName] = useState<string>("");
+
+  // Fetch client name when clientId changes
+  useEffect(() => {
+    const fetchClientName = async () => {
+      if (!clientId) {
+        setClientName("");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/clients/${clientId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setClientName(data.name || `Client ${clientId}`);
+        } else {
+          setClientName(`Client ${clientId}`);
+        }
+      } catch (error) {
+        console.error("Error fetching client:", error);
+        setClientName(`Client ${clientId}`);
+      }
+    };
+
+    fetchClientName();
+  }, [clientId]);
+
+  const loadStats = async () => {
+    if (!clientId || !user?.id) return;
+
+    try {
+      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(today.getDate() - 7);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+
+      // Fetch tasks with data entry reports including the current user's ID
+      const res = await fetch(
+        `/api/tasks/data-entry-reports?clientId=${clientId}&userId=${user.id}&pageSize=1000`
+      );
+
+      if (!res.ok) {
+        throw new Error(
+          `Failed to fetch data: ${res.status} ${res.statusText}`
+        );
+      }
+
+      const response = await res.json();
+      const data = Array.isArray(response?.data) ? response.data : [];
+
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid response data");
+      }
+
+      // Get the count of tasks completed by the current user from the API response 
+      const completedByUser = response.completedByUserCount || 0;
+
+      // Calculate statistics
+      const total = data.length;
+      const completed = data.filter(
+        (t: any) => t.dataEntryStatus === "completed"
+      ).length;
+      const last7Days = data.filter(
+        (t: any) =>
+          t.dataEntryCompletedAt &&
+          new Date(t.dataEntryCompletedAt) >= sevenDaysAgo
+      ).length;
+      const last30Days = data.filter(
+        (t: any) =>
+          t.dataEntryCompletedAt &&
+          new Date(t.dataEntryCompletedAt) >= thirtyDaysAgo
+      ).length;
+
+      // Group by status and priority
+      const byStatus: Record<string, number> = {};
+      const byPriority: Record<string, number> = {};
+
+      data.forEach((task: any) => {
+        // Count by status
+        const status = task.dataEntryStatus || "unknown";
+        byStatus[status] = (byStatus[status] || 0) + 1;
+
+        // Count by priority
+        const priority = task.taskPriority || "unknown";
+        byPriority[priority] = (byPriority[priority] || 0) + 1;
+      });
+
+      setStats((prev) => ({
+        ...prev,
+        dataEntryCompleted: completedByUser, // Use the count from the API
+        last7Days,
+        last30Days,
+        byStatus,
+        byPriority,
+        completedByUser, // Add the count to the stats object
+      }));
+    } catch (error) {
+      console.error("Failed to load statistics:", error);
+    }
+  };
 
   const load = async () => {
     if (!clientId) return;
     setLoading(true);
     try {
-      // Fetch client details
-      const clientRes = await fetch(`/api/clients/${clientId}`);
-      if (clientRes.ok) {
-        const clientData = await clientRes.json();
-        setClientName(clientData.name || '');
-      }
-      const res = await fetch(`/api/tasks/client/${clientId}`, { cache: "no-store" });
-      const data = await res.json();
-      const mine = (data as any[]).filter((t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id);
+      const [tasksRes, aRes] = await Promise.all([
+        fetch(`/api/tasks/client/${clientId}`, { cache: "no-store" }),
+        fetch(`/api/users?role=agent&limit=200`, { cache: "no-store" }),
+      ]);
+
+      const tasksData = await tasksRes.json();
+      const mine = (tasksData as any[]).filter(
+        (t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id
+      );
       setTasks(mine);
 
+      // Update basic stats
+      const total = mine.length;
+      const completed = mine.filter(
+        (t) => t.status === "completed" || t.status === "qc_approved"
+      ).length;
+      const pending = mine.filter((t) => t.status === "pending").length;
+      const inProgress = mine.filter((t) => t.status === "in_progress").length;
+      const overdue = mine.filter((t) => {
+        if (!t.dueDate) return false;
+        return (
+          new Date(t.dueDate) < new Date() &&
+          (t.status === "pending" || t.status === "in_progress")
+        );
+      }).length;
+
+      setStats((prev) => ({
+        ...prev,
+        total,
+        completed,
+        pending,
+        inProgress,
+        overdue,
+      }));
+
       // Check if posting tasks already exist
-      const hasPostingTasks = mine.some((task) =>
-        task.name?.toLowerCase().includes('posting') ||
-        task.category?.name?.toLowerCase().includes('posting')
+      const hasPostingTasks = mine.some(
+        (task: any) =>
+          task.name?.toLowerCase().includes("posting") ||
+          task.category?.name?.toLowerCase().includes("posting")
       );
       setHasCreatedTasks(hasPostingTasks);
 
-      const aRes = await fetch(`/api/users?role=agent&limit=200`, { cache: "no-store" });
       const aJson = await aRes.json();
-      const list: Array<{ id: string; name?: string | null; email?: string | null }> = (aJson?.users ?? aJson?.data ?? [])
+      const list: Array<{
+        id: string;
+        name?: string | null;
+        email?: string | null;
+      }> = (aJson?.users ?? aJson?.data ?? [])
         .filter((u: any) => u?.role?.name?.toLowerCase() === "agent")
-        .map((u: any) => ({ id: u.id, name: u.name ?? null, email: u.email ?? null }));
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name ?? null,
+          email: u.email ?? null,
+        }));
       setAgents(list);
+
+      // Load statistics
+      await loadStats();
     } catch (e) {
       console.error(e);
       toast.error("Failed to load tasks or agents");
@@ -97,36 +304,48 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, user?.id]);
 
+  // Count tasks completed by the current Data Entry user
+  const dataEntryCompletedCount = useMemo(() => {
+    if (!user?.id) return 0;
+
+    return tasks.reduce((count, task: any) => {
+      const report = task?.dataEntryReport;
+      if (!report) return count;
+
+      const isCompletedByMe =
+        report.completedByUserId === user.id &&
+        typeof report.status === "string" &&
+        report.status.trim().toLowerCase() === "completed by data entry";
+
+      return isCompletedByMe ? count + 1 : count;
+    }, 0);
+  }, [tasks, user?.id]);
+
   const filtered = useMemo(() => {
+    let result = tasks;
+
+    // Apply search filter
     const qlc = q.trim().toLowerCase();
-    if (!qlc) return tasks;
-    return tasks.filter((t) => [t.name, t.category?.name || "", t.priority || "", t.status || ""].some((s) => String(s).toLowerCase().includes(qlc)));
-  }, [tasks, q]);
+    if (qlc) {
+      result = result.filter((t) =>
+        [t.name, t.category?.name || "", t.priority || "", t.status || ""].some(
+          (s) => String(s).toLowerCase().includes(qlc)
+        )
+      );
+    }
 
-  // Some Statistics derived from tasks
-  const stats = useMemo(() => {
-    const total = tasks.length;
-    const byStatus = tasks.reduce((acc, t) => {
-      const key = (t.status || "unknown").toLowerCase();
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Apply status filter
+    if (statusFilter !== "all") {
+      result = result.filter((t) => t.status === statusFilter);
+    }
 
-    const completed = (byStatus["completed"] ?? 0) + (byStatus["qc_approved"] ?? 0);
-    const inProgress = (byStatus["in_progress"] ?? 0) + (byStatus["inprogress"] ?? 0);
-    const notStarted = (byStatus["not_started"] ?? 0) + (byStatus["pending"] ?? 0) + (byStatus["todo"] ?? 0);
+    // Apply priority filter
+    if (priorityFilter !== "all") {
+      result = result.filter((t) => t.priority === priorityFilter);
+    }
 
-    const now = new Date();
-    const overdue = tasks.filter((t) => {
-      if (!t.dueDate) return false;
-      const due = new Date(t.dueDate);
-      if (isNaN(due.getTime())) return false;
-      const done = (t.status === "completed" || t.status === "qc_approved");
-      return !done && due < now;
-    }).length;
-
-    return { total, completed, inProgress, notStarted, overdue };
-  }, [tasks]);
+    return result;
+  }, [tasks, q, statusFilter, priorityFilter]);
 
   // Gate readiness by required categories fully QC-approved
   const requiredCategories = [
@@ -139,7 +358,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
     if (!tasks || tasks.length === 0) return false;
     // For each required category: must exist and all in that category must be qc_approved
     return requiredCategories.every((cat) => {
-      const inCat = tasks.filter((t) => (t.category?.name || "").toLowerCase() === cat.toLowerCase());
+      const inCat = tasks.filter(
+        (t) => (t.category?.name || "").toLowerCase() === cat.toLowerCase()
+      );
       if (inCat.length === 0) return false; // must have tasks for this category
       return inCat.every((t) => t.status === "qc_approved");
     });
@@ -217,15 +438,23 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
         }),
       });
       const j1 = await r1.json();
-      if (!r1.ok) throw new Error(j1?.message || j1?.error || "Failed to complete task");
+      if (!r1.ok)
+        throw new Error(j1?.message || j1?.error || "Failed to complete task");
 
-      // 2) set completedAt (chosen date)
+      // 2) set completedAt and dataEntryReport
       const r2 = await fetch(`/api/tasks/${selected.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "completed",
           completedAt: completedAt.toISOString(),
+          dataEntryReport: {
+            completedByUserId: user.id,
+            completedByName:
+              (user as any)?.name || (user as any)?.email || user.id,
+            completedBy: new Date().toISOString(),
+            status: "Completed by " + (user as any)?.name,
+          },
         }),
       });
       const j2 = await r2.json();
@@ -250,14 +479,20 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
           body: JSON.stringify(distBody),
         });
         const jDist = await rDist.json();
-        if (!rDist.ok) throw new Error(jDist?.error || "Failed to reassign task to selected agent");
+        if (!rDist.ok)
+          throw new Error(
+            jDist?.error || "Failed to reassign task to selected agent"
+          );
       }
 
       // 3) auto approve → qc_approved (include notes with doneBy)
       const r3 = await fetch(`/api/tasks/${selected.id}/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ performanceRating: "Good", notes: doneBy ? `Done by agent: ${doneBy}` : undefined }),
+        body: JSON.stringify({
+          performanceRating: "Good",
+          notes: doneBy ? `Done by agent: ${doneBy}` : undefined,
+        }),
       });
       const j3 = await r3.json();
       if (!r3.ok) throw new Error(j3?.error || "Failed to approve task");
@@ -272,155 +507,386 @@ export default function DataEntryCompleteTasksPanel({ clientId }: DataEntryCompl
   };
 
   return (
-    <Card className="border-0 shadow-2xl overflow-hidden bg-white/90 backdrop-blur">
-      <div className="flex items-center justify-between pb-2">
-        <h2 className="text-2xl font-bold p-2 rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 text-white">
-          {clientId ? (
-            clientName ? (
-              `${clientName}`
-            ) : (
-              `Client ${clientId}`
-            )
-          ) : (
-            "All Clients"
-          )} — Complete Tasks
-        </h2>
-        {/* Some Statistics */}
-        <BackgroundGradient className="flex gap-3 items-center rounded-xl p-4">
-          <div className="text-2xl font-bold uppercase tracking-wide text-slate-900">Total - </div>
-          <div className="text-2xl font-bold text-slate-900">{stats.total} Task Remaining</div>
-        </BackgroundGradient>
+    <div className="space-y-6">
+      {/* Statistics Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Total Tasks Card */}
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-700">
+              Total Tasks Remain
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-900">
+              {stats.total}
+            </div>
+            <p className="text-xs text-blue-600 mt-1">
+              All tasks assigned to you
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="flex items-center gap-2 pr-6">
-          <CreateTasksButton
-            clientId={clientId}
-            disabled={hasCreatedTasks}
-            onTaskCreationComplete={() => {
-              setHasCreatedTasks(true);
-              load();
-            }}
-          />
-        </div>
+        {/* Completed Tasks Card */}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-700">
+              Total Completed
+            </CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-2">
+              <div className="text-3xl font-bold text-green-900">
+                {stats.completed}
+              </div>
+              <span className="text-sm text-green-600">tasks</span>
+            </div>
+            <p className="text-xs text-green-600 mt-1">
+              {stats.byStatus.completed || 0} completed •{" "}
+              {stats.byStatus.qc_approved || 0} approved
+            </p>
+            {stats.last7Days > 0 && (
+              <p className="text-xs text-green-500 mt-1">
+                {stats.last7Days} completed in last 7 days
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Overdue Tasks Card */}
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-amber-700">
+              Over Due
+            </CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-900">
+              {stats.overdue}
+            </div>
+            <p className="text-xs text-amber-600 mt-1">
+              {stats.last7Days} in last 7 days • {stats.last30Days} in last 30
+              days
+            </p>
+          </CardContent>
+        </Card>
       </div>
-      <CardContent>
-        <div className="flex items-center gap-3 mb-4">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Quick search tasks" className="h-10 rounded-xl" />
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
-            <thead className="bg-slate-50 text-slate-700">
-              <tr className="text-left">
-                <th className="px-3 py-2">Task</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Due</th>
-                <th className="px-3 py-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {loading ? (
-                <tr><td colSpan={6} className="p-6 text-center text-slate-500">Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="p-6 text-center text-slate-500">No tasks</td></tr>
-              ) : (
-                filtered.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/60">
-                    <td className="p-3">
-                      <div className="font-medium text-slate-900 truncate" title={t.name}>{t.name}</div>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant="outline">{t.category?.name || "—"}</Badge>
-                    </td>
-                    <td className="p-3">{t.priority}</td>
-                    <td className="p-3">{t.status.replaceAll("_", " ")}</td>
-                    <td className="p-3">{t.dueDate ? format(new Date(t.dueDate), "PPP") : "—"}</td>
-                    <td className="p-3 text-right">
-                      <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700" onClick={() => openComplete(t)} size="sm">Complete</Button>
+
+      {/* Tasks Panel */}
+      <Card className="border-0 shadow-xl overflow-hidden bg-white/90 backdrop-blur">
+        <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <BarChart3 className="h-6 w-6" />
+              {clientId
+                ? clientName
+                  ? `${clientName}`
+                  : `Client ${clientId}`
+                : "All Clients"}{" "}
+              — Complete Tasks
+            </CardTitle>
+            <CreateTasksButton
+              clientId={clientId}
+              disabled={hasCreatedTasks}
+              onTaskCreationComplete={() => {
+                setHasCreatedTasks(true);
+                load();
+              }}
+            />
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          {/* Filters and Search */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search tasks..."
+                className="pl-10 h-11 rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Tasks Table */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="min-w-full">
+              <thead className="bg-slate-50">
+                <tr className="text-left text-slate-700">
+                  <th className="px-4 py-3 font-medium">Task</th>
+                  <th className="px-4 py-3 font-medium">Category</th>
+                  <th className="px-4 py-3 font-medium">Priority</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Due Date</th>
+                  <th className="px-4 py-3 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      </div>
+                      <p className="mt-2">Loading tasks...</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                      <p>No tasks found</p>
+                      {q ||
+                      statusFilter !== "all" ||
+                      priorityFilter !== "all" ? (
+                        <Button
+                          variant="outline"
+                          className="mt-2"
+                          onClick={() => {
+                            setQ("");
+                            setStatusFilter("all");
+                            setPriorityFilter("all");
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((t) => {
+                    const isOverdue =
+                      t.dueDate &&
+                      new Date(t.dueDate) < new Date() &&
+                      (t.status === "pending" || t.status === "in_progress");
 
-        {isReadyForPostingCreation && (
-          <div className="mt-6 flex justify-end">
-            <Button onClick={createPostingTasks} disabled={creatingPosting} className="bg-indigo-600">
-              {creatingPosting ? "Creating..." : "Create Posting Tasks"}
-            </Button>
+                    return (
+                      <tr
+                        key={t.id}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div
+                            className="font-medium text-slate-900 truncate max-w-[200px]"
+                            title={t.name}
+                          >
+                            {t.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-blue-700 border-blue-200"
+                          >
+                            {t.category?.name || "—"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`font-medium ${
+                              priorityColor[t.priority] || "text-gray-600"
+                            }`}
+                          >
+                            {t.priority
+                              ? t.priority.charAt(0).toUpperCase() +
+                                t.priority.slice(1)
+                              : "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={statusVariant[t.status] || "outline"}
+                            className="capitalize"
+                          >
+                            {t.status.replaceAll("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div
+                            className={`flex items-center gap-1 ${
+                              isOverdue ? "text-red-600 font-medium" : ""
+                            }`}
+                          >
+                            {t.dueDate ? (
+                              <>
+                                <Calendar className="h-4 w-4" />
+                                {format(new Date(t.dueDate), "MMM dd, yyyy")}
+                                {isOverdue && (
+                                  <AlertCircle className="h-4 w-4 ml-1" />
+                                )}
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
+                            onClick={() => openComplete(t)}
+                            size="sm"
+                            disabled={
+                              t.status === "completed" ||
+                              t.status === "qc_approved"
+                            }
+                          >
+                            {t.status === "completed" ||
+                            t.status === "qc_approved"
+                              ? "Completed"
+                              : "Complete"}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
 
-        <Dialog open={!!selected} onOpenChange={(o) => !o && resetModal()}>
-          <DialogContent className="sm:max-w-[560px]">
-            <DialogHeader>
-              <DialogTitle>Complete Task</DialogTitle>
-              <DialogDescription>Provide completion link, credentials, who did it, and the completion date. It will be auto-QC approved.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
+          {isReadyForPostingCreation && (
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={createPostingTasks}
+                disabled={creatingPosting}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md hover:from-indigo-700 hover:to-purple-700"
+              >
+                {creatingPosting ? "Creating..." : "Create Posting Tasks"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Completion Dialog */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && resetModal()}>
+        <DialogContent className="sm:max-w-[600px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Complete Task: {selected?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Provide completion details. This task will be automatically QC
+              approved upon submission.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Completion Link *
+              </label>
+              <Input
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="https://example.com"
+                className="rounded-lg"
+              />
+            </div>
+
+            {!isSimpleTask(selected) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Email
+                  </label>
+                  <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Username
+                  </label>
+                  <Input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="username"
+                    className="rounded-lg"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium mb-1 block">
+                    Password
+                  </label>
+                  <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="password"
+                    type="password"
+                    className="rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Completion Link</label>
-                <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" className="mt-1" />
+                <label className="text-sm font-medium mb-1 block flex items-center gap-2">
+                  <UserRound className="h-4 w-4" />
+                  Done by (agent)
+                </label>
+                <Select value={doneBy} onValueChange={setDoneBy}>
+                  <SelectTrigger className="rounded-lg h-11">
+                    <SelectValue placeholder="Select agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name || a.email || a.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {!isSimpleTask(selected) && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Username</label>
-                    <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Password</label>
-                    <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" />
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium flex items-center gap-2"><UserRound className="h-4 w-4" /> Done by (agent)</label>
-                  <Select value={doneBy} onValueChange={setDoneBy}>
-                    <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Select agent" /></SelectTrigger>
-                    <SelectContent>
-                      {agents.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.name || a.email || a.id}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Completed At</label>
-                  <div className="mt-1">
-                    <DatePicker
-                      selected={completedAt}
-                      onChange={(date: Date | null) => setCompletedAt(date || new Date())}
-                      dateFormat="MMMM d, yyyy"
-                      showMonthDropdown
-                      showYearDropdown
-                      dropdownMode="select"
-                      placeholderText="Select completion date"
-                      className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm"
-                      maxDate={new Date()} // Prevent future dates
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Completed At *
+                </label>
+                <DatePicker
+                  selected={completedAt}
+                  onChange={(date: Date | null) =>
+                    setCompletedAt(date || new Date())
+                  }
+                  dateFormat="MMMM d, yyyy"
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  placeholderText="Select completion date"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm h-11"
+                  maxDate={new Date()} // Prevent future dates
+                />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" className="bg-red-500 hover:bg-red-600 text-white" onClick={() => resetModal()}>Cancel</Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={submit}>
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Submit & Approve
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => resetModal()}
+              className="rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="ml-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-lg"
+              onClick={submit}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
