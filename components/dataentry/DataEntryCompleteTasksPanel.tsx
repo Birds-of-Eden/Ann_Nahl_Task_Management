@@ -1,3 +1,4 @@
+//app/com
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -5,11 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { CheckCircle2, UserRound, Search, Calendar, BarChart3, AlertCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  UserRound,
+  Search,
+  Calendar,
+  BarChart3,
+  AlertCircle,
+} from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useUserSession } from "@/lib/hooks/use-user-session";
@@ -26,7 +47,11 @@ export type DETask = {
   username?: string | null;
   password?: string | null;
   category?: { id: string; name: string } | null;
-  assignedTo?: { id: string; name?: string | null; email?: string | null } | null;
+  assignedTo?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
   dueDate?: string | null;
   completedAt?: string | null;
   // Persisted JSON: { completedByUserId, completedByName, completedAt, status }
@@ -34,19 +59,22 @@ export type DETask = {
 };
 
 // Status badge variant mapping
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  "pending": "outline",
-  "in_progress": "secondary",
-  "completed": "default",
-  "qc_approved": "default",
-  "rejected": "destructive"
+const statusVariant: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  pending: "outline",
+  in_progress: "secondary",
+  completed: "default",
+  qc_approved: "default",
+  rejected: "destructive",
 };
 
 // Priority color mapping
 const priorityColor: Record<string, string> = {
-  "high": "text-red-600",
-  "medium": "text-yellow-600",
-  "low": "text-green-600"
+  high: "text-red-600",
+  medium: "text-yellow-600",
+  low: "text-green-600",
 };
 
 interface TaskStats {
@@ -62,12 +90,18 @@ interface TaskStats {
   byPriority: Record<string, number>;
 }
 
-export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: string }) {
+export default function DataEntryCompleteTasksPanel({
+  clientId,
+}: {
+  clientId: string;
+}) {
   const router = useRouter();
   const { user } = useUserSession();
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<DETask[]>([]);
-  const [agents, setAgents] = useState<Array<{ id: string; name?: string | null; email?: string | null }>>([]);
+  const [agents, setAgents] = useState<
+    Array<{ id: string; name?: string | null; email?: string | null }>
+  >([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
@@ -79,7 +113,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     last7Days: 0,
     last30Days: 0,
     byStatus: {},
-    byPriority: {}
+    byPriority: {},
   });
 
   const [q, setQ] = useState("");
@@ -102,7 +136,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
         setClientName("");
         return;
       }
-      
+
       try {
         const response = await fetch(`/api/clients/${clientId}`);
         if (response.ok) {
@@ -112,7 +146,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
           setClientName(`Client ${clientId}`);
         }
       } catch (error) {
-        console.error('Error fetching client:', error);
+        console.error("Error fetching client:", error);
         setClientName(`Client ${clientId}`);
       }
     };
@@ -122,7 +156,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
 
   const loadStats = async () => {
     if (!clientId) return;
-    
+
     try {
       const today = new Date();
       const sevenDaysAgo = new Date();
@@ -131,27 +165,42 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
       thirtyDaysAgo.setDate(today.getDate() - 30);
 
       // Fetch tasks with data entry reports
-      const res = await fetch(`/api/tasks/data-entry-reports?clientId=${clientId}&pageSize=1000`);
-      
+      const res = await fetch(
+        `/api/tasks/data-entry-reports?clientId=${clientId}&pageSize=1000`
+      );
+
       if (!res.ok) {
-        throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
+        throw new Error(
+          `Failed to fetch data: ${res.status} ${res.statusText}`
+        );
       }
-      
+
       const response = await res.json();
       const data = Array.isArray(response?.data) ? response.data : [];
-      
+
       if (!Array.isArray(data)) {
-        throw new Error('Invalid response data');
+        throw new Error("Invalid response data");
       }
 
       // Calculate statistics
       const total = data.length;
-      const completed = data.filter((t: any) => t.dataEntryStatus === 'completed').length;
-      const last7Days = data.filter((t: any) =>
-        t.dataEntryCompletedAt && new Date(t.dataEntryCompletedAt) >= sevenDaysAgo
+      const completed = data.filter(
+        (t: any) => t.dataEntryStatus === "completed"
       ).length;
-      const last30Days = data.filter((t: any) =>
-        t.dataEntryCompletedAt && new Date(t.dataEntryCompletedAt) >= thirtyDaysAgo
+      // Per-user completed: strictly match JSON dataEntryReport.completedByUserId to logged-in user ID
+      const completedByMe = data.reduce((acc: number, t: any) => {
+        const rid = t?.dataEntryReport?.completedByUserId;
+        return acc + (user?.id && rid === user.id ? 1 : 0);
+      }, 0);
+      const last7Days = data.filter(
+        (t: any) =>
+          t.dataEntryCompletedAt &&
+          new Date(t.dataEntryCompletedAt) >= sevenDaysAgo
+      ).length;
+      const last30Days = data.filter(
+        (t: any) =>
+          t.dataEntryCompletedAt &&
+          new Date(t.dataEntryCompletedAt) >= thirtyDaysAgo
       ).length;
 
       // Group by status and priority
@@ -160,24 +209,24 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
 
       data.forEach((task: any) => {
         // Count by status
-        const status = task.dataEntryStatus || 'unknown';
+        const status = task.dataEntryStatus || "unknown";
         byStatus[status] = (byStatus[status] || 0) + 1;
 
         // Count by priority
-        const priority = task.taskPriority || 'unknown';
+        const priority = task.taskPriority || "unknown";
         byPriority[priority] = (byPriority[priority] || 0) + 1;
       });
 
-      setStats(prev => ({
+      setStats((prev) => ({
         ...prev,
-        dataEntryCompleted: completed,
+        dataEntryCompleted: completedByMe,
         last7Days,
         last30Days,
         byStatus,
-        byPriority
+        byPriority,
       }));
     } catch (error) {
-      console.error('Failed to load statistics:', error);
+      console.error("Failed to load statistics:", error);
     }
   };
 
@@ -187,44 +236,59 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     try {
       const [tasksRes, aRes] = await Promise.all([
         fetch(`/api/tasks/client/${clientId}`, { cache: "no-store" }),
-        fetch(`/api/users?role=agent&limit=200`, { cache: "no-store" })
+        fetch(`/api/users?role=agent&limit=200`, { cache: "no-store" }),
       ]);
 
       const tasksData = await tasksRes.json();
-      const mine = (tasksData as any[]).filter((t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id);
+      const mine = (tasksData as any[]).filter(
+        (t) => t?.assignedTo?.id && user?.id && t.assignedTo.id === user.id
+      );
       setTasks(mine);
 
       // Update basic stats
       const total = mine.length;
-      const completed = mine.filter(t => t.status === "completed" || t.status === "qc_approved").length;
-      const pending = mine.filter(t => t.status === "pending").length;
-      const inProgress = mine.filter(t => t.status === "in_progress").length;
-      const overdue = mine.filter(t => {
+      const completed = mine.filter(
+        (t) => t.status === "completed" || t.status === "qc_approved"
+      ).length;
+      const pending = mine.filter((t) => t.status === "pending").length;
+      const inProgress = mine.filter((t) => t.status === "in_progress").length;
+      const overdue = mine.filter((t) => {
         if (!t.dueDate) return false;
-        return new Date(t.dueDate) < new Date() &&
-          (t.status === "pending" || t.status === "in_progress");
+        return (
+          new Date(t.dueDate) < new Date() &&
+          (t.status === "pending" || t.status === "in_progress")
+        );
       }).length;
 
-      setStats(prev => ({
+      setStats((prev) => ({
         ...prev,
         total,
         completed,
         pending,
         inProgress,
-        overdue
+        overdue,
       }));
 
       // Check if posting tasks already exist
-      const hasPostingTasks = mine.some((task: any) =>
-        task.name?.toLowerCase().includes('posting') ||
-        task.category?.name?.toLowerCase().includes('posting')
+      const hasPostingTasks = mine.some(
+        (task: any) =>
+          task.name?.toLowerCase().includes("posting") ||
+          task.category?.name?.toLowerCase().includes("posting")
       );
       setHasCreatedTasks(hasPostingTasks);
 
       const aJson = await aRes.json();
-      const list: Array<{ id: string; name?: string | null; email?: string | null }> = (aJson?.users ?? aJson?.data ?? [])
+      const list: Array<{
+        id: string;
+        name?: string | null;
+        email?: string | null;
+      }> = (aJson?.users ?? aJson?.data ?? [])
         .filter((u: any) => u?.role?.name?.toLowerCase() === "agent")
-        .map((u: any) => ({ id: u.id, name: u.name ?? null, email: u.email ?? null }));
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name ?? null,
+          email: u.email ?? null,
+        }));
       setAgents(list);
 
       // Load statistics
@@ -252,8 +316,8 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
 
       const isCompletedByMe =
         report.completedByUserId === user.id &&
-        typeof report.status === 'string' &&
-        report.status.trim().toLowerCase() === 'completed by data entry';
+        typeof report.status === "string" &&
+        report.status.trim().toLowerCase() === "completed by data entry";
 
       return isCompletedByMe ? count + 1 : count;
     }, 0);
@@ -266,19 +330,20 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     const qlc = q.trim().toLowerCase();
     if (qlc) {
       result = result.filter((t) =>
-        [t.name, t.category?.name || "", t.priority || "", t.status || ""]
-          .some((s) => String(s).toLowerCase().includes(qlc))
+        [t.name, t.category?.name || "", t.priority || "", t.status || ""].some(
+          (s) => String(s).toLowerCase().includes(qlc)
+        )
       );
     }
 
     // Apply status filter
     if (statusFilter !== "all") {
-      result = result.filter(t => t.status === statusFilter);
+      result = result.filter((t) => t.status === statusFilter);
     }
 
     // Apply priority filter
     if (priorityFilter !== "all") {
-      result = result.filter(t => t.priority === priorityFilter);
+      result = result.filter((t) => t.priority === priorityFilter);
     }
 
     return result;
@@ -295,7 +360,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
     if (!tasks || tasks.length === 0) return false;
     // For each required category: must exist and all in that category must be qc_approved
     return requiredCategories.every((cat) => {
-      const inCat = tasks.filter((t) => (t.category?.name || "").toLowerCase() === cat.toLowerCase());
+      const inCat = tasks.filter(
+        (t) => (t.category?.name || "").toLowerCase() === cat.toLowerCase()
+      );
       if (inCat.length === 0) return false; // must have tasks for this category
       return inCat.every((t) => t.status === "qc_approved");
     });
@@ -373,7 +440,8 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
         }),
       });
       const j1 = await r1.json();
-      if (!r1.ok) throw new Error(j1?.message || j1?.error || "Failed to complete task");
+      if (!r1.ok)
+        throw new Error(j1?.message || j1?.error || "Failed to complete task");
 
       // 2) set completedAt and dataEntryReport
       const r2 = await fetch(`/api/tasks/${selected.id}`, {
@@ -386,7 +454,8 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
           // Server will set dataEntryReport.completedAt
           dataEntryReport: {
             completedByUserId: user.id,
-            completedByName: (user as any)?.name || (user as any)?.email || user.id,
+            completedByName:
+              (user as any)?.name || (user as any)?.email || user.id,
             completedBy: new Date().toISOString(),
             status: "Completed by " + (user as any)?.name,
           },
@@ -414,14 +483,20 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
           body: JSON.stringify(distBody),
         });
         const jDist = await rDist.json();
-        if (!rDist.ok) throw new Error(jDist?.error || "Failed to reassign task to selected agent");
+        if (!rDist.ok)
+          throw new Error(
+            jDist?.error || "Failed to reassign task to selected agent"
+          );
       }
 
       // 3) auto approve → qc_approved (include notes with doneBy)
       const r3 = await fetch(`/api/tasks/${selected.id}/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ performanceRating: "Good", notes: doneBy ? `Done by agent: ${doneBy}` : undefined }),
+        body: JSON.stringify({
+          performanceRating: "Good",
+          notes: doneBy ? `Done by agent: ${doneBy}` : undefined,
+        }),
       });
       const j3 = await r3.json();
       if (!r3.ok) throw new Error(j3?.error || "Failed to approve task");
@@ -442,29 +517,37 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
         {/* Total Tasks Card */}
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Total Tasks Remain</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-700">
+              Total Tasks Remain
+            </CardTitle>
             <BarChart3 className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-900">{stats.total}</div>
-            <p className="text-xs text-blue-600 mt-1">All tasks assigned to you</p>
+            <div className="text-2xl font-bold text-blue-900">
+              {stats.total}
+            </div>
+            <p className="text-xs text-blue-600 mt-1">
+              All tasks assigned to you
+            </p>
           </CardContent>
         </Card>
 
         {/* Completed Tasks Card */}
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Total Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-700">
+              Total Completed
+            </CardTitle>
             <BarChart3 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xs">
-              {Object.entries(stats.byStatus).map(([status, count]) => (
-                <div key={status} className="flex flex-col py-1">
-                  <div className="text-2xl font-bold text-blue-900">{count}</div>
-                  <p className="capitalize text-xs text-green-700">{status.replace('_', ' ')}</p>
-                </div>
-              ))}
+            <div>
+              <div className="text-2xl font-bold text-green-900">
+                {stats.dataEntryCompleted}
+              </div>
+              <p className="text-xs text-green-700 mt-1">
+                Completed by you (Data Entry)
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -472,13 +555,18 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
         {/* Overdue Tasks Card */}
         <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-amber-700">Over Due</CardTitle>
+            <CardTitle className="text-sm font-medium text-amber-700">
+              Over Due
+            </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-900">{stats.overdue}</div>
+            <div className="text-2xl font-bold text-amber-900">
+              {stats.overdue}
+            </div>
             <p className="text-xs text-amber-600 mt-1">
-              {stats.last7Days} in last 7 days • {stats.last30Days} in last 30 days
+              {stats.last7Days} in last 7 days • {stats.last30Days} in last 30
+              days
             </p>
           </CardContent>
         </Card>
@@ -490,15 +578,12 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <CardTitle className="text-2xl flex items-center gap-2">
               <BarChart3 className="h-6 w-6" />
-              {clientId ? (
-                clientName ? (
-                  `${clientName}`
-                ) : (
-                  `Client ${clientId}`
-                )
-              ) : (
-                "All Clients"
-              )} — Complete Tasks
+              {clientId
+                ? clientName
+                  ? `${clientName}`
+                  : `Client ${clientId}`
+                : "All Clients"}{" "}
+              — Complete Tasks
             </CardTitle>
             <CreateTasksButton
               clientId={clientId}
@@ -552,7 +637,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-500">
                       <p>No tasks found</p>
-                      {q || statusFilter !== "all" || priorityFilter !== "all" ? (
+                      {q ||
+                      statusFilter !== "all" ||
+                      priorityFilter !== "all" ? (
                         <Button
                           variant="outline"
                           className="mt-2"
@@ -569,38 +656,65 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                   </tr>
                 ) : (
                   filtered.map((t) => {
-                    const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() &&
+                    const isOverdue =
+                      t.dueDate &&
+                      new Date(t.dueDate) < new Date() &&
                       (t.status === "pending" || t.status === "in_progress");
 
                     return (
-                      <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr
+                        key={t.id}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
                         <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900 truncate max-w-[200px]" title={t.name}>
+                          <div
+                            className="font-medium text-slate-900 truncate max-w-[200px]"
+                            title={t.name}
+                          >
                             {t.name}
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-blue-700 border-blue-200"
+                          >
                             {t.category?.name || "—"}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`font-medium ${priorityColor[t.priority] || "text-gray-600"}`}>
-                            {t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1) : "—"}
+                          <span
+                            className={`font-medium ${
+                              priorityColor[t.priority] || "text-gray-600"
+                            }`}
+                          >
+                            {t.priority
+                              ? t.priority.charAt(0).toUpperCase() +
+                                t.priority.slice(1)
+                              : "—"}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={statusVariant[t.status] || "outline"} className="capitalize">
+                          <Badge
+                            variant={statusVariant[t.status] || "outline"}
+                            className="capitalize"
+                          >
                             {t.status.replaceAll("_", " ")}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <div className={`flex items-center gap-1 ${isOverdue ? "text-red-600 font-medium" : ""}`}>
+                          <div
+                            className={`flex items-center gap-1 ${
+                              isOverdue ? "text-red-600 font-medium" : ""
+                            }`}
+                          >
                             {t.dueDate ? (
                               <>
                                 <Calendar className="h-4 w-4" />
                                 {format(new Date(t.dueDate), "MMM dd, yyyy")}
-                                {isOverdue && <AlertCircle className="h-4 w-4 ml-1" />}
+                                {isOverdue && (
+                                  <AlertCircle className="h-4 w-4 ml-1" />
+                                )}
                               </>
                             ) : (
                               "—"
@@ -612,9 +726,15 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
                             onClick={() => openComplete(t)}
                             size="sm"
-                            disabled={t.status === "completed" || t.status === "qc_approved"}
+                            disabled={
+                              t.status === "completed" ||
+                              t.status === "qc_approved"
+                            }
                           >
-                            {t.status === "completed" || t.status === "qc_approved" ? "Completed" : "Complete"}
+                            {t.status === "completed" ||
+                            t.status === "qc_approved"
+                              ? "Completed"
+                              : "Complete"}
                           </Button>
                         </td>
                       </tr>
@@ -648,13 +768,16 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
               Complete Task: {selected?.name}
             </DialogTitle>
             <DialogDescription>
-              Provide completion details. This task will be automatically QC approved upon submission.
+              Provide completion details. This task will be automatically QC
+              approved upon submission.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium mb-1 block">Completion Link *</label>
+              <label className="text-sm font-medium mb-1 block">
+                Completion Link *
+              </label>
               <Input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
@@ -666,7 +789,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
             {!isSimpleTask(selected) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Email</label>
+                  <label className="text-sm font-medium mb-1 block">
+                    Email
+                  </label>
                   <Input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -675,7 +800,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Username</label>
+                  <label className="text-sm font-medium mb-1 block">
+                    Username
+                  </label>
                   <Input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -684,7 +811,9 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium mb-1 block">Password</label>
+                  <label className="text-sm font-medium mb-1 block">
+                    Password
+                  </label>
                   <Input
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -698,7 +827,7 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block flex items-center gap-2">
+                <label className="text-sm font-medium mb-1 flex items-center gap-2">
                   <UserRound className="h-4 w-4" />
                   Done by (agent)
                 </label>
@@ -717,10 +846,14 @@ export default function DataEntryCompleteTasksPanel({ clientId }: { clientId: st
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Completed At *</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Completed At *
+                </label>
                 <DatePicker
                   selected={completedAt}
-                  onChange={(date: Date | null) => setCompletedAt(date || new Date())}
+                  onChange={(date: Date | null) =>
+                    setCompletedAt(date || new Date())
+                  }
                   dateFormat="MMMM d, yyyy"
                   showMonthDropdown
                   showYearDropdown

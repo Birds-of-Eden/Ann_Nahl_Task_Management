@@ -1,4 +1,4 @@
-// app/api/tasks/create-posting-tasks/route.ts
+// app/api/tasks/data-entry-reports/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -102,13 +102,13 @@ const makeId = () =>
     globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
   }`;
 
-// ---------- GET: preview ----------
+// ---------- GET: data-entry-reports ----------
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const clientId = searchParams.get("clientId") ?? undefined;
-    const templateIdRaw = searchParams.get("templateId") ?? undefined;
-    const onlyType = searchParams.get("onlyType") ?? undefined;
+    const pageSize = Number(searchParams.get("pageSize") ?? 100);
+    const completedByUserId = searchParams.get("completedByUserId") ?? undefined;
 
     if (!clientId)
       return NextResponse.json(
@@ -123,173 +123,71 @@ export async function GET(req: NextRequest) {
       return fail("GET.db-preflight", e);
     }
 
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
-      select: {
-        id: true,
-        package: { select: { totalMonths: true } },
-      },
-    });
-
-    if (!client)
-      return NextResponse.json(
-        { message: "Client not found" },
-        { status: 404 }
-      );
-
-    // months = normalized package months (min 1; capped to avoid accidents)
-    const packageTotalMonthsRaw = Number(client.package?.totalMonths ?? 1);
-    const packageTotalMonths =
-      Number.isFinite(packageTotalMonthsRaw) && packageTotalMonthsRaw > 0
-        ? Math.min(Math.floor(packageTotalMonthsRaw), 120)
-        : 1;
-
-    const templateId =
-      templateIdRaw === "none" || templateIdRaw === "" ? null : templateIdRaw;
-    const assignment = await prisma.assignment.findFirst({
+    const rows = await prisma.task.findMany({
       where: {
-        clientId,
-        ...(templateIdRaw !== undefined
-          ? { templateId: templateId ?? undefined }
+        assignment: { clientId },
+        ...(completedByUserId
+          ? {
+              // Prisma JSON filtering
+              dataEntryReport: {
+                path: ["completedByUserId"],
+                equals: completedByUserId,
+              } as any,
+            }
           : {}),
-      },
-      orderBy: { assignedAt: "desc" },
-      select: { id: true },
-    });
-    if (!assignment) {
-      return NextResponse.json(
-        {
-          message:
-            "No existing assignment found for this client. Please create one first.",
-        },
-        { status: 404 }
-      );
-    }
-
-    const sourceTasks = await prisma.task.findMany({
-      where: {
-        assignmentId: assignment.id,
-        templateSiteAsset: {
-          is: {
-            ...(onlyType
-              ? { type: onlyType as any }
-              : { type: { in: ALLOWED_ASSET_TYPES as unknown as string[] } }),
-          },
-        },
       },
       select: {
         id: true,
         name: true,
         status: true,
         priority: true,
-        idealDurationMinutes: true,
-        completionLink: true,
-        email: true,
-        password: true,
-        username: true,
-        notes: true,
-        templateSiteAsset: {
-          select: { id: true, type: true, defaultPostingFrequency: true },
-        },
+        category: { select: { name: true } },
+        dataEntryReport: true,
+        completedAt: true,
+        assignedTo: { select: { id: true } },
+        updatedAt: true,
       },
+      orderBy: { updatedAt: "desc" },
+      take: Math.max(1, Math.min(pageSize, 2000)),
     });
 
-    const countsByStatus = countByStatus(sourceTasks as any);
-    const allApproved =
-      sourceTasks.length > 0 &&
-      sourceTasks.every((t) => t.status === "qc_approved");
-
-    const assetIds = Array.from(
-      new Set(
-        sourceTasks
-          .map((s) => s.templateSiteAsset?.id)
-          .filter((v): v is number => typeof v === "number")
-      )
-    );
-    const settings = assetIds.length
-      ? await prisma.assignmentSiteAssetSetting.findMany({
-          where: {
-            assignmentId: assignment.id,
-            templateSiteAssetId: { in: assetIds },
-          },
-          select: { templateSiteAssetId: true, requiredFrequency: true },
-        })
-      : [];
-    const requiredByAssetId = new Map<number, number | null | undefined>();
-    for (const s of settings)
-      requiredByAssetId.set(s.templateSiteAssetId, s.requiredFrequency);
-
-    const tasks = sourceTasks.map((src) => {
-      const assetId = src.templateSiteAsset?.id;
-      const freq = getFrequency({
-        required: assetId ? requiredByAssetId.get(assetId) : undefined,
-        defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
-      });
-      const assetType = src.templateSiteAsset?.type;
+    // Map to data-entry oriented shape expected by the client panel
+    const data = rows.map((t) => {
+      const report: any = t.dataEntryReport ?? null;
+      const dataEntryCompletedAt: string | null =
+        (report?.completedBy as string) || null;
+      const isCompletedByJson = Boolean(report?.completedByUserId);
+      const dataEntryStatus = isCompletedByJson ? "completed" : "pending";
       return {
-        id: src.id,
-        name: src.name,
-        baseName: baseNameOf(src.name),
-        status: src.status,
-        priority: src.priority,
-        assetType,
-        // 👇 multiply original frequency by package months
-        frequency: freq * packageTotalMonths,
-        categoryName: resolveCategoryFromType(assetType),
+        id: t.id,
+        name: t.name,
+        taskPriority: t.priority,
+        taskStatus: t.status,
+        categoryName: t.category?.name ?? null,
+        dataEntryReport: report,
+        dataEntryStatus,
+        dataEntryCompletedAt,
+        assignedToId: t.assignedTo?.id ?? null,
       };
     });
 
-    // --- NEW: Build Social Communication previews ---
-
-    // social_site + other_asset: প্রতি অ্যাসেটে ১টা করে SC
-    const scAssetSources = sourceTasks.filter((s) => {
-      const t = s.templateSiteAsset?.type;
-      return t === "social_site" || t === "other_asset";
-    });
-
-    const scFromAssets = scAssetSources.map((src) => ({
-      id: `${src.id}::sc-asset`,
-      name: `${baseNameOf(src.name) || "Social"} - ${CAT_SOCIAL_COMMUNICATION}`,
-      baseName: baseNameOf(src.name) || "Social",
-      status: src.status,
-      priority: src.priority,
-      assetType: (src.templateSiteAsset?.type ?? "other_asset") as
-        | "social_site"
-        | "other_asset",
-      frequency: 1,
-      categoryName: CAT_SOCIAL_COMMUNICATION,
-    }));
-
-    // ফিক্সড ৩টা web2 প্ল্যাটফর্ম (অবিকল আগের মতোই)
-    const scFromWeb2Fixed = WEB2_FIXED_PLATFORMS.map((p) => ({
-      id: `sc-web2-${p}`,
-      name: `${
-        p.charAt(0).toUpperCase() + p.slice(1)
-      } - ${CAT_SOCIAL_COMMUNICATION}`,
-      baseName: p.charAt(0).toUpperCase() + p.slice(1),
-      status: "qc_approved" as TaskStatus,
-      priority: "medium" as const,
-      assetType: "web2_site" as const,
-      frequency: 1,
-      categoryName: CAT_SOCIAL_COMMUNICATION,
-    }));
-
-    // আগের + নতুন SC প্রিভিউ একসাথে
-    const tasksWithSC = [...tasks, ...scFromAssets, ...scFromWeb2Fixed];
-
-    const totalWillCreate = tasksWithSC.reduce(
-      (acc, t) => acc + (t.frequency ?? 1),
-      0
-    );
+    // Aggregations
+    const byStatus: Record<string, number> = {};
+    const byPriority: Record<string, number> = {};
+    for (const d of data) {
+      byStatus[d.dataEntryStatus] = (byStatus[d.dataEntryStatus] || 0) + 1;
+      byPriority[d.taskPriority] = (byPriority[d.taskPriority] || 0) + 1;
+    }
 
     return NextResponse.json({
-      message: "Preview of source tasks for copying.",
-      assignmentId: assignment.id,
-      tasks: tasksWithSC,
-      countsByStatus,
-      allApproved,
-      totalWillCreate,
-      packageTotalMonths, // 👈 added
+      message: "Data Entry reports",
+      data,
+      counts: {
+        total: data.length,
+        completed: byStatus["completed"] ?? 0,
+        byStatus,
+        byPriority,
+      },
       runtime: "nodejs",
     });
   } catch (err) {
