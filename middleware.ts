@@ -123,7 +123,9 @@ export async function middleware(req: NextRequest) {
   if (path.startsWith("/api/auth")) return NextResponse.next();
 
   const isApi = path.startsWith("/api");
-  const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+
+  const firstSeg = "/" + (path.split("/")[1] || "");
+  const isProtected = firstSeg in AREA_ROLE || path.startsWith("/api");
 
   // 1) Auth check (same as before)
   const token = req.cookies.get("session-token")?.value;
@@ -167,17 +169,10 @@ export async function middleware(req: NextRequest) {
   const permissions = new Set(me?.user?.permissions ?? []);
 
   // 3) Enforce area-by-role (e.g., only 'agent' can open /agent/**)
-  const areaPrefix = firstAreaPrefix(path);
-  if (areaPrefix) {
-    const requiredRole = AREA_ROLE[areaPrefix];
-
-    // NOTE:
-    // If you want to allow e.g. admins to traverse *any* area,
-    // add a small override here (e.g., if (role === 'admin') skip).
-    // For strict isolation (recommended), keep exact match:
-    if (requiredRole && role !== requiredRole) {
-      return deny(req, isApi, roleHome(role));
-    }
+  const areaPrefix = firstSeg; // exact area by first segment (no prefix collision)
+  const requiredRole = AREA_ROLE[areaPrefix as keyof typeof AREA_ROLE];
+  if (requiredRole && role !== requiredRole) {
+    return deny(req, isApi, roleHome(role));
   }
 
   // 4) OPTIONAL: permission-by-route (fine-grained)
