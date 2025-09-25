@@ -775,7 +775,7 @@ export default function TaskDistributionForClient() {
               className="space-y-4"
             >
               <div className="border rounded-2xl p-6 md:p-7 bg-gradient-to-br from-purple-50 to-white border-purple-200/70">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   {/* Category Selector */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">
@@ -948,43 +948,6 @@ export default function TaskDistributionForClient() {
                         </div>
                       </PopoverContent>
                     </Popover>
-                  </div>
-
-                  {/* ✅ NEW: Agent list source toggle */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-700">
-                      Choose Agent List
-                    </label>
-                    <Select
-                      value={agentSource}
-                      onValueChange={(v: "team" | "all") => setAgentSource(v)}
-                    >
-                      <SelectTrigger className="w-full h-11 rounded-xl border-slate-300">
-                        <SelectValue placeholder="Select source" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-lg border border-slate-200 bg-white">
-                        <SelectItem value="team">
-                          {teamNameForCategory(selectedCategory)} (Team)
-                        </SelectItem>
-                        <SelectItem value="all">All Agents</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-slate-600">
-                      Using{" "}
-                      <span className="font-semibold">
-                        {agentSource === "team"
-                          ? `${teamNameForCategory(selectedCategory)}`
-                          : "All Agents"}
-                      </span>{" "}
-                      •{" "}
-                      <span className="font-medium">
-                        {
-                          (agentSource === "team" ? teamAgents : allAgents)
-                            .length
-                        }
-                      </span>{" "}
-                      agents
-                    </div>
                   </div>
                 </div>
 
