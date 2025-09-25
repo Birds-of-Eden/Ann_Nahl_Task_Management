@@ -2,17 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, CheckCircle, Sparkles } from 'lucide-react';
+import { Package, CheckCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import DatePicker from "react-datepicker";
 
 interface PackageData {
   id: string;
   name: string;
   description: string;
+  totalMonths: number;
   _count?: {
     clients: number;
     templates: number;
@@ -27,7 +35,9 @@ export function PackageInfo({
 }: any) {
   const [packages, setPackages] = useState<PackageData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPackage, setSelectedPackage] = useState<string>(formData.packageId || "");
+  const [selectedPackage, setSelectedPackage] = useState<string>(
+    formData.packageId || ""
+  );
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -48,8 +58,26 @@ export function PackageInfo({
   }, []);
 
   const handlePackageSelect = (packageId: string) => {
+    const selectedPkg = packages.find(pkg => pkg.id === packageId);
     setSelectedPackage(packageId);
-    updateFormData({ packageId, templateId: "" }); // Reset template when package changes
+    
+    // Update form data with package ID and reset template
+    const formUpdates: any = { packageId, templateId: "" };
+    
+    // If start date is not set, set it to today
+    if (!formData.startDate) {
+      const today = new Date();
+      formUpdates.startDate = today.toISOString();
+      
+      // If package has a duration, calculate and set the due date
+      if (selectedPkg?.totalMonths) {
+        const dueDate = new Date(today);
+        dueDate.setMonth(dueDate.getMonth() + selectedPkg.totalMonths);
+        formUpdates.dueDate = dueDate.toISOString();
+      }
+    }
+    
+    updateFormData(formUpdates);
     toast.success("Package selected successfully!");
   };
 
@@ -62,7 +90,7 @@ export function PackageInfo({
           </h1>
           <p className="text-gray-500 mt-2">Loading available packages...</p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="relative overflow-hidden">
@@ -88,7 +116,8 @@ export function PackageInfo({
           Select Package
         </h1>
         <p className="text-gray-500 mt-2">
-          Choose the package that best suits your project needs and requirements.
+          Choose the package that best suits your project needs and
+          requirements.
         </p>
       </div>
 
@@ -97,18 +126,22 @@ export function PackageInfo({
           <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
             <Package className="w-12 h-12 text-blue-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Packages Available</h3>
-          <p className="text-gray-500">Please contact support to set up packages for your organization.</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            No Packages Available
+          </h3>
+          <p className="text-gray-500">
+            Please contact support to set up packages for your organization.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {packages.map((pkg) => (
-            <Card 
-              key={pkg.id} 
+            <Card
+              key={pkg.id}
               className={`relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-                selectedPackage === pkg.id 
-                  ? 'ring-2 ring-blue-500 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50' 
-                  : 'hover:shadow-md'
+                selectedPackage === pkg.id
+                  ? "ring-2 ring-blue-500 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50"
+                  : "hover:shadow-md"
               }`}
               onClick={() => handlePackageSelect(pkg.id)}
             >
@@ -119,19 +152,20 @@ export function PackageInfo({
                   </div>
                 </div>
               )}
-              
+
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-              
+
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-blue-500" />
                   {pkg.name}
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-600 line-clamp-3">
-                  {pkg.description || "A comprehensive package designed to meet your business needs."}
+                  {pkg.description ||
+                    "A comprehensive package designed to meet your business needs."}
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                   <div className="flex items-center gap-4">
@@ -147,19 +181,19 @@ export function PackageInfo({
                     )}
                   </div>
                 </div>
-                
-                <Button 
+
+                <Button
                   className={`w-full transition-all duration-200 ${
                     selectedPackage === pkg.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md'
-                      : 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-100 hover:to-purple-100 text-gray-700 hover:text-blue-700'
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md"
+                      : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-100 hover:to-purple-100 text-gray-700 hover:text-blue-700"
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePackageSelect(pkg.id);
                   }}
                 >
-                  {selectedPackage === pkg.id ? 'Selected' : 'Select Package'}
+                  {selectedPackage === pkg.id ? "Selected" : "Select Package"}
                 </Button>
               </CardContent>
             </Card>
@@ -167,16 +201,73 @@ export function PackageInfo({
         </div>
       )}
 
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Label htmlFor="startDate" className="mb-1 block">
+            Start Date
+          </Label>
+          <DatePicker
+            selected={formData.startDate ? new Date(formData.startDate) : null}
+            onChange={(date: Date | null) => {
+              const updates: any = { startDate: date ? date.toISOString() : "" };
+              
+              // If package is selected and due date is not set, calculate it
+              if (selectedPackage && date) {
+                const selectedPkg = packages.find(pkg => pkg.id === selectedPackage);
+                if (selectedPkg?.totalMonths) {
+                  const dueDate = new Date(date);
+                  dueDate.setMonth(dueDate.getMonth() + selectedPkg.totalMonths);
+                  updates.dueDate = dueDate.toISOString();
+                }
+              }
+              
+              updateFormData(updates);
+            }}
+            dateFormat="MMMM d, yyyy"
+            showMonthDropdown
+            showYearDropdown
+            dropdownMode="select"
+            placeholderText="Select start date"
+            className="w-full border border-gray-300 rounded-md px-4 py-2"
+          />
+        </div>
+
+        {/* Due Date */}
+        <div className="flex-1">
+          <Label htmlFor="dueDate" className="mb-1 block">
+            Due Date
+          </Label>
+          <DatePicker
+            selected={formData.dueDate ? new Date(formData.dueDate) : null}
+            onChange={(date: Date | null) =>
+              updateFormData({ dueDate: date ? date.toISOString() : "" })
+            }
+            dateFormat="MMMM d, yyyy"
+            showMonthDropdown
+            showYearDropdown
+            dropdownMode="select"
+            placeholderText="Select due date"
+            className="w-full border border-gray-300 rounded-md px-4 py-2"
+            minDate={formData.startDate ? new Date(formData.startDate) : undefined}
+          />
+          {selectedPackage && packages.find(pkg => pkg.id === selectedPackage)?.totalMonths && (
+            <p className="text-xs text-gray-500 mt-1">
+              {packages.find(pkg => pkg.id === selectedPackage)?.totalMonths} months from start date
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="flex justify-between pt-6">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={onPrevious}
           className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 hover:border-blue-300"
         >
           Previous
         </Button>
-        <Button 
-          onClick={onNext} 
+        <Button
+          onClick={onNext}
           disabled={!selectedPackage}
           className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
