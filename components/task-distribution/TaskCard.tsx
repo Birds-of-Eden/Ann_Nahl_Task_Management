@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -39,7 +40,14 @@ import { nameToColor, getInitialsFromName } from "@/utils/avatar";
 interface TaskCardProps {
   task: Task;
   siteType: string;
+
+  // NEW: both pools provided
+  teamAgents: Agent[];
+  allAgents: Agent[];
+
+  // keep the old prop for compatibility (not used now)
   agents: Agent[];
+
   isSelected: boolean;
   assignment: TaskAssignment | undefined;
   isFirstSelectedTask: boolean;
@@ -58,7 +66,8 @@ interface TaskCardProps {
 export function TaskCard({
   task,
   siteType,
-  agents,
+  teamAgents,
+  allAgents,
   isSelected,
   assignment,
   isFirstSelectedTask,
@@ -68,18 +77,26 @@ export function TaskCard({
   onTaskAssignment,
   onNoteChange,
 }: TaskCardProps) {
-  const filteredAgents = agents.filter((agent: any) => {
+  // NEW: per-card agent source
+  const [agentSource, setAgentSource] = useState<"team" | "all">("team");
+
+  // available list based on selection
+  const baseList = agentSource === "team" ? teamAgents : allAgents;
+
+  const filteredAgents = useMemo(() => {
     const categoryMap: { [key: string]: string } = {
       social_site: "social",
       web2_site: "web2",
       other_asset: "general",
     };
     const targetCategory = categoryMap[siteType] || "general";
-    return (
-      agent.category?.toLowerCase() === targetCategory ||
-      agent.role?.name?.toLowerCase() === "agent"
-    );
-  });
+    return baseList.filter((agent: any) => {
+      return (
+        agent.category?.toLowerCase() === targetCategory ||
+        agent.role?.name?.toLowerCase() === "agent"
+      );
+    });
+  }, [baseList, siteType]);
 
   const SiteIcon = siteTypeIcons[siteType as keyof typeof siteTypeIcons];
   const shouldDisableDropdown =
@@ -95,7 +112,6 @@ export function TaskCard({
     u?.email ||
     "User";
 
-  // Compact load indicator component
   const LoadIndicator = (a: any) => {
     const by = a?.byStatus || {};
     const P = by.pending ?? 0;
@@ -104,7 +120,6 @@ export function TaskCard({
     const R = by.reassigned ?? 0;
     const active = a?.activeCount ?? P + IP + O + R;
     const W = a?.weightedScore ?? P * 1 + IP * 2 + O * 3 + R * 2;
-
     return (
       <div className="flex items-center gap-1.5 text-xs">
         <div className="flex items-center gap-1">
@@ -272,7 +287,7 @@ export function TaskCard({
           })()
         ) : assignment ? (
           (() => {
-            const ag: any = (agents as any).find(
+            const ag: any = baseList.find(
               (a: any) => a.id === assignment.agentId
             );
             const dn = displayName(ag);
@@ -299,88 +314,107 @@ export function TaskCard({
               </div>
             );
           })()
-        ) : isSelected ? (
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-blue-600" />
-              <span>
-                {isFirstSelectedTask && isMultipleSelected
-                  ? `Assign ${isMultipleSelected ? "multiple" : ""} tasks to:`
-                  : "Assign to:"}
+        ) : (
+          <>
+            {/* NEW: Per-card agent list selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-800">
+                Choose Agent List:
               </span>
-            </label>
-
-            <div className="relative">
               <Select
-                value=""
-                onValueChange={handleAssignmentChange}
-                disabled={shouldDisableDropdown}
+                value={agentSource}
+                onValueChange={(v: "team" | "all") => setAgentSource(v)}
               >
-                <SelectTrigger
-                  className={`h-10 text-xs rounded-md ${
-                    shouldDisableDropdown
-                      ? "border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"
-                      : "border-blue-300 hover:border-blue-400 bg-white focus:ring-1 focus:ring-blue-400"
-                  }`}
-                >
-                  <SelectValue
-                    placeholder={
-                      shouldDisableDropdown
-                        ? "Controlled by first selected task..."
-                        : "Select an agent..."
-                    }
-                  />
+                <SelectTrigger className="h-8 text-xs w-48">
+                  <SelectValue placeholder="Select list" />
                 </SelectTrigger>
-
-                <SelectContent className="rounded-md border shadow-lg p-1.5 max-h-[300px]">
-                  {filteredAgents.map((agent: any) => {
-                    const dn = displayName(agent);
-                    return (
-                      <SelectItem
-                        key={agent.id}
-                        value={agent.id}
-                        className="p-2 hover:bg-slate-100 rounded-md text-xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Avatar className="h-6 w-6 ring-1 ring-slate-300">
-                            <AvatarImage
-                              src={agent.image || undefined}
-                              alt={dn}
-                            />
-                            <AvatarFallback
-                              className="text-xs font-semibold"
-                              style={{ backgroundColor: nameToColor(dn) }}
-                            >
-                              {getInitialsFromName(dn)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 truncate">
-                              {dn}
-                            </div>
-                            <LoadIndicator agent={agent} />
-                          </div>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
+                <SelectContent>
+                  <SelectItem value="team">Team Agents</SelectItem>
+                  <SelectItem value="all">All Agents</SelectItem>
                 </SelectContent>
               </Select>
-
-              {shouldDisableDropdown && (
-                <div className="absolute -top-1.5 -right-1.5 bg-slate-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  <Lock className="h-2.5 w-2.5" />
-                </div>
-              )}
+              <span className="text-[11px] text-slate-600">
+                {agentSource === "team" ? teamAgents.length : allAgents.length}{" "}
+                available
+              </span>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 p-3 bg-slate-100 rounded-md border border-slate-200">
-            <User className="h-3.5 w-3.5 text-slate-500" />
-            <span className="text-xs text-slate-700">
-              Select task to assign
-            </span>
-          </div>
+
+            {/* chooser */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-blue-600" />
+                <span>
+                  {isFirstSelectedTask && isMultipleSelected
+                    ? `Assign ${isMultipleSelected ? "multiple" : ""} tasks to:`
+                    : "Assign to:"}
+                </span>
+              </label>
+
+              <div className="relative">
+                <Select
+                  value=""
+                  onValueChange={handleAssignmentChange}
+                  disabled={shouldDisableDropdown}
+                >
+                  <SelectTrigger
+                    className={`h-10 text-xs rounded-md ${
+                      shouldDisableDropdown
+                        ? "border-slate-300 bg-slate-100 text-slate-500 cursor-not-allowed"
+                        : "border-blue-300 hover:border-blue-400 bg-white focus:ring-1 focus:ring-blue-400"
+                    }`}
+                  >
+                    <SelectValue
+                      placeholder={
+                        shouldDisableDropdown
+                          ? "Controlled by first selected task..."
+                          : "Select an agent..."
+                      }
+                    />
+                  </SelectTrigger>
+
+                  <SelectContent className="rounded-md border shadow-lg p-1.5 max-h-[300px]">
+                    {filteredAgents.map((agent: any) => {
+                      const dn = displayName(agent);
+                      return (
+                        <SelectItem
+                          key={agent.id}
+                          value={agent.id}
+                          className="p-2 hover:bg-slate-100 rounded-md text-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="h-6 w-6 ring-1 ring-slate-300">
+                              <AvatarImage
+                                src={agent.image || undefined}
+                                alt={dn}
+                              />
+                              <AvatarFallback
+                                className="text-xs font-semibold"
+                                style={{ backgroundColor: nameToColor(dn) }}
+                              >
+                                {getInitialsFromName(dn)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold text-slate-900 truncate">
+                                {dn}
+                              </div>
+                              <LoadIndicator {...agent} />
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {shouldDisableDropdown && (
+                  <div className="absolute -top-1.5 -right-1.5 bg-slate-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    <Lock className="h-2.5 w-2.5" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {task.templateSiteAsset?.isRequired && (

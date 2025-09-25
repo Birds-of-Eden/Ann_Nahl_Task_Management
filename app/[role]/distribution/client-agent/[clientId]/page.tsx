@@ -1,14 +1,10 @@
+// app/[role]/distribution/client-agent/[clientId]/page.tsx
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +23,6 @@ import {
 } from "@/components/ui/popover";
 import {
   Calendar as CalendarIcon,
-  Users,
   Building2,
   Repeat,
   CheckCircle2,
@@ -45,7 +40,6 @@ import type {
 } from "@/components/task-distribution/distribution-types";
 import { LoadingSpinner } from "@/components/task-distribution/LoadingSpinner";
 import { TaskTabs } from "@/components/task-distribution/TaskTabs";
-import { Textarea } from "@/components/ui/textarea";
 
 /* =========================
    Helpers (hoisted)
@@ -335,6 +329,22 @@ interface CategoryAssignment {
   assetType: string | undefined; // enum string for asset-creation; undefined for posting
 }
 
+// ✅ NEW: fetch helpers for team/all
+async function getAgents(teamId?: string): Promise<AgentWithLoad[]> {
+  try {
+    const url = teamId
+      ? `/api/tasks/agents?teamId=${encodeURIComponent(teamId)}`
+      : `/api/tasks/agents`;
+    const response = await fetch(url, { cache: "no-store" });
+    const baseAgents: Agent[] = await response.json();
+    return await enrichAgentsWithOverallLoad(baseAgents);
+  } catch (error) {
+    console.error("Error fetching agents:", error);
+    toast.error("Failed to load agents");
+    return [];
+  }
+}
+
 export default function TaskDistributionForClient() {
   const params = useParams<{ clientId: string }>();
   const clientId = params?.clientId;
@@ -344,7 +354,11 @@ export default function TaskDistributionForClient() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]); // filtered by category
 
-  const [agents, setAgents] = useState<AgentWithLoad[]>([]);
+  // ✅ NEW: agent lists + source toggle
+  const [agentSource, setAgentSource] = useState<"team" | "all">("team");
+  const [teamAgents, setTeamAgents] = useState<AgentWithLoad[]>([]);
+  const [allAgents, setAllAgents] = useState<AgentWithLoad[]>([]);
+  const currentAgents = agentSource === "team" ? teamAgents : allAgents;
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectedTasksOrder, setSelectedTasksOrder] = useState<string[]>([]);
@@ -379,21 +393,6 @@ export default function TaskDistributionForClient() {
     }
   };
 
-  const fetchAgentsOverall = async (teamId?: string) => {
-    try {
-      const url = teamId
-        ? `/api/tasks/agents?teamId=${encodeURIComponent(teamId)}`
-        : `/api/tasks/agents`;
-      const response = await fetch(url, { cache: "no-store" });
-      const baseAgents: Agent[] = await response.json();
-      const enriched = await enrichAgentsWithOverallLoad(baseAgents);
-      setAgents(enriched);
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      toast.error("Failed to load agents");
-    }
-  };
-
   const fetchClientTasks = async (cid: string) => {
     setLoading(true);
     try {
@@ -421,8 +420,17 @@ export default function TaskDistributionForClient() {
   useEffect(() => {
     if (!clientId) return;
     fetchClient();
-    // default to Graphics Design => fetch agents for that category
-    fetchAgentsOverall(teamIdForCategory("Graphics Design"));
+
+    // default to Graphics Design — load team + all agents in parallel
+    (async () => {
+      const [team, all] = await Promise.all([
+        getAgents(teamIdForCategory("Graphics Design")),
+        getAgents(), // all agents
+      ]);
+      setTeamAgents(team);
+      setAllAgents(all);
+    })();
+
     fetchClientTasks(clientId);
   }, [clientId]);
 
@@ -454,7 +462,7 @@ export default function TaskDistributionForClient() {
 
   const getAgentName = (id: string | undefined) => {
     if (!id) return "Unassigned";
-    const a = agents.find((x) => (x as any).id === id);
+    const a = currentAgents.find((x) => (x as any).id === id);
     return (
       a?.name ||
       `${(a as any)?.firstName ?? ""} ${(a as any)?.lastName ?? ""}`.trim() ||
@@ -599,7 +607,14 @@ export default function TaskDistributionForClient() {
         });
 
         await fetchClientTasks(clientId!);
-        await fetchAgentsOverall(teamIdForCategory(selectedCategory));
+
+        // ✅ refresh both team + all agent lists so loads stay fresh
+        const [team, all] = await Promise.all([
+          getAgents(teamIdForCategory(selectedCategory)),
+          getAgents(),
+        ]);
+        setTeamAgents(team);
+        setAllAgents(all);
 
         setCategoryAssignments([]);
         setSelectedTasks(new Set());
@@ -763,7 +778,7 @@ export default function TaskDistributionForClient() {
               className="space-y-4"
             >
               <div className="border rounded-2xl p-6 md:p-7 bg-gradient-to-br from-purple-50 to-white border-purple-200/70">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Category Selector */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">
@@ -771,14 +786,16 @@ export default function TaskDistributionForClient() {
                     </label>
                     <Select
                       value={selectedCategory}
-                      onValueChange={(label) => {
+                      onValueChange={async (label) => {
                         setSelectedCategory(label);
                         setCategoryAssignments([]);
                         setSelectedTasks(new Set());
                         setSelectedTasksOrder([]);
                         setCategoryDueDate(undefined);
+
                         // ✅ route to the right team (Social Team for Social Activity & Blog Posting)
-                        fetchAgentsOverall(teamIdForCategory(label));
+                        const team = await getAgents(teamIdForCategory(label));
+                        setTeamAgents(team);
                       }}
                     >
                       <SelectTrigger className="w-full h-11 rounded-xl border-slate-300">
@@ -934,6 +951,43 @@ export default function TaskDistributionForClient() {
                       </PopoverContent>
                     </Popover>
                   </div>
+
+                  {/* ✅ NEW: Agent list source toggle */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">
+                      Choose Agent List
+                    </label>
+                    <Select
+                      value={agentSource}
+                      onValueChange={(v: "team" | "all") => setAgentSource(v)}
+                    >
+                      <SelectTrigger className="w-full h-11 rounded-xl border-slate-300">
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl shadow-lg border border-slate-200 bg-white">
+                        <SelectItem value="team">
+                          {teamNameForCategory(selectedCategory)} (Team)
+                        </SelectItem>
+                        <SelectItem value="all">All Agents</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-slate-600">
+                      Using{" "}
+                      <span className="font-semibold">
+                        {agentSource === "team"
+                          ? `${teamNameForCategory(selectedCategory)}`
+                          : "All Agents"}
+                      </span>{" "}
+                      •{" "}
+                      <span className="font-medium">
+                        {
+                          (agentSource === "team" ? teamAgents : allAgents)
+                            .length
+                        }
+                      </span>{" "}
+                      agents
+                    </div>
+                  </div>
                 </div>
 
                 <h3
@@ -1031,6 +1085,8 @@ export default function TaskDistributionForClient() {
                   Tasks
                 </h3>
 
+                {/* ...existing imports and code above... */}
+
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <LoadingSpinner />
@@ -1039,7 +1095,10 @@ export default function TaskDistributionForClient() {
                   // Tabs (Asset Creation)
                   <TaskTabs
                     categorizedTasks={categorizedTasksForAssetCreation}
-                    agents={agents}
+                    // NEW: pass both lists
+                    teamAgents={teamAgents}
+                    allAgents={allAgents}
+                    agents={currentAgents}
                     selectedTasks={selectedTasks}
                     selectedTasksOrder={selectedTasksOrder}
                     taskAssignments={categoryAssignments.map((ca) => ({
@@ -1059,7 +1118,10 @@ export default function TaskDistributionForClient() {
                   <TaskTabs
                     singleTabTitle={selectedCategory}
                     singleTabTasks={tasks}
-                    agents={agents}
+                    // NEW: pass both lists
+                    teamAgents={teamAgents}
+                    allAgents={allAgents}
+                    agents={currentAgents}
                     selectedTasks={selectedTasks}
                     selectedTasksOrder={selectedTasksOrder}
                     taskAssignments={categoryAssignments.map((ca) => ({

@@ -1,4 +1,3 @@
-// components/task-distribution/TaskTabs.tsx
 "use client";
 
 import { useMemo } from "react";
@@ -24,6 +23,10 @@ interface TaskTabsProps {
   // Standard (Asset Creation) 3-tab mode
   categorizedTasks?: CategorizedTasks;
 
+  // ⭐ NEW: both agent pools provided; "agents" kept for backward-compat/global defaults
+  teamAgents?: AgentWithLoad[];
+  allAgents?: AgentWithLoad[];
+
   // Agents + shared state/handlers
   agents: AgentWithLoad[];
   selectedTasks: Set<string>;
@@ -43,8 +46,8 @@ interface TaskTabsProps {
   onViewModeChange: (mode: "list" | "grid") => void;
 
   // ⭐ Single-tab mode (for non–Asset Creation categories)
-  singleTabTasks?: Task[]; // if provided, TaskTabs renders one list using the SAME card design
-  singleTabTitle?: string; // header label, e.g. "Graphics Design"
+  singleTabTasks?: Task[];
+  singleTabTitle?: string;
 }
 
 function agentDisplayName(a: Partial<AgentWithLoad>) {
@@ -75,6 +78,8 @@ export function TaskTabs({
   categorizedTasks,
   singleTabTasks,
   singleTabTitle,
+  teamAgents = [],
+  allAgents = [],
   agents,
   selectedTasks,
   selectedTasksOrder,
@@ -88,8 +93,8 @@ export function TaskTabs({
   onViewModeChange,
 }: TaskTabsProps) {
   // Prepare labels and sort (least → most load)
-  const agentsWithLabels: AgentWithLoad[] = useMemo(() => {
-    const enriched = (agents || []).map((a) => ({
+  const enrichAndSort = (list: AgentWithLoad[]) => {
+    const enriched = (list || []).map((a) => ({
       ...a,
       displayLabel: formatLabel(a),
       activeCount: a.activeCount ?? 0,
@@ -103,7 +108,17 @@ export function TaskTabs({
         agentDisplayName(x).localeCompare(agentDisplayName(y))
     );
     return enriched;
-  }, [agents]);
+  };
+
+  const agentsWithLabels = useMemo(() => enrichAndSort(agents), [agents]);
+  const teamAgentsWithLabels = useMemo(
+    () => enrichAndSort(teamAgents),
+    [teamAgents]
+  );
+  const allAgentsWithLabels = useMemo(
+    () => enrichAndSort(allAgents),
+    [allAgents]
+  );
 
   // -----------------------------
   // SINGLE-TAB MODE (non–Asset Creation)
@@ -113,9 +128,12 @@ export function TaskTabs({
       <div className="w-full">
         <div className="mt-6">
           <TabContent
-            // siteType here is just a tag; card design comes from TabContent
             siteType="single"
             tasks={singleTabTasks}
+            // NEW: pass both lists down
+            teamAgents={teamAgentsWithLabels}
+            allAgents={allAgentsWithLabels}
+            // keep default/global list as well
             agents={agentsWithLabels}
             selectedTasks={selectedTasks}
             selectedTasksOrder={selectedTasksOrder}
@@ -123,12 +141,10 @@ export function TaskTabs({
             taskNotes={taskNotes}
             viewMode={viewMode}
             onTaskSelection={onTaskSelection}
-            // Bulk select is scoped to the visible list
             onSelectAllTasks={onSelectAllTasks}
             onTaskAssignment={onTaskAssignment}
             onNoteChange={onNoteChange}
             onViewModeChange={onViewModeChange}
-            // 🔹 make header dynamic
             titleOverride={`${singleTabTitle ?? "Tasks"} Tasks`}
             descriptionOverride={`Manage ${singleTabTitle ?? "these"} tasks`}
           />
@@ -148,74 +164,41 @@ export function TaskTabs({
 
   return (
     <Tabs defaultValue="social_site" className="w-full">
-      {/* Water drop Tabs */}
       <TabsList className="grid grid-cols-3 gap-3">
-        {/* Social Sites */}
-        <TabsTrigger
-          value="social_site"
-          className="group relative overflow-visible px-5 py-3 rounded-[28px] font-semibold
-                 text-slate-700 hover:text-slate-900 bg-white/70 hover:bg-white shadow-sm
-                 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md
-                 ring-1 ring-slate-200/70 transition-all duration-300
-                 data-[state=active]:text-slate-900
-                 data-[state=active]:bg-gradient-to-br data-[state=active]:from-cyan-100 data-[state=active]:via-blue-100 data-[state=active]:to-indigo-100
-                 data-[state=active]:shadow-lg data-[state=active]:ring-cyan-300/60"
-        >
+        <TabsTrigger value="social_site">
           <span className="flex items-center gap-2">
-            <Users className="h-5 w-5 opacity-80 group-data-[state=active]:opacity-100" />
+            <Users className="h-5 w-5" />
             <span>Social Sites</span>
-            <Badge className="ml-1 rounded-full bg-cyan-100 text-cyan-900 ring-1 ring-inset ring-cyan-300/50">
+            <Badge className="ml-1 rounded-full">
               {safe.social_site.length}
             </Badge>
           </span>
         </TabsTrigger>
-
-        {/* Web2 Sites */}
-        <TabsTrigger
-          value="web2_site"
-          className="group relative overflow-visible px-5 py-3 rounded-[28px] font-semibold
-                 text-slate-700 hover:text-slate-900 bg-white/70 hover:bg-white shadow-sm
-                 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md
-                 ring-1 ring-slate-200/70 transition-all duration-300
-                 data-[state=active]:text-slate-900
-                 data-[state=active]:bg-gradient-to-br data-[state=active]:from-sky-100 data-[state=active]:via-blue-100 data-[state=active]:to-cyan-100
-                 data-[state=active]:shadow-lg data-[state=active]:ring-sky-300/60"
-        >
+        <TabsTrigger value="web2_site">
           <span className="flex items-center gap-2">
-            <Globe className="h-5 w-5 opacity-80 group-data-[state=active]:opacity-100" />
+            <Globe className="h-5 w-5" />
             <span>Web2 Sites</span>
-            <Badge className="ml-1 rounded-full bg-sky-100 text-sky-900 ring-1 ring-inset ring-sky-300/50">
-              {safe.web2_site.length}
-            </Badge>
+            <Badge className="ml-1 rounded-full">{safe.web2_site.length}</Badge>
           </span>
         </TabsTrigger>
-
-        {/* Other Assets */}
-        <TabsTrigger
-          value="other_asset"
-          className="group relative overflow-visible px-5 py-3 rounded-[28px] font-semibold
-                 text-slate-700 hover:text-slate-900 bg-white/70 hover:bg-white shadow-sm
-                 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md
-                 ring-1 ring-slate-200/70 transition-all duration-300
-                 data-[state=active]:text-slate-900
-                 data-[state=active]:bg-gradient-to-br data-[state=active]:from-indigo-100 data-[state=active]:via-violet-100 data-[state=active]:to-fuchsia-100
-                 data-[state=active]:shadow-lg data-[state=active]:ring-violet-300/60"
-        >
+        <TabsTrigger value="other_asset">
           <span className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 opacity-80 group-data-[state=active]:opacity-100" />
+            <Building2 className="h-5 w-5" />
             <span>Other Assets</span>
-            <Badge className="ml-1 rounded-full bg-violet-100 text-violet-900 ring-1 ring-inset ring-violet-300/50">
+            <Badge className="ml-1 rounded-full">
               {safe.other_asset.length}
             </Badge>
           </span>
         </TabsTrigger>
       </TabsList>
 
-      {/* Tab panes */}
       <TabsContent value="social_site" className="mt-8">
         <TabContent
           siteType="social_site"
           tasks={safe.social_site}
+          // NEW
+          teamAgents={teamAgentsWithLabels}
+          allAgents={allAgentsWithLabels}
           agents={agentsWithLabels}
           selectedTasks={selectedTasks}
           selectedTasksOrder={selectedTasksOrder}
@@ -234,6 +217,9 @@ export function TaskTabs({
         <TabContent
           siteType="web2_site"
           tasks={safe.web2_site}
+          // NEW
+          teamAgents={teamAgentsWithLabels}
+          allAgents={allAgentsWithLabels}
           agents={agentsWithLabels}
           selectedTasks={selectedTasks}
           selectedTasksOrder={selectedTasksOrder}
@@ -252,6 +238,9 @@ export function TaskTabs({
         <TabContent
           siteType="other_asset"
           tasks={safe.other_asset}
+          // NEW
+          teamAgents={teamAgentsWithLabels}
+          allAgents={allAgentsWithLabels}
           agents={agentsWithLabels}
           selectedTasks={selectedTasks}
           selectedTasksOrder={selectedTasksOrder}
