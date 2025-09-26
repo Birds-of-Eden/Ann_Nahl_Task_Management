@@ -58,6 +58,29 @@ function baseNameOf(name: string): string {
     .trim();
 }
 
+// Compute the number of elapsed months between start and now.
+// Rules:
+// - If start is in the future, return 0.
+// - Otherwise, count inclusive partial month as 1 (i.e., if within first month, return 1).
+// - Cap by maxCap if provided (>0).
+function computeElapsedMonths(start: Date | null | undefined, now: Date, maxCap?: number): number {
+  if (!start) return maxCap && maxCap > 0 ? Math.min(1, maxCap) : 1; // no start -> assume first month
+  const s = new Date(start);
+  const yDiff = now.getFullYear() - s.getFullYear();
+  const mDiff = now.getMonth() - s.getMonth();
+  let months = yDiff * 12 + mDiff;
+  // If day-of-month has reached or passed, include current month, else not
+  // This makes the first (partial) month count as 1.
+  if (now >= s) {
+    months += now.getDate() >= s.getDate() ? 1 : 0;
+    if (months < 1) months = 1; // within first month but before same day -> still 1
+  } else {
+    months = 0; // start in future
+  }
+  if (typeof maxCap === "number" && maxCap > 0) months = Math.min(months, Math.floor(maxCap));
+  return months;
+}
+
 function getFrequency(opts: {
   required?: number | null | undefined;
   defaultFreq?: number | null | undefined;
@@ -210,6 +233,7 @@ export async function GET(req: NextRequest) {
       where: { id: clientId },
       select: {
         id: true,
+        startDate: true,
         package: { select: { totalMonths: true } },
       },
     });
@@ -411,6 +435,7 @@ export async function POST(req: NextRequest) {
       select: {
         id: true,
         package: { select: { totalMonths: true } },
+        startDate: true,
       },
     });
 
@@ -422,10 +447,15 @@ export async function POST(req: NextRequest) {
 
     // months = normalized package months (min 1; capped)
     const monthsRaw = Number(client.package?.totalMonths ?? 1);
-    const months =
+    const packageMonths =
       Number.isFinite(monthsRaw) && monthsRaw > 0
         ? Math.min(Math.floor(monthsRaw), 120)
         : 1;
+
+    // Campaign start and months elapsed
+    const campaignStart: Date | null = client.startDate ? new Date(client.startDate as any) : null;
+    const now = new Date();
+    const monthsElapsed = computeElapsedMonths(campaignStart, now, packageMonths);
 
     const templateId = templateIdRaw === "none" ? null : templateIdRaw;
     const assignment = await prisma.assignment.findFirst({
@@ -578,15 +608,18 @@ export async function POST(req: NextRequest) {
       const catName = resolveCategoryFromType(assetType);
       const base = baseNameOf(src.name);
 
-      // total copies = freq * months
-      const totalCopies = Math.max(1, freq * months);
+      // total copies = freq * monthsElapsed (create only up to current elapsed months)
+      const totalCopies = Math.max(0, Math.floor(freq * monthsElapsed));
+      // If none to create for this base yet, skip pushing copies
+      if (totalCopies === 0) continue;
       for (let i = 1; i <= totalCopies; i++) {
         expandedCopies.push({ src, catName, name: `${base} -${i}` });
       }
 
       // NEW: কেবল Social Activity-এর জন্য last cycle dueDate ক্যাশ করো
       if (catName === CAT_SOCIAL_ACTIVITY) {
-        const anchor = src.createdAt || new Date();
+        // Anchor from campaign start if available so cycles follow plan timeline
+        const anchor = campaignStart || src.createdAt || new Date();
         const lastDue = calculateTaskDueDate(anchor, totalCopies); // uses your working-days rules
         lastCycleDueByBase.set(base, lastDue);
       }
@@ -650,8 +683,8 @@ export async function POST(req: NextRequest) {
       const n = extractCycleNumber(item.name);
       const cycleNumber = Number.isFinite(n) && n > 0 ? n : 1;
 
-      // Anchor to the creation moment of the new copy (not the source task time)
-      const anchor = new Date();
+      // Anchor to campaign start if available so due dates align with campaign cycles
+      const anchor = campaignStart || new Date();
       const dueDate = calculateTaskDueDate(anchor, cycleNumber);
 
       payloads.push({
@@ -674,6 +707,7 @@ export async function POST(req: NextRequest) {
 
     // Social Communication from assets (social_site + other_asset), 1 per asset
     for (const src of sourceTasks) {
+      if (monthsElapsed === 0) continue; // campaign not started -> no SC yet
       const t = src.templateSiteAsset?.type;
       if (t !== "social_site" && t !== "other_asset") continue;
 
@@ -690,8 +724,8 @@ export async function POST(req: NextRequest) {
           required: assetId ? requiredByAssetId.get(assetId) : undefined,
           defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
         });
-        const totalCopies = Math.max(1, freq * months);
-        const anchor = src.createdAt || new Date();
+        const totalCopies = Math.max(0, Math.floor(freq * monthsElapsed));
+        const anchor = campaignStart || src.createdAt || new Date();
         dueDate = calculateTaskDueDate(anchor, totalCopies);
       }
 
@@ -722,6 +756,7 @@ export async function POST(req: NextRequest) {
 
     // --- REPLACE: Fixed Web2 SC creation (guarded by creds from web2 sources)
     for (const p of ["medium", "tumblr", "wordpress"] as const) {
+      if (monthsElapsed === 0) continue; // campaign not started -> no SC yet
       const scName = `${PLATFORM_META[p].label} - Social Communication`;
       if (skipNameSet.has(scName)) continue;
 
