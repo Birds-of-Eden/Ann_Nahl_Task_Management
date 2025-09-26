@@ -133,6 +133,8 @@ export default function DataEntryCompleteTasksPanel({
   const [password, setPassword] = useState("");
   const [doneBy, setDoneBy] = useState<string>("");
   const [completedAt, setCompletedAt] = useState<Date | undefined>(undefined);
+  const [lastUsedDate, setLastUsedDate] = useState<Date | null>(null);
+  const [lastUsedAgent, setLastUsedAgent] = useState<string | null>(null);
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [openDate, setOpenDate] = useState(false);
   const [clientName, setClientName] = useState<string>("");
@@ -430,11 +432,27 @@ export default function DataEntryCompleteTasksPanel({
     setEmail(clientEmail || "");
     setUsername(""); // Keep blank initially, will be auto-filled when link changes
     setPassword(""); // Keep blank
+    
+    // Set completed date: first try task's completedAt, then last used date, then current date
     if (t.completedAt) {
       const d = new Date(t.completedAt);
-      if (!isNaN(d.getTime())) setCompletedAt(d);
+      if (!isNaN(d.getTime())) {
+        setCompletedAt(d);
+        setLastUsedDate(d);
+      } else if (lastUsedDate) {
+        setCompletedAt(lastUsedDate);
+      } else {
+        setCompletedAt(new Date());
+      }
+    } else if (lastUsedDate) {
+      setCompletedAt(lastUsedDate);
     } else {
-      setCompletedAt(undefined);
+      setCompletedAt(new Date());
+    }
+    
+    // Set the last used agent if available
+    if (lastUsedAgent) {
+      setDoneBy(lastUsedAgent);
     }
   };
 
@@ -523,6 +541,11 @@ export default function DataEntryCompleteTasksPanel({
     if (completedAt.getTime() > Date.now()) {
       toast.error("Completed date cannot be in the future");
       return;
+    }
+    
+    // Save the selected agent as last used
+    if (doneBy) {
+      setLastUsedAgent(doneBy);
     }
 
     try {
@@ -969,7 +992,13 @@ export default function DataEntryCompleteTasksPanel({
                   <UserRound className="h-4 w-4 text-blue-600" />
                   Done by (agent) *
                 </legend>
-                <Select value={doneBy} onValueChange={setDoneBy}>
+                <Select 
+                  value={doneBy} 
+                  onValueChange={(value) => {
+                    setDoneBy(value);
+                    setLastUsedAgent(value);
+                  }}
+                >
                   <SelectTrigger className="rounded-xl h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50 text-base">
                     <SelectValue placeholder="Select agent..." />
                   </SelectTrigger>
@@ -1036,9 +1065,11 @@ export default function DataEntryCompleteTasksPanel({
                 </legend>
                 <DatePicker
                   selected={completedAt}
-                  onChange={(date: Date | null) =>
-                    setCompletedAt(date || new Date())
-                  }
+                  onChange={(date: Date | null) => {
+                    const newDate = date || new Date();
+                    setCompletedAt(newDate);
+                    setLastUsedDate(newDate);
+                  }}
                   dateFormat="MMMM d, yyyy"
                   showMonthDropdown
                   showYearDropdown
