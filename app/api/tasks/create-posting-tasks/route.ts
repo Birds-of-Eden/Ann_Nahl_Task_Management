@@ -392,6 +392,19 @@ export async function POST(req: NextRequest) {
     const clientId: string | undefined = body?.clientId;
     const templateIdRaw: string | undefined = body?.templateId;
     const onlyType: string | undefined = body?.onlyType;
+    // ✅ NEW: allow filtering by TemplateSiteAsset ids
+    const includeAssetIdsRaw = Array.isArray(body?.includeAssetIds)
+      ? body?.includeAssetIds
+      : undefined;
+    const excludeAssetIdsRaw = Array.isArray(body?.excludeAssetIds)
+      ? body?.excludeAssetIds
+      : undefined;
+    const includeAssetIds = includeAssetIdsRaw
+      ?.map((n: any) => Number(n))
+      .filter((n: number) => Number.isFinite(n));
+    const excludeAssetIds = excludeAssetIdsRaw
+      ?.map((n: any) => Number(n))
+      .filter((n: number) => Number.isFinite(n));
 
     if (!clientId)
       return NextResponse.json(
@@ -456,6 +469,16 @@ export async function POST(req: NextRequest) {
             ...(onlyType
               ? { type: onlyType as any }
               : { type: { in: ALLOWED_ASSET_TYPES as unknown as string[] } }),
+            ...(onlyType
+              ? { type: onlyType as any }
+              : { type: { in: ALLOWED_ASSET_TYPES as unknown as string[] } }),
+            // ✅ NEW: asset id include/exclude filters
+            ...(includeAssetIds && includeAssetIds.length
+              ? { id: { in: includeAssetIds as any } }
+              : {}),
+            ...(excludeAssetIds && excludeAssetIds.length
+              ? { id: { notIn: excludeAssetIds as any } }
+              : {}),
           },
         },
       },

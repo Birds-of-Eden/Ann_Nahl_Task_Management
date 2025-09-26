@@ -9,9 +9,8 @@ import {
   Eye,
   Package,
   ListChecks,
-  Delete,
   Trash2,
-  ArrowUpCircle, // ✅ added
+  ArrowUpCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
@@ -32,6 +31,7 @@ import { useAuth } from "@/context/auth-context";
 import ImpersonateButton from "@/components/users/ImpersonateButton";
 import { handleDeleteClient } from "./handleDeleteClient";
 import DangerDeleteClientModal from "./DangerDeleteClientModal";
+import PackageUpgradeDialog from "@/components/clients/PackageUpgradeDialog";
 
 interface ClientCardProps {
   clientId: string;
@@ -51,10 +51,10 @@ export function ClientCard({
   const router = useRouter();
   const { user: session } = useUserSession();
 
-  const [deleted, setDeleted] = useState(false); // ✅ add
-  const [isDeleting, setIsDeleting] = useState(false); // (optional UX)
+  const [deleted, setDeleted] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [openDanger, setOpenDanger] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false); // ✅ added
+  const [openUpgrade, setOpenUpgrade] = useState(false);
 
   // Fetch full client details from API
   useEffect(() => {
@@ -63,8 +63,7 @@ export function ClientCard({
         const response = await fetch(`/api/clients/${clientId}`);
         if (!response.ok) {
           if (response.status === 404) {
-            // ✅ add
-            setDeleted(true); // ✅ add (server বলছে নাই, UI থেকেও হাইড)
+            setDeleted(true);
             return;
           }
           throw new Error("Failed to fetch client");
@@ -81,7 +80,7 @@ export function ClientCard({
     fetchClient();
   }, [clientId]);
 
-  if (deleted) return null; // ✅ add (optimistic hide)
+  if (deleted) return null;
 
   // Normalize task statuses and compute counts dynamically
   const normalizeStatus = (raw?: string | null) => {
@@ -139,7 +138,7 @@ export function ClientCard({
     return counts;
   };
 
-  // Loading
+  // Loading state
   if (loading) {
     return (
       <Card className="p-6 flex items-center justify-center">
@@ -162,7 +161,7 @@ export function ClientCard({
     ? Math.round((taskCounts.completed / totalTasks) * 100)
     : 0;
 
-  // This Month Progress (mirrors logic from clientsID/client-dashboard.tsx)
+  // This Month Progress
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1); // exclusive
@@ -231,25 +230,21 @@ export function ClientCard({
       )
     : 0;
 
-  // Clamp progress values for display
   const displayOverall = Math.min(100, Math.max(0, derivedProgress));
   const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth));
 
-  // -------- Role normalization --------
-  // Try multiple shapes: session.user.role.name, session.user.role, or session.role
+  // Role normalization
   const roleRaw =
     (session as any)?.user?.role?.name ??
     (session as any)?.user?.role ??
     (session as any)?.role;
   const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined;
-
-  // Use normalized role for dynamic segment
   const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
-  // ✅ SWR key — লিস্ট পেজে useSWR যেই key ব্যবহার করেছেন, সেটাই
+  // SWR key for list page
   const swrKey = "/api/clients";
 
-  // ✅ Delete handler — optimistic hide + SWR mutate + server refresh
+  // Delete handler — optimistic hide + server refresh
   async function handleDelete() {
     setIsDeleting(true);
     const ok = await handleDeleteClient(clientId, swrKey);
@@ -262,10 +257,8 @@ export function ClientCard({
   }
 
   const handleViewDetails = () => {
-    if (onViewDetails) {
-      onViewDetails();
-    } else if (segment === "data_entry") {
-    } else if (segment === "data_entry") {
+    if (onViewDetails) return onViewDetails();
+    if (segment === "data_entry") {
       router.push(`/data_entry/clients/${clientId}`);
     } else {
       router.push(`/${segment}/clients/${clientId}`);
@@ -274,49 +267,14 @@ export function ClientCard({
 
   const handleViewTasks = () => {
     if (segment === "data_entry") {
-      router.push(`/data_entry/data_entry/clients/${clientId}/tasks`);
+      router.push(`/data_entry/clients/${clientId}/tasks`);
     } else {
       router.push(`/${segment}/clients/${clientId}/tasks`);
     }
   };
 
-  // ✅ Upgrade handler — prompts for newPackageId and whether to create assignments
-  async function handleUpgrade() {
-    const newPackageId = prompt("Enter NEW package ID to upgrade this client:");
-    if (!newPackageId) return;
-
-    const alsoCreate = confirm(
-      "Create Assignments for ALL templates under the new package?"
-    );
-
-    try {
-      setIsUpgrading(true);
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "upgrade",
-          newPackageId,
-          createAssignments: true,
-          migrateCompleted: true, // ✅ পুরনো প্যাকেজের done টাস্ক include হবে
-          createPostingTasks: true, // ✅ নতুন রুলে posting tasks অটো-ক্রিয়েট
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || "Upgrade failed");
-      }
-
-      await res.json();
-      toast.success("Client upgraded successfully.");
-      router.refresh();
-    } catch (e: any) {
-      console.error("Upgrade failed:", e);
-      toast.error(e?.message || "Failed to upgrade client.");
-    } finally {
-      setIsUpgrading(false);
-    }
+  function handleUpgrade() {
+    setOpenUpgrade(true);
   }
 
   return (
@@ -461,10 +419,9 @@ export function ClientCard({
             </Button>
           )}
 
-          {/* ✅ NEW: Upgrade Package button (added, others unchanged) */}
+          {/* Upgrade Package */}
           <Button
             onClick={handleUpgrade}
-            disabled={isUpgrading}
             className="
               flex-1
               bg-gradient-to-r from-emerald-500 to-teal-500
@@ -477,22 +434,23 @@ export function ClientCard({
             "
           >
             <ArrowUpCircle className="h-4 w-4 mr-2" />
-            {isUpgrading ? "Upgrading..." : "Upgrade Package"}
+            Upgrade Package
           </Button>
 
-          {/* Delete (existing) */}
+          {/* Delete */}
           <Button
             onClick={() => setOpenDanger(true)}
             disabled={isDeleting}
             className="
-            flex-1
-            bg-gradient-to-r from-rose-500 to-red-500
-            hover:from-rose-600 hover:to-red-600
-            text-white
-            shadow-md
-            rounded-lg
-            px-5 py-2.5
-            transition-all duration-300"
+              flex-1
+              bg-gradient-to-r from-rose-500 to-red-500
+              hover:from-rose-600 hover:to-red-600
+              text-white
+              shadow-md
+              rounded-lg
+              px-5 py-2.5
+              transition-all duration-300
+            "
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
@@ -526,6 +484,18 @@ export function ClientCard({
         clientName={client.name}
         isDeleting={isDeleting}
         onConfirm={handleDelete}
+      />
+
+      {/* Package Upgrade Dialog */}
+      <PackageUpgradeDialog
+        open={openUpgrade}
+        onOpenChange={setOpenUpgrade}
+        clientId={clientId}
+        currentPackageId={client?.package?.id ?? null}
+        onUpgraded={() => {
+          toast.success("Package upgraded");
+          router.refresh();
+        }}
       />
     </Card>
   );

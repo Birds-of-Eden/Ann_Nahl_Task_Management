@@ -56,16 +56,18 @@ async function computeClientProgress(clientId: string) {
 }
 
 async function recalcAndStoreClientProgress(clientId: string) {
-  const { progress, taskCounts } = await computeClientProgress(clientId)
+  const { progress, taskCounts } = await computeClientProgress(clientId);
   // Use updateMany to avoid throwing P2025 if the client does not exist.
   const result = await prisma.client.updateMany({
     where: { id: clientId },
     data: { progress },
-  })
+  });
   if (result.count === 0) {
-    console.warn(`recalcAndStoreClientProgress: No client found to update for id=${clientId}`)
+    console.warn(
+      `recalcAndStoreClientProgress: No client found to update for id=${clientId}`
+    );
   }
-  return { progress, taskCounts }
+  return { progress, taskCounts };
 }
 
 // Optional: amId server-side role guard
@@ -490,23 +492,61 @@ export async function POST(
     }
 
     // 3) ✅ একই রুলে নতুন posting tasks অটো-ক্রিয়েট (বিদ্যমান রুটকে সার্ভার-টু-সার্ভার কল)
+    // 3) ✅ NEW: শুধু non-common site-asset গুলোর জন্য posting tasks অটো-ক্রিয়েট
     let createdPosting = 0;
     if (createPostingTasks) {
       try {
-        const host = headers().get("host");
-        const url = `${
-          process.env.NEXT_PUBLIC_APP_URL ?? `http://${host}`
-        }/api/tasks/create-posting-tasks`;
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clientId }), // templateId/onlyType লাগলে যোগ করুন
-        });
-        const j = await resp.json().catch(() => ({}));
-        if (resp.ok) {
-          createdPosting = Number(j?.created ?? 0);
+        // old/new প্যাকেজের TemplateSiteAsset তুলুন (name+type দিয়ে common নির্ণয়)
+        const [oldAssets, newAssets] = await Promise.all([
+          oldPackageId
+            ? prisma.templateSiteAsset.findMany({
+                where: { template: { packageId: oldPackageId } },
+                select: { id: true, name: true, type: true },
+              })
+            : Promise.resolve(
+                [] as { id: number; name: string | null; type: string | null }[]
+              ),
+          prisma.templateSiteAsset.findMany({
+            where: { template: { packageId: newPackageId } },
+            select: { id: true, name: true, type: true },
+          }),
+        ]);
+
+        const norm = (s: string | null | undefined) =>
+          String(s ?? "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+        const keyOf = (a: { name: string | null; type: string | null }) =>
+          `${norm(a.type)}::${norm(a.name)}`;
+
+        const oldKeys = new Set(oldAssets.map(keyOf));
+        const newOnlyAssetIds = newAssets
+          .filter((a) => !oldKeys.has(keyOf(a)))
+          .map((a) => a.id);
+
+        if (newOnlyAssetIds.length) {
+          const host = headers().get("host");
+          const url = `${
+            process.env.NEXT_PUBLIC_APP_URL ?? `http://${host}`
+          }/api/tasks/create-posting-tasks`;
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              clientId,
+              // 👉 শুধু non-common asset গুলো অন্তর্ভুক্ত করলাম
+              includeAssetIds: newOnlyAssetIds,
+            }),
+          });
+          const j = await resp.json().catch(() => ({}));
+          if (resp.ok) {
+            createdPosting = Number(j?.created ?? 0);
+          } else {
+            console.warn("[create-posting-tasks] failed:", j?.message);
+          }
         } else {
-          console.warn("[create-posting-tasks] failed:", j?.message);
+          console.log("[create-posting-tasks] skipped: no non-common assets");
         }
       } catch (e) {
         console.warn("[create-posting-tasks] call error:", e);
