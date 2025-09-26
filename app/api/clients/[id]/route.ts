@@ -57,11 +57,14 @@ async function computeClientProgress(clientId: string) {
 
 async function recalcAndStoreClientProgress(clientId: string) {
   const { progress, taskCounts } = await computeClientProgress(clientId)
-  await prisma.client.update({
+  // Use updateMany to avoid throwing P2025 if the client does not exist.
+  const result = await prisma.client.updateMany({
     where: { id: clientId },
     data: { progress },
-    select: { id: true }, // শুধু আপডেট নিশ্চিত করতে
   })
+  if (result.count === 0) {
+    console.warn(`recalcAndStoreClientProgress: No client found to update for id=${clientId}`)
+  }
   return { progress, taskCounts }
 }
 
