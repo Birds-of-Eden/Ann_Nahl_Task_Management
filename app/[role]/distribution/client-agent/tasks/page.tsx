@@ -399,7 +399,7 @@ export default function CreatedTasksPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-cyan-50">
-      <div className="container mx-auto p-6 lg:p-8">
+      <div>
         {/* Lighter Header */}
         <Card className="border-0 shadow-2xl overflow-hidden bg-white/90 backdrop-blur">
           <CardHeader className="relative text-slate-800 border-b border-slate-200/60 bg-sky-50">

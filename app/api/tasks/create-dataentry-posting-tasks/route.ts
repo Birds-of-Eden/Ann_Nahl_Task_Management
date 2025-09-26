@@ -348,10 +348,10 @@ export async function GET(req: NextRequest) {
 
     // --- NEW: Build Social Communication previews ---
 
-    // social_site + other_asset: প্রতি অ্যাসেটে ১টা করে SC
+    // Only social_site: প্রতি অ্যাসেটে ১টা করে SC
     const scAssetSources = sourceTasks.filter((s) => {
       const t = s.templateSiteAsset?.type;
-      return t === "social_site" || t === "other_asset";
+      return t === "social_site";
     });
 
     const scFromAssets = scAssetSources.map((src) => ({
@@ -629,7 +629,7 @@ export async function POST(req: NextRequest) {
     const scNamesFromAssets = sourceTasks
       .filter((s) => {
         const t = s.templateSiteAsset?.type;
-        return t === "social_site" || t === "other_asset";
+        return t === "social_site";
       })
       .map((s) => `${baseNameOf(s.name) || "Social"} - Social Communication`);
 
@@ -656,7 +656,7 @@ export async function POST(req: NextRequest) {
               in: [
                 CAT_SOCIAL_ACTIVITY,
                 CAT_BLOG_POSTING,
-                "Social Communication",
+                CAT_SOCIAL_COMMUNICATION,
               ],
             },
           },
@@ -705,11 +705,11 @@ export async function POST(req: NextRequest) {
       } as TaskCreate);
     }
 
-    // Social Communication from assets (social_site + other_asset), 1 per asset
+    // Social Communication from assets (only social_site), 1 per asset
     for (const src of sourceTasks) {
       if (monthsElapsed === 0) continue; // campaign not started -> no SC yet
       const t = src.templateSiteAsset?.type;
-      if (t !== "social_site" && t !== "other_asset") continue;
+      if (t !== "social_site") continue;
 
       const base = baseNameOf(src.name) || "Social";
       const scName = `${base} - Social Communication`;

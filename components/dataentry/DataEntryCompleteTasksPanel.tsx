@@ -36,6 +36,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
 import CreateTasksButton from "./CreateTasksButton";
+import CreateNextTask from "./CreateNextTask";
 
 export type DETask = {
   id: string;
@@ -466,7 +467,7 @@ export default function DataEntryCompleteTasksPanel({
 
       // 2.5) reassign to the selected 'doneBy' agent (if provided) so the task ownership reflects who actually did it
       if (doneBy && clientId) {
-        const distBody = {
+         const distBody = {
           clientId,
           assignments: [
             {
@@ -636,7 +637,17 @@ export default function DataEntryCompleteTasksPanel({
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-slate-500">
-                      <p>No tasks found</p>
+                      <div className="flex flex-col items-center gap-3">
+                        <div>
+                          <p>No tasks found</p>
+                        </div>
+                        <CreateNextTask
+                          clientId={clientId}
+                          onCreated={() => {
+                            load();
+                          }}
+                        />
+                      </div>
                       {q ||
                       statusFilter !== "all" ||
                       priorityFilter !== "all" ? (

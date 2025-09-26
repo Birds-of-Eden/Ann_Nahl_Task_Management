@@ -26,6 +26,7 @@ import {
   Target,
   BarChart3,
   Globe,
+  Trash2, // ⬅️ NEW
 } from "lucide-react";
 
 import { useAuth } from "@/context/auth-context";
@@ -233,6 +234,8 @@ export function PackageCards() {
   };
 
   const canCreate = hasPermissionClient(user?.permissions, "package_create");
+  const canDelete = hasPermissionClient(user?.permissions, "package_delete"); // ⬅️ NEW
+  const canEdit = hasPermissionClient(user?.permissions, "package_edit"); // ⬅️ NEW
 
   return (
     <div className="space-y-8">
@@ -505,7 +508,7 @@ export function PackageCards() {
                     <Info className="h-4 w-4 mr-2" />
                     Details
                   </Button>
-                  {hasPermissionClient(user?.permissions, "package_edit") && (
+                  {canEdit && (
                     <Button
                       variant="outline"
                       className="flex-1 border-purple-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200 bg-transparent rounded-lg"
@@ -513,6 +516,17 @@ export function PackageCards() {
                     >
                       <Edit3 className="h-4 w-4 mr-2" />
                       Edit
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="destructive"
+                      className="flex-1 rounded-lg"
+                      onClick={() => deletePackage(pkg.id)}
+                      disabled={deletingId === pkg.id}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deletingId === pkg.id ? "Deleting..." : "Delete"}
                     </Button>
                   )}
                 </div>

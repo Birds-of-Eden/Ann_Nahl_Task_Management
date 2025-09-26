@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Target, Loader2, ArrowRight } from "lucide-react";
+import { Target, Loader2 } from "lucide-react";
 
 interface CreateTasksButtonProps {
   clientId: string;
