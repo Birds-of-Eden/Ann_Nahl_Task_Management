@@ -1,4 +1,5 @@
 // app/admin/clients/[clientId]/page.tsx
+
 import { headers, cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard";
