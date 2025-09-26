@@ -39,15 +39,32 @@ export default function DataEntryClientStats({ clients }: DataEntryClientStatsPr
   const refresh = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      params.set("pageSize", "1000");
-      if (selectedClientId !== "all") params.set("clientId", selectedClientId);
-      if (from) params.set("from", from); // accepts YYYY-MM-DD
-      if (to) params.set("to", to);
+      // Fetch data-entry-reports for either a single client or all clients, then merge
+      const buildUrl = (clientId: string) => {
+        const p = new URLSearchParams();
+        p.set("pageSize", "1000");
+        p.set("clientId", clientId);
+        return `/api/tasks/data-entry-reports?${p.toString()}`;
+      };
 
-      const res = await fetch(`/api/tasks/data-entry-reports?${params.toString()}`, { cache: "no-store" });
-      const json = await res.json();
-      const data: any[] = Array.isArray(json?.data) ? json.data : [];
+      let data: any[] = [];
+      if (selectedClientId === "all") {
+        const ids = (Array.isArray(clients) ? clients : []).map((c) => String(c.id));
+        if (ids.length > 0) {
+          const results = await Promise.all(
+            ids.map(async (cid) => {
+              const res = await fetch(buildUrl(cid), { cache: "no-store" });
+              const j = await res.json().catch(() => ({}));
+              return Array.isArray(j?.data) ? j.data : [];
+            })
+          );
+          data = results.flat();
+        }
+      } else {
+        const res = await fetch(buildUrl(selectedClientId), { cache: "no-store" });
+        const json = await res.json();
+        data = Array.isArray(json?.data) ? json.data : [];
+      }
 
       // Pre-calc helpers
       const today = new Date();
@@ -57,7 +74,25 @@ export default function DataEntryClientStats({ clients }: DataEntryClientStatsPr
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(today.getDate() - 30);
 
-      const inRangeTotal = data.length;
+      // Apply date range (inclusive start, inclusive end by bumping the end by 1 day)
+      const start = from ? new Date(toISODateOnly(new Date(from))) : null;
+      const endExclusive = to
+        ? (() => {
+            const d = new Date(to);
+            d.setDate(d.getDate() + 1);
+            return new Date(toISODateOnly(d));
+          })()
+        : null;
+
+      const filtered = data.filter((r) => {
+        const d = r?.dataEntryCompletedAt ? new Date(r.dataEntryCompletedAt) : null;
+        if (!d) return false; // only completed entries contribute to range stats
+        if (start && d < start) return false;
+        if (endExclusive && d >= endExclusive) return false;
+        return true;
+      });
+
+      const inRangeTotal = filtered.length;
 
       const todayCount = data.filter((r) => {
         const d = r?.dataEntryCompletedAt ? new Date(r.dataEntryCompletedAt) : null;
@@ -76,7 +111,7 @@ export default function DataEntryClientStats({ clients }: DataEntryClientStatsPr
       }).length;
 
       const byStatus: Record<string, number> = {};
-      data.forEach((r) => {
+      filtered.forEach((r) => {
         const st = (r?.dataEntryStatus ?? "unknown").toString();
         byStatus[st] = (byStatus[st] || 0) + 1;
       });
@@ -202,6 +237,27 @@ export default function DataEntryClientStats({ clients }: DataEntryClientStatsPr
           </CardContent>
         </Card>
       </div>
+
+      {/* Status summary */}
+      {/* <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(stats.byStatus).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No data for selected filters.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              {Object.entries(stats.byStatus).map(([st, count]) => (
+                <div key={st} className="flex items-center justify-between border rounded-md px-3 py-2">
+                  <span className="capitalize">{st.replace("_", " ")}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card> */}
     </div>
   );
 }

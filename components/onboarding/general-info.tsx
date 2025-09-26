@@ -337,46 +337,6 @@ export function GeneralInfo({ formData, updateFormData, onNext }: StepProps) {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Start Date */}
-          <div>
-            <Label htmlFor="startDate" className="mb-1">
-              Start Date
-            </Label>
-            <DatePicker
-              selected={
-                formData.startDate ? new Date(formData.startDate) : null
-              }
-              onChange={(date: Date | null) =>
-                updateFormData({ startDate: date ? date.toISOString() : "" })
-              }
-              dateFormat="MMMM d, yyyy"
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              placeholderText="Select start date"
-              className="w-full border border-gray-300 rounded-md px-4 py-2"
-            />
-          </div>
-
-          {/* Due Date */}
-          <div>
-            <Label htmlFor="dueDate" className="mb-1">
-              Due Date
-            </Label>
-            <DatePicker
-              selected={formData.dueDate ? new Date(formData.dueDate) : null}
-              onChange={(date: Date | null) =>
-                updateFormData({ dueDate: date ? date.toISOString() : "" })
-              }
-              dateFormat="MMMM d, yyyy"
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              placeholderText="Select due date"
-              className="w-full border border-gray-300 rounded-md px-4 py-2"
-            />
-          </div>
         </div>
 
         <h2 className="text-lg font-semibold mb-4 bg-gray-200 p-2 rounded-md">

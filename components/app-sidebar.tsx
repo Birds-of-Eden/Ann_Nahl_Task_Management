@@ -9,21 +9,27 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
+  Table2,
   Users,
   UserPlus,
   Package,
   Boxes,
   FileText,
   Share2,
+  ArrowLeftRight,
   ClipboardList,
   ListChecks,
+  ClipboardCheck,
   UserCog,
+  UserCircle,
   Folder,
+  FolderTree,
   Key,
   ShieldCheck,
   History,
   BellRing,
-  MessageCircleMore,
+  MessagesSquare,
+  MessageSquareText,
   GalleryVerticalEnd,
   Settings,
   Menu,
@@ -32,8 +38,8 @@ import {
   BadgeCheck,
   Shield,
   ShieldOff,
+  LineChart,
 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -90,39 +96,63 @@ type RolePermResponse = {
 ========================= */
 
 const ICONS: Record<string, React.ReactNode> = {
-  Dashboard: <LayoutDashboard className="h-4 w-4" />,
-  "Data Entry Dashboard": <LayoutDashboard className="h-4 w-4" />,
-  Clients: <Users className="h-4 w-4" />,
-  "All Clients": <Users className="h-4 w-4" />,
-  "Add Client": <UserPlus className="h-4 w-4" />,
-  Packages: <Package className="h-4 w-4" />,
-  "All Package": <Boxes className="h-4 w-4" />,
-  Template: <FileText className="h-4 w-4" />,
-  Distribution: <Share2 className="h-4 w-4" />,
-  "Clients to Agents": <Share2 className="h-4 w-4" />,
-  Tasks: <ClipboardList className="h-4 w-4" />,
-  "All Tasks": <ListChecks className="h-4 w-4" />,
-  Agents: <UserCog className="h-4 w-4" />,
-  "All Agents": <Users className="h-4 w-4" />,
-  "Add Agent": <UserPlus className="h-4 w-4" />,
-  "Team Management": <UserCog className="h-4 w-4" />,
-  QC: <ShieldCheck className="h-4 w-4" />,
-  "QC Dashboard": <ShieldCheck className="h-4 w-4" />,
-  "QC Review": <ShieldCheck className="h-4 w-4" />,
-  "Role Permissions": <Key className="h-4 w-4" />,
-  "User Management": <Users className="h-4 w-4" />,
-  "Activity Logs": <History className="h-4 w-4" />,
-  Projects: <Folder className="h-4 w-4" />,
-  Notifications: <BellRing className="h-4 w-4" />,
-  Chat: <MessageCircleMore className="h-4 w-4" />,
-  "My Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Admin Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Agent Chat": <MessageCircleMore className="h-4 w-4" />,
-  "AM Chat": <MessageCircleMore className="h-4 w-4" />,
-  "AM CEO Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Client Chat": <MessageCircleMore className="h-4 w-4" />,
-  "Data Entry Chat": <MessageCircleMore className="h-4 w-4" />,
-  "QC Chat": <MessageCircleMore className="h-4 w-4" />,
+  // Dashboards
+  Dashboard: <LayoutDashboard className="h-4 w-4" strokeWidth={1.75} />,
+  "Data Entry Dashboard": <Table2 className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Clients
+  Clients: <Users className="h-4 w-4" strokeWidth={1.75} />,
+  "All Clients": <Users className="h-4 w-4" strokeWidth={1.75} />,
+  "Add Client": <UserPlus className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Packages / Templates / Sales
+  Package: <Package className="h-4 w-4" strokeWidth={1.75} />,
+  Packages: <Package className="h-4 w-4" strokeWidth={1.75} />,
+  "All Package": <Boxes className="h-4 w-4" strokeWidth={1.75} />,
+  Template: <FileText className="h-4 w-4" strokeWidth={1.75} />,
+  sales: <LineChart className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Distribution
+  Distribution: <Share2 className="h-4 w-4" strokeWidth={1.75} />,
+  "Clients to Agents": (
+    <ArrowLeftRight className="h-4 w-4" strokeWidth={1.75} />
+  ),
+
+  // Tasks
+  Tasks: <ClipboardList className="h-4 w-4" strokeWidth={1.75} />,
+  "All Tasks": <ListChecks className="h-4 w-4" strokeWidth={1.75} />,
+  "Tasks History": <History className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Agents / Teams / Users / Roles
+  Agents: <UserCog className="h-4 w-4" strokeWidth={1.75} />,
+  "All Agents": <Users className="h-4 w-4" strokeWidth={1.75} />,
+  "Add Agent": <UserPlus className="h-4 w-4" strokeWidth={1.75} />,
+  "Team Management": <Users className="h-4 w-4" strokeWidth={1.75} />,
+  "User Management": <UserCircle className="h-4 w-4" strokeWidth={1.75} />,
+  "Role Permissions": <Key className="h-4 w-4" strokeWidth={1.75} />,
+
+  // QC
+  QC: <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />,
+  "QC Dashboard": <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />,
+  "QC Review": <ClipboardCheck className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Activity / Projects / Notifications
+  "Activity Logs": <History className="h-4 w-4" strokeWidth={1.75} />,
+  Projects: <FolderTree className="h-4 w-4" strokeWidth={1.75} />,
+  Notifications: <BellRing className="h-4 w-4" strokeWidth={1.75} />,
+
+  // Chat (distinct icons for group vs. 1-to-1)
+  Chat: <MessagesSquare className="h-4 w-4" strokeWidth={1.75} />,
+  "My Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "Admin Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "Agent Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "AM Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "AM CEO Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "Client Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
+  "Data Entry Chat": (
+    <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />
+  ),
+  "QC Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
 };
 
 /* =========================

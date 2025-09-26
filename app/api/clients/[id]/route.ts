@@ -16,11 +16,13 @@ async function computeClientProgress(clientId: string) {
   const base: Record<TaskStatus, number> = {
     pending: 0,
     in_progress: 0,
+    paused: 0,
     completed: 0,
     overdue: 0,
     cancelled: 0,
     reassigned: 0,
     qc_approved: 0,
+    data_entered: 0,
   }
 
   for (const row of grouped) {
@@ -170,6 +172,8 @@ export async function PUT(
       startDate,
       dueDate,
 
+      articleTopics,
+
       // ⬇️ নতুন ফিল্ডগুলো (contact/credentials + AM)
       email,
       phone,
@@ -198,6 +202,8 @@ export async function PUT(
         // নতুন ফিল্ডগুলো সংরক্ষণ
         email,
         phone,
+        // Persist articleTopics JSON if provided
+        articleTopics: articleTopics ? JSON.parse(JSON.stringify(articleTopics)) : undefined,
         password,
         recoveryEmail,
 

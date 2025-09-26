@@ -1,24 +1,7 @@
+// app/api/am/sales/overview/route.ts
+
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-
-type Status = "active" | "expired" | "upcoming" | "pending" | "unknown";
-
-// Business rules:
-// - expired:   dueDate exists AND dueDate < now
-// - pending:   startDate missing OR dueDate missing (and not expired)
-// - upcoming:  startDate exists AND startDate > now (and not expired)
-// - active:    BOTH dates exist AND startDate <= now AND dueDate >= now
-function getStatus(
-  startDate: Date | null | undefined,
-  dueDate: Date | null | undefined,
-  now: Date
-): Status {
-  if (dueDate && dueDate < now) return "expired";
-  if (!startDate || !dueDate) return "pending";
-  if (startDate > now) return "upcoming";
-  if (startDate <= now && dueDate >= now) return "active";
-  return "unknown";
-}
 
 // GET /api/am/sales/overview
 export async function GET() {
@@ -28,6 +11,7 @@ export async function GET() {
   const in30 = new Date(now);
   in30.setDate(in30.getDate() + 30);
 
+  // --- Pull all clients that have a package (with package info)
   const clients = await prisma.client.findMany({
     where: { packageId: { not: null } },
     select: {
@@ -45,42 +29,48 @@ export async function GET() {
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
-  const enriched = clients.map((c) => ({
-    ...c,
-    status: getStatus(c.startDate, c.dueDate, now),
-  }));
+  // --- Derive status + build base arrays
+  type Status = "active" | "expired" | "upcoming" | "unknown";
+  const enriched = clients.map((c) => {
+    let status: Status = "unknown";
+    if (c.startDate && c.dueDate) {
+      if (c.startDate <= now && c.dueDate >= now) status = "active";
+      else if (c.dueDate < now) status = "expired";
+      else if (c.startDate > now) status = "upcoming";
+    }
+    return { ...c, status };
+  });
 
-  const totalWithPackage = enriched.length;
-
-  let active = 0;
-  let expired = 0;
-  let startingSoon = 0;
-  let expiringSoon = 0;
-  let missingDates = 0;
-
+  // --- Summary KPIs
+  let totalWithPackage = enriched.length;
+  let active = 0,
+    expired = 0,
+    startingSoon = 0,
+    expiringSoon = 0,
+    missingDates = 0;
   for (const c of enriched) {
-    const hasStart = !!c.startDate;
-    const hasDue = !!c.dueDate;
-
-    if (!hasStart || !hasDue) missingDates++;
-
-    if (hasStart && c.startDate! > now && c.startDate! <= in14) startingSoon++;
-    if (hasDue && c.dueDate! >= now && c.dueDate! <= in30) expiringSoon++;
-
-    if (c.status === "active") active++;
-    else if (c.status === "expired") expired++;
+    if (!c.startDate || !c.dueDate) {
+      missingDates++;
+      continue;
+    }
+    if (c.startDate > now && c.startDate <= in14) startingSoon++;
+    if (c.dueDate >= now && c.dueDate <= in30) expiringSoon++;
+    if (c.startDate <= now && c.dueDate >= now) active++;
+    else if (c.dueDate < now) expired++;
   }
 
   const summary = {
     totalWithPackage: totalWithPackage || 0,
+    // totalSales আলাদা করে নাম দিচ্ছি যেন UI "Sales Overview" এ দেখাতে পারেন
     totalSales: totalWithPackage || 0,
-    active,
-    expired,
-    startingSoon,
-    expiringSoon,
-    missingDates,
+    active: active || 0,
+    expired: expired || 0,
+    startingSoon: startingSoon || 0,
+    expiringSoon: expiringSoon || 0,
+    missingDates: missingDates || 0,
   };
 
+  // --- Group by package (counts, active/expired, avg days left)
   const byPackageMap = new Map<
     string,
     {
@@ -97,7 +87,7 @@ export async function GET() {
 
   for (const c of enriched) {
     const key = c.packageId as string;
-    const entry = byPackageMap.get(key) ?? {
+    const e = byPackageMap.get(key) ?? {
       packageId: key,
       packageName: c.package?.name ?? null,
       totalMonths: c.package?.totalMonths ?? null,
@@ -107,22 +97,17 @@ export async function GET() {
       daysLeftAcc: 0,
       daysLeftCount: 0,
     };
-
-    entry.clients++;
-    if (c.status === "active") entry.active++;
-    if (c.status === "expired") entry.expired++;
-
-    if (c.dueDate) {
+    e.clients++;
+    if (c.startDate && c.dueDate) {
+      if (c.startDate <= now && c.dueDate >= now) e.active++;
+      else if (c.dueDate < now) e.expired++;
       const daysLeft = Math.floor(
         (c.dueDate.getTime() - now.getTime()) / 86400000
       );
-      if (daysLeft >= 0) {
-        entry.daysLeftAcc += daysLeft;
-        entry.daysLeftCount++;
-      }
+      e.daysLeftAcc += daysLeft;
+      e.daysLeftCount++;
     }
-
-    byPackageMap.set(key, entry);
+    byPackageMap.set(key, e);
   }
 
   const byPackage = Array.from(byPackageMap.values())
@@ -139,20 +124,20 @@ export async function GET() {
     }))
     .sort((a, b) => b.clients - a.clients);
 
+  // --- Package-wise sales (count + share %)
   const totalSales = byPackage.reduce((s, r) => s + r.clients, 0);
   const packageSales = byPackage.map((p) => ({
     packageId: p.packageId,
-    packageName: p.packageName || "Unknown Package",
+    packageName: p.packageName || 'Unknown Package',
     sales: p.clients || 0,
-    sharePercent:
-      totalSales && p.clients
-        ? Math.round((p.clients * 10000) / totalSales) / 100
-        : 0,
+    sharePercent: totalSales && p.clients
+      ? Math.round((p.clients * 10000) / totalSales) / 100
+      : 0,
   }));
 
+  // --- Timeseries: new package starts per day (last 90 days)
   const since = new Date();
   since.setDate(since.getDate() - 90);
-
   const timeseries = await prisma.$queryRawUnsafe<
     { day: string; starts: number }[]
   >(
@@ -170,6 +155,10 @@ export async function GET() {
     since
   );
 
+  // --- Recent: latest 20 package clients w/ status
+  const recent = enriched.slice(0, 20);
+
+  // --- Grouped clients by package for table filtering (package-wise lists)
   const groupedClients = byPackage.map((pkg) => ({
     packageId: pkg.packageId,
     packageName: pkg.packageName,
@@ -184,22 +173,32 @@ export async function GET() {
         email: c.email,
         startDate: c.startDate,
         dueDate: c.dueDate,
-        status: c.status as Status,
+        status: c.status,
       })),
   }));
 
-  const safeTimeseries = (timeseries || []).map((item) => ({
+  // Ensure all numeric values are properly handled
+  const safeTimeseries = (timeseries || []).map(item => ({
     ...item,
-    starts: item.starts || 0,
+    starts: item.starts || 0
+  }));
+
+  const safeByPackage = byPackage.map(pkg => ({
+    ...pkg,
+    active: pkg.active || 0,
+    expired: pkg.expired || 0,
+    clients: pkg.clients || 0,
+    totalMonths: pkg.totalMonths || 0,
+    avgDaysLeft: pkg.avgDaysLeft || 0
   }));
 
   return NextResponse.json({
     summary,
     timeseries: safeTimeseries,
-    byPackage,
+    byPackage: safeByPackage,
     packageSales,
     totalSales: totalSales || 0,
-    recent: enriched.slice(0, 20),
+    recent: recent || [],
     groupedClients: groupedClients || [],
   });
 }

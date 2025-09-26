@@ -1,5 +1,3 @@
-// app/[role]/sales/page.tsx
-
 "use client";
 
 import * as React from "react";
@@ -213,12 +211,8 @@ function KPI({
     <Card className="border-0 shadow-sm ring-1 ring-slate-200/60 hover:shadow-md hover:ring-slate-300/60 transition-all duration-200">
       <CardContent className="p-5 flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-600 tracking-wide uppercase">
-            {title}
-          </p>
-          <p className="text-2xl font-bold tracking-tight text-slate-900">
-            {value}
-          </p>
+          <p className="text-xs font-medium text-slate-600 tracking-wide uppercase">{title}</p>
+          <p className="text-2xl font-bold tracking-tight text-slate-900">{value}</p>
           {trend ? (
             <p
               className={cn(
@@ -260,46 +254,29 @@ function PackageCard({
       <Card
         className={cn(
           "transition-all duration-200 border-0 shadow-sm ring-1",
-          selected
-            ? "ring-2 ring-cyan-400 shadow-lg shadow-cyan-100/50 -translate-y-1"
+          selected 
+            ? "ring-2 ring-cyan-400 shadow-lg shadow-cyan-100/50 -translate-y-1" 
             : "ring-slate-200/60 hover:shadow-lg hover:-translate-y-1 hover:ring-slate-300/60"
         )}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold line-clamp-1 text-slate-900">
-            {title}
-          </CardTitle>
+          <CardTitle className="text-sm font-semibold line-clamp-1 text-slate-900">{title}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-3 gap-3 items-end">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-              Total
-            </p>
-            <p className="text-lg font-bold text-slate-900">
-              {formatInt(total)}
-            </p>
+            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Total</p>
+            <p className="text-lg font-bold text-slate-900">{formatInt(total)}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-              Active
-            </p>
-            <p className="text-lg font-bold text-emerald-600">
-              {formatInt(active)}
-            </p>
+            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Active</p>
+            <p className="text-lg font-bold text-emerald-600">{formatInt(active)}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-              Expired
-            </p>
-            <p className="text-lg font-bold text-rose-600">
-              {formatInt(expired)}
-            </p>
+            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Expired</p>
+            <p className="text-lg font-bold text-rose-600">{formatInt(expired)}</p>
           </div>
           <div className="col-span-3 mt-2">
-            <Badge
-              variant="secondary"
-              className="text-[10px] font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
-            >
+            <Badge variant="secondary" className="text-[10px] font-medium bg-slate-100 text-slate-700 hover:bg-slate-200">
               {avgDaysLeft !== null
                 ? `Avg days left: ${avgDaysLeft}`
                 : "Avg days left: —"}
@@ -409,9 +386,7 @@ export default function AMCEOSalesPage() {
         {error ? (
           <Card className="border-0 shadow-sm ring-1 ring-red-200 bg-gradient-to-r from-red-50 to-rose-50">
             <CardContent className="p-6">
-              <p className="font-semibold text-red-700 mb-2">
-                Failed to load data.
-              </p>
+              <p className="font-semibold text-red-700 mb-2">Failed to load data.</p>
               <p className="text-sm text-red-600">
                 Please try again or contact support if the issue persists.
               </p>
@@ -486,10 +461,7 @@ export default function AMCEOSalesPage() {
                         .slice(0, 3)
                         .map((p, idx) => {
                           const name = p.packageName ?? p.packageId.slice(0, 6);
-                          const width = Math.max(
-                            5,
-                            Math.min(100, p.sharePercent)
-                          );
+                          const width = Math.max(5, Math.min(100, p.sharePercent));
                           return (
                             <div key={p.packageId} className="space-y-2">
                               <div className="flex items-center justify-between text-xs">
@@ -497,8 +469,7 @@ export default function AMCEOSalesPage() {
                                   #{idx + 1} {name}
                                 </span>
                                 <span className="text-slate-600 font-medium">
-                                  {formatInt(p.sales)} •{" "}
-                                  {formatPct(p.sharePercent, 1)}
+                                  {formatInt(p.sales)} • {formatPct(p.sharePercent, 1)}
                                 </span>
                               </div>
                               <div className="h-2 w-full rounded-full bg-white/60 shadow-inner">
@@ -518,28 +489,22 @@ export default function AMCEOSalesPage() {
 
             {/* Middle: Sparkline (last 30d) */}
             <div className="p-8 lg:p-10 bg-white">
-              <p className="text-sm font-semibold text-slate-700 mb-4">
-                Last 30 days starts
-              </p>
+              <p className="text-sm font-semibold text-slate-700 mb-4">Last 30 days starts</p>
               <div className="h-32 mb-6">
                 {isLoading ? (
                   <Skeleton className="h-full" />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={series.slice(-30)}>
-                      <CartesianGrid
-                        strokeDasharray="2 4"
-                        vertical={false}
-                        stroke="#f1f5f9"
-                      />
+                      <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="day" hide />
                       <YAxis hide />
                       <Tooltip
-                        contentStyle={{
-                          borderRadius: 12,
+                        contentStyle={{ 
+                          borderRadius: 12, 
                           borderColor: "#e2e8f0",
                           boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                          fontSize: "12px",
+                          fontSize: "12px"
                         }}
                       />
                       <Line
@@ -577,9 +542,7 @@ export default function AMCEOSalesPage() {
 
             {/* Right: Sales Share Pie */}
             <div className="p-8 lg:p-10 bg-gradient-to-br from-slate-50 to-gray-50">
-              <p className="text-sm font-semibold text-slate-700 mb-4">
-                Sales Share
-              </p>
+              <p className="text-sm font-semibold text-slate-700 mb-4">Sales Share</p>
               <div className="h-48 mb-4">
                 {isLoading ? (
                   <Skeleton className="h-full" />
@@ -588,11 +551,11 @@ export default function AMCEOSalesPage() {
                     <PieChart>
                       <Tooltip
                         formatter={(v: any) => `${v}%`}
-                        contentStyle={{
-                          borderRadius: 12,
+                        contentStyle={{ 
+                          borderRadius: 12, 
                           borderColor: "#e2e8f0",
                           boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                          fontSize: "12px",
+                          fontSize: "12px"
                         }}
                       />
                       <Pie
@@ -636,10 +599,7 @@ export default function AMCEOSalesPage() {
               </div>
               <div className="text-center">
                 <p className="text-xs text-slate-600">
-                  Total:{" "}
-                  <span className="font-semibold text-slate-900">
-                    {formatInt(totalSales)}
-                  </span>
+                  Total: <span className="font-semibold text-slate-900">{formatInt(totalSales)}</span>
                 </p>
               </div>
             </div>
@@ -691,9 +651,7 @@ export default function AMCEOSalesPage() {
           {/* Daily starts (Area) */}
           <Card className="xl:col-span-1 border-0 shadow-sm ring-1 ring-slate-200/60">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Daily Starts (Last 90d)
-              </CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-900">Daily Starts (Last 90d)</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               {isLoading ? (
@@ -702,13 +660,7 @@ export default function AMCEOSalesPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={series}>
                     <defs>
-                      <linearGradient
-                        id="startsFill"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
+                      <linearGradient id="startsFill" x1="0" y1="0" x2="0" y2="1">
                         <stop
                           offset="5%"
                           stopColor={COLORS.sky}
@@ -721,31 +673,27 @@ export default function AMCEOSalesPage() {
                         />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid
-                      strokeDasharray="2 4"
-                      vertical={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tickLine={false}
-                      axisLine={false}
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="day" 
+                      tickLine={false} 
+                      axisLine={false} 
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <YAxis
                       allowDecimals={false}
                       tickLine={false}
                       axisLine={false}
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <Tooltip
-                      contentStyle={{
-                        borderRadius: 12,
+                      contentStyle={{ 
+                        borderRadius: 12, 
                         borderColor: "#e2e8f0",
                         boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                        fontSize: "12px",
+                        fontSize: "12px"
                       }}
                     />
                     <Area
@@ -767,9 +715,7 @@ export default function AMCEOSalesPage() {
           {/* Daily vs 7-day MA (Composed) */}
           <Card className="xl:col-span-1 border-0 shadow-sm ring-1 ring-slate-200/60">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Daily vs 7-day Avg
-              </CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-900">Daily vs 7-day Avg</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               {isLoading ? (
@@ -777,39 +723,30 @@ export default function AMCEOSalesPage() {
               ) : series.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={ma7}>
-                    <CartesianGrid
-                      strokeDasharray="2 4"
-                      vertical={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tickLine={false}
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="day" 
+                      tickLine={false} 
                       axisLine={false}
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <YAxis
                       allowDecimals={false}
                       tickLine={false}
                       axisLine={false}
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <Tooltip
-                      contentStyle={{
-                        borderRadius: 12,
+                      contentStyle={{ 
+                        borderRadius: 12, 
                         borderColor: "#e2e8f0",
                         boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                        fontSize: "12px",
+                        fontSize: "12px"
                       }}
                     />
-                    <Bar
-                      dataKey="starts"
-                      name="Daily"
-                      fill={COLORS.zinc}
-                      radius={2}
-                    />
+                    <Bar dataKey="starts" name="Daily" fill={COLORS.zinc} radius={2} />
                     <Line
                       type="monotone"
                       dataKey="ma"
@@ -829,9 +766,7 @@ export default function AMCEOSalesPage() {
           {/* Cumulative Starts (Line) */}
           <Card className="xl:col-span-1 border-0 shadow-sm ring-1 ring-slate-200/60">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Cumulative Starts
-              </CardTitle>
+              <CardTitle className="text-base font-semibold text-slate-900">Cumulative Starts</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
               {isLoading ? (
@@ -839,31 +774,27 @@ export default function AMCEOSalesPage() {
               ) : cumStarts.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={cumStarts}>
-                    <CartesianGrid
-                      strokeDasharray="2 4"
-                      vertical={false}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tickLine={false}
+                    <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="day" 
+                      tickLine={false} 
                       axisLine={false}
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <YAxis
                       allowDecimals={false}
                       tickLine={false}
                       axisLine={false}
                       fontSize={11}
-                      tick={{ fill: "#64748b" }}
+                      tick={{ fill: '#64748b' }}
                     />
                     <Tooltip
-                      contentStyle={{
-                        borderRadius: 12,
+                      contentStyle={{ 
+                        borderRadius: 12, 
                         borderColor: "#e2e8f0",
                         boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                        fontSize: "12px",
+                        fontSize: "12px"
                       }}
                     />
                     <Line
@@ -885,9 +816,7 @@ export default function AMCEOSalesPage() {
         {/* ===== Clients by Package (Status Breakdown) ===== */}
         <Card className="border-0 shadow-sm ring-1 ring-slate-200/60">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-900">
-              Clients by Package (Status Breakdown)
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-900">Clients by Package (Status Breakdown)</CardTitle>
           </CardHeader>
           <CardContent className="h-96">
             {isLoading ? (
@@ -895,33 +824,27 @@ export default function AMCEOSalesPage() {
             ) : byPackage.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byPackage}>
-                  <CartesianGrid
-                    strokeDasharray="2 4"
-                    vertical={false}
-                    stroke="#f1f5f9"
-                  />
+                  <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="#f1f5f9" />
                   <XAxis
-                    dataKey={(d: any) =>
-                      d.packageName ?? d.packageId.slice(0, 6)
-                    }
+                    dataKey={(d: any) => d.packageName ?? d.packageId.slice(0, 6)}
                     tickLine={false}
                     axisLine={false}
                     fontSize={11}
-                    tick={{ fill: "#64748b" }}
+                    tick={{ fill: '#64748b' }}
                   />
                   <YAxis
                     allowDecimals={false}
                     tickLine={false}
                     axisLine={false}
                     fontSize={11}
-                    tick={{ fill: "#64748b" }}
+                    tick={{ fill: '#64748b' }}
                   />
                   <Tooltip
-                    contentStyle={{
-                      borderRadius: 12,
+                    contentStyle={{ 
+                      borderRadius: 12, 
                       borderColor: "#e2e8f0",
                       boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      fontSize: "12px",
+                      fontSize: "12px"
                     }}
                   />
                   <Legend />
@@ -957,15 +880,11 @@ export default function AMCEOSalesPage() {
         {/* ===== Sales Table ===== */}
         <Card className="border-0 shadow-sm ring-1 ring-slate-200/60">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-slate-900">
-              Package Sales
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-900">Package Sales</CardTitle>
             {!isLoading && (
               <div className="text-sm text-slate-600">
                 Total sales:{" "}
-                <span className="font-semibold text-slate-900">
-                  {formatInt(totalSales)}
-                </span>
+                <span className="font-semibold text-slate-900">{formatInt(totalSales)}</span>
               </div>
             )}
           </CardHeader>
@@ -977,29 +896,16 @@ export default function AMCEOSalesPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/80">
                     <TableRow className="hover:bg-slate-50/80">
-                      <TableHead className="font-semibold text-slate-900">
-                        #
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Package
-                      </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-900">
-                        Sales
-                      </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-900">
-                        % Share
-                      </TableHead>
+                      <TableHead className="font-semibold text-slate-900">#</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Package</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-900">Sales</TableHead>
+                      <TableHead className="text-right font-semibold text-slate-900">% Share</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {packageSales.map((row, i) => (
-                      <TableRow
-                        key={row.packageId}
-                        className="hover:bg-slate-50/60 transition-colors"
-                      >
-                        <TableCell className="font-medium text-slate-600">
-                          {i + 1}
-                        </TableCell>
+                      <TableRow key={row.packageId} className="hover:bg-slate-50/60 transition-colors">
+                        <TableCell className="font-medium text-slate-600">{i + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {row.packageName ??
                             `(untitled ${row.packageId.slice(0, 6)})`}
@@ -1032,9 +938,7 @@ export default function AMCEOSalesPage() {
         {/* ===== Filters + Clients Table ===== */}
         <Card className="border-0 shadow-sm ring-1 ring-slate-200/60">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <CardTitle className="text-lg font-semibold text-slate-900">
-              Clients
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-900">Clients</CardTitle>
             <div className="flex items-center gap-3">
               <Select
                 value={selectedPkg}
@@ -1071,10 +975,7 @@ export default function AMCEOSalesPage() {
               <span className="font-semibold text-slate-900">
                 {formatInt(currentClients.length)}
               </span>{" "}
-              client(s) for{" "}
-              <span className="font-semibold text-slate-900">
-                {selectedLabel}
-              </span>
+              client(s) for <span className="font-semibold text-slate-900">{selectedLabel}</span>
             </div>
 
             {isLoading ? (
@@ -1089,32 +990,17 @@ export default function AMCEOSalesPage() {
                 <Table>
                   <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
                     <TableRow className="hover:bg-slate-50/80">
-                      <TableHead className="w-[220px] font-semibold text-slate-900">
-                        Client
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Company
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Email
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Start
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Due
-                      </TableHead>
-                      <TableHead className="font-semibold text-slate-900">
-                        Status
-                      </TableHead>
+                      <TableHead className="w-[220px] font-semibold text-slate-900">Client</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Company</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Email</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Start</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Due</TableHead>
+                      <TableHead className="font-semibold text-slate-900">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentClients.map((c) => (
-                      <TableRow
-                        key={c.id}
-                        className="hover:bg-slate-50/60 transition-colors"
-                      >
+                      <TableRow key={c.id} className="hover:bg-slate-50/60 transition-colors">
                         <TableCell className="font-semibold text-slate-900">
                           {c.name ?? "—"}
                         </TableCell>
