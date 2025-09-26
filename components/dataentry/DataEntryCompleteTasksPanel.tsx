@@ -30,6 +30,10 @@ import {
   Calendar,
   BarChart3,
   AlertCircle,
+  X,
+  Copy,
+  KeyRound,
+  LinkIcon,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -104,6 +108,8 @@ export default function DataEntryCompleteTasksPanel({
     Array<{ id: string; name?: string | null; email?: string | null }>
   >([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
+  // Track whether "Create & Assign Next Task" has already been used for this client
+  const [nextTasksAlreadyCreated, setNextTasksAlreadyCreated] = useState(false);
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
     completed: 0,
@@ -127,14 +133,19 @@ export default function DataEntryCompleteTasksPanel({
   const [password, setPassword] = useState("");
   const [doneBy, setDoneBy] = useState<string>("");
   const [completedAt, setCompletedAt] = useState<Date | undefined>(undefined);
+  const [lastUsedDate, setLastUsedDate] = useState<Date | null>(null);
+  const [lastUsedAgent, setLastUsedAgent] = useState<string | null>(null);
+  const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [openDate, setOpenDate] = useState(false);
   const [clientName, setClientName] = useState<string>("");
+  const [clientEmail, setClientEmail] = useState<string>("");
 
-  // Fetch client name when clientId changes
+  // Fetch client name and email when clientId changes
   useEffect(() => {
-    const fetchClientName = async () => {
+    const fetchClientData = async () => {
       if (!clientId) {
         setClientName("");
+        setClientEmail("");
         return;
       }
 
@@ -143,16 +154,19 @@ export default function DataEntryCompleteTasksPanel({
         if (response.ok) {
           const data = await response.json();
           setClientName(data.name || `Client ${clientId}`);
+          setClientEmail(data.email || "");
         } else {
           setClientName(`Client ${clientId}`);
+          setClientEmail("");
         }
       } catch (error) {
         console.error("Error fetching client:", error);
         setClientName(`Client ${clientId}`);
+        setClientEmail("");
       }
     };
 
-    fetchClientName();
+    fetchClientData();
   }, [clientId]);
 
   const loadStats = async () => {
@@ -307,6 +321,20 @@ export default function DataEntryCompleteTasksPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, user?.id]);
 
+  // On mount/clientId change, read flag to hide CreateNextTask button after first use
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && clientId) {
+        const v = localStorage.getItem(`nextTasksCreated:${clientId}`);
+        setNextTasksAlreadyCreated(!!v);
+      } else {
+        setNextTasksAlreadyCreated(false);
+      }
+    } catch {
+      setNextTasksAlreadyCreated(false);
+    }
+  }, [clientId]);
+
   // Count tasks completed by the current Data Entry user
   const dataEntryCompletedCount = useMemo(() => {
     if (!user?.id) return 0;
@@ -386,7 +414,7 @@ export default function DataEntryCompleteTasksPanel({
     setLink("");
     setEmail("");
     setUsername("");
-    setPassword("");
+    setPassword(""); // Always keep password blank
     setDoneBy("");
     setCompletedAt(undefined);
   };
@@ -400,16 +428,105 @@ export default function DataEntryCompleteTasksPanel({
   const openComplete = (t: DETask) => {
     setSelected(t);
     setLink(t.completionLink || "");
-    setEmail(t.email || "");
-    setUsername(t.username || "");
-    setPassword(t.password || "");
+    // Auto-fill email with client email
+    setEmail(clientEmail || "");
+    setUsername(""); // Keep blank initially, will be auto-filled when link changes
+    setPassword(""); // Keep blank
+    
+    // Set completed date: first try task's completedAt, then last used date, then current date
     if (t.completedAt) {
       const d = new Date(t.completedAt);
-      if (!isNaN(d.getTime())) setCompletedAt(d);
+      if (!isNaN(d.getTime())) {
+        setCompletedAt(d);
+        setLastUsedDate(d);
+      } else if (lastUsedDate) {
+        setCompletedAt(lastUsedDate);
+      } else {
+        setCompletedAt(new Date());
+      }
+    } else if (lastUsedDate) {
+      setCompletedAt(lastUsedDate);
     } else {
-      setCompletedAt(undefined);
+      setCompletedAt(new Date());
+    }
+    
+    // Set the last used agent if available
+    if (lastUsedAgent) {
+      setDoneBy(lastUsedAgent);
     }
   };
+
+  // Function to extract username from URL
+  const extractUsernameFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      // Try to extract username from various URL patterns
+      // Look for common patterns like /user/username, /profile/username, etc.
+      const pathSegments = urlObj.pathname
+        .split("/")
+        .filter((segment) => segment.length > 0);
+
+      // Common patterns for username in URLs
+      for (let i = 0; i < pathSegments.length; i++) {
+        const segment = pathSegments[i];
+        // Skip common path segments that are unlikely to be usernames
+        if (
+          [
+            "user",
+            "profile",
+            "account",
+            "users",
+            "profiles",
+            "accounts",
+          ].includes(segment.toLowerCase())
+        ) {
+          if (i + 1 < pathSegments.length) {
+            return pathSegments[i + 1];
+          }
+        }
+        // If segment looks like a username (alphanumeric, not too long)
+        if (/^[a-zA-Z0-9._-]{3,30}$/.test(segment)) {
+          return segment;
+        }
+      }
+
+      // If no username found in path, try to extract from query parameters
+      const searchParams = urlObj.searchParams;
+      if (
+        searchParams.has("user") ||
+        searchParams.has("username") ||
+        searchParams.has("profile")
+      ) {
+        return (
+          searchParams.get("user") ||
+          searchParams.get("username") ||
+          searchParams.get("profile") ||
+          ""
+        );
+      }
+
+      return "";
+    } catch {
+      return "";
+    }
+  };
+
+  // Auto-fill email with client email when modal opens
+  useEffect(() => {
+    if (selected && clientEmail && !email) {
+      setEmail(clientEmail);
+    }
+  }, [selected, clientEmail, email]);
+
+  // Auto-fill username from URL when link changes
+  useEffect(() => {
+    if (link && link.trim()) {
+      const extractedUsername = extractUsernameFromUrl(link.trim());
+      if (extractedUsername && !username) {
+        setUsername(extractedUsername);
+      }
+    }
+  }, [link]);
 
   const submit = async () => {
     if (!user?.id || !selected) return;
@@ -424,6 +541,11 @@ export default function DataEntryCompleteTasksPanel({
     if (completedAt.getTime() > Date.now()) {
       toast.error("Completed date cannot be in the future");
       return;
+    }
+    
+    // Save the selected agent as last used
+    if (doneBy) {
+      setLastUsedAgent(doneBy);
     }
 
     try {
@@ -467,7 +589,7 @@ export default function DataEntryCompleteTasksPanel({
 
       // 2.5) reassign to the selected 'doneBy' agent (if provided) so the task ownership reflects who actually did it
       if (doneBy && clientId) {
-         const distBody = {
+        const distBody = {
           clientId,
           assignments: [
             {
@@ -641,12 +763,23 @@ export default function DataEntryCompleteTasksPanel({
                         <div>
                           <p>No tasks found</p>
                         </div>
-                        <CreateNextTask
-                          clientId={clientId}
-                          onCreated={() => {
-                            load();
-                          }}
-                        />
+                        {!nextTasksAlreadyCreated && (
+                          <CreateNextTask
+                            clientId={clientId}
+                            onCreated={() => {
+                              try {
+                                if (typeof window !== "undefined") {
+                                  localStorage.setItem(
+                                    `nextTasksCreated:${clientId}`,
+                                    "1"
+                                  );
+                                }
+                              } catch {}
+                              setNextTasksAlreadyCreated(true);
+                              load();
+                            }}
+                          />
+                        )}
                       </div>
                       {q ||
                       statusFilter !== "all" ||
@@ -770,127 +903,201 @@ export default function DataEntryCompleteTasksPanel({
         </CardContent>
       </Card>
 
-      {/* Completion Dialog */}
+      {/* Completion Dialog - Updated Design */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && resetModal()}>
-        <DialogContent className="sm:max-w-[600px] rounded-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Complete Task: {selected?.name}
+        <DialogContent className="sm:max-w-[650px] rounded-2xl border bg-white/80 backdrop-blur-sm">
+          {/* Updated Header */}
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-3">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-white" />
+              </div>
+              Complete Task:{" "}
+              <span className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg text-white">
+                {selected?.name}
+              </span>
             </DialogTitle>
-            <DialogDescription>
-              Provide completion details. This task will be automatically QC
-              approved upon submission.
+            <DialogDescription className="text-gray-500 text-sm pt-1">
+              Provide completion details below. This task will be auto-approved
+              upon submission.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Completion Link *
-              </label>
+          <div className="space-y-6 py-2">
+            {/* Fieldset for better grouping */}
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
+                <LinkIcon className="h-4 w-4 text-green-600" />
+                Completed Link *
+              </legend>
               <Input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="https://example.com"
-                className="rounded-lg"
+                placeholder="https://example.com/your-completed-work"
+                className="rounded-xl h-11 border-gray-300 focus:border-green-500 focus:ring-green-500/50 transition-all"
               />
-            </div>
+            </fieldset>
 
+            {/* Conditional Credentials Section - Refined Design */}
             {!isSimpleTask(selected) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Email
-                  </label>
-                  <Input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    className="rounded-lg"
-                  />
+              <fieldset className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      Email
+                    </label>
+                    <Input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={clientEmail || "email@example.com"}
+                      className="rounded-xl h-11 bg-white border-gray-300"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      Username
+                    </label>
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="username"
+                      className="rounded-xl h-11 bg-white border-gray-300"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      Password
+                    </label>
+                    {/* Password input with a new copy button for better UX */}
+                    <div className="relative">
+                      <Input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter password or Enter Gmail Login"
+                        type="password"
+                        className="rounded-xl h-11 bg-white border-gray-300 font-mono pr-10"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Username
-                  </label>
-                  <Input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="username"
-                    className="rounded-lg"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium mb-1 block">
-                    Password
-                  </label>
-                  <Input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="password"
-                    type="password"
-                    className="rounded-lg"
-                  />
-                </div>
-              </div>
+              </fieldset>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 flex items-center gap-2">
-                  <UserRound className="h-4 w-4" />
-                  Done by (agent)
-                </label>
-                <Select value={doneBy} onValueChange={setDoneBy}>
-                  <SelectTrigger className="rounded-lg h-11">
-                    <SelectValue placeholder="Select agent" />
+            {/* Agent and Date Section in a final Fieldset */}
+            <fieldset className="grid grid-cols-2 gap-6 pt-2">
+              <div className="space-y-2">
+                <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
+                  <UserRound className="h-4 w-4 text-blue-600" />
+                  Done by (agent) *
+                </legend>
+                <Select 
+                  value={doneBy} 
+                  onValueChange={(value) => {
+                    setDoneBy(value);
+                    setLastUsedAgent(value);
+                  }}
+                >
+                  <SelectTrigger className="rounded-xl h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50 text-base">
+                    <SelectValue placeholder="Select agent..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    {agents.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name || a.email || a.id}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="rounded-xl border-gray-200 shadow-lg p-3 w-[300px]">
+                    <div className="mb-3">
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          placeholder="Search agents by name..."
+                          className="pl-12 h-12 text-base border-2 border-white"
+                          value={agentSearchTerm}
+                          onChange={(e) => setAgentSearchTerm(e.target.value)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.focus();
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1">
+                      {agents
+                        .filter((agent) => {
+                          const search = agentSearchTerm.toLowerCase();
+                          return (
+                            !search ||
+                            agent.name?.toLowerCase().includes(search)
+                          );
+                        })
+                        .sort((a, b) => {
+                          // Sort selected agent to the top
+                          if (a.id === doneBy) return -1;
+                          if (b.id === doneBy) return 1;
+                          return 0;
+                        })
+                        .map((agent) => (
+                          <SelectItem
+                            key={agent.id}
+                            value={agent.id}
+                            className="rounded-lg py-2 px-2 my-1 hover:bg-gray-100 focus:bg-blue-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-4 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div
+                                className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${
+                                  agent.id === doneBy
+                                    ? "bg-blue-500"
+                                    : "bg-green-500"
+                                }`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                {agent.name || "Unnamed Agent"}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block">
+              <div className="space-y-2">
+                <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
+                  <Calendar className="h-4 w-4 text-purple-600" />
                   Completed At *
-                </label>
+                </legend>
                 <DatePicker
                   selected={completedAt}
-                  onChange={(date: Date | null) =>
-                    setCompletedAt(date || new Date())
-                  }
+                  onChange={(date: Date | null) => {
+                    const newDate = date || new Date();
+                    setCompletedAt(newDate);
+                    setLastUsedDate(newDate);
+                  }}
                   dateFormat="MMMM d, yyyy"
                   showMonthDropdown
                   showYearDropdown
                   dropdownMode="select"
                   placeholderText="Select completion date"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm h-11"
-                  maxDate={new Date()} // Prevent future dates
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm h-11 focus:border-purple-500 focus:ring-purple-500/50 transition-all"
+                  maxDate={new Date()}
                 />
               </div>
-            </div>
+            </fieldset>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          {/* Footer with consistent button styles */}
+          <DialogFooter className="pt-6 border-t mt-4">
             <Button
               variant="outline"
               onClick={() => resetModal()}
-              className="rounded-lg"
+              className="rounded-xl h-11 bg-red-500 hover:bg-red-600 hover:text-white text-white font-medium transition-all"
             >
+              <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
             <Button
-              className="ml-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 rounded-lg"
+              className="ml-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm transition-all"
               onClick={submit}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Submit
+              Submit Completion
             </Button>
           </DialogFooter>
         </DialogContent>
