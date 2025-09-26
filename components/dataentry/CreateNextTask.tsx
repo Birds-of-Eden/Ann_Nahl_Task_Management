@@ -34,12 +34,18 @@ export default function CreateNextTask({ clientId, onCreated }: CreateNextTaskPr
       
       if (createdCount > 0) {
         toast.success(`${json.message} (Assigned to ${assignedToName})`);
+        // Mark as created once for this client to hide the button in future
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`nextTasksCreated:${clientId}`, "1");
+          }
+        } catch {}
       } else {
         toast.info(json?.message || "No remaining tasks to create.");
       }
       
+      // Let parent decide how to refresh
       onCreated?.();
-      window.location.reload();
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to create remaining tasks");
