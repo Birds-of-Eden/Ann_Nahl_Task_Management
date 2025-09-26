@@ -1,59 +1,79 @@
-"use client"
+// app/components/clients/ClientCard.tsx
 
-import Image from "next/image"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Calendar, Globe, Building, MapPin, User, MoreVertical, Eye } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+"use client";
+
+import Image from "next/image";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Calendar,
+  Globe,
+  Building,
+  MapPin,
+  User,
+  MoreVertical,
+  Eye,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Client {
-  id: string
-  name: string
-  profilePicture?: File
-  birthDate: string
-  clientType: string
-  companyName?: string
-  companyAddress?: string
-  companyWebsite?: string
-  hasWebsite: boolean
-  websiteUrl?: string
-  createdAt: string
+  id: string;
+  name: string;
+  profilePicture?: File;
+  birthDate: string;
+  clientType: string;
+  companyName?: string;
+  companyAddress?: string;
+  companyWebsite?: string;
+  hasWebsite: boolean;
+  websiteUrl?: string;
+  createdAt: string;
 }
 
 interface ClientCardProps {
-  client: Client
-  onClick: () => void
-  onDelete: () => void
-  onEdit: () => void
+  client: Client;
+  onClick: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
 }
 
-export function ClientCard({ client, onClick, onDelete, onEdit }: ClientCardProps) {
+export function ClientCard({
+  client,
+  onClick,
+  onDelete,
+  onEdit,
+}: ClientCardProps) {
   const formatDate = (dateString: string) => {
-    if (!dateString) return "Not provided"
+    if (!dateString) return "Not provided";
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
-    })
-  }
+    });
+  };
 
   const getLocation = () => {
     if (client.clientType === "business" && client.companyAddress) {
-      return client.companyAddress
+      return client.companyAddress;
     }
-    return "Location not provided"
-  }
+    return "Location not provided";
+  };
 
   const getWebsite = () => {
     if (client.clientType === "business" && client.companyWebsite) {
-      return client.companyWebsite
+      return client.companyWebsite;
     }
     if (client.websiteUrl) {
-      return client.websiteUrl
+      return client.websiteUrl;
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
@@ -65,7 +85,10 @@ export function ClientCard({ client, onClick, onDelete, onEdit }: ClientCardProp
               typeof client.profilePicture === "object" &&
               client.profilePicture instanceof File ? (
                 <Image
-                  src={URL.createObjectURL(client.profilePicture) || "/placeholder.svg"}
+                  src={
+                    URL.createObjectURL(client.profilePicture) ||
+                    "/placeholder.svg"
+                  }
                   alt={client.name}
                   width={48}
                   height={48}
@@ -84,7 +107,11 @@ export function ClientCard({ client, onClick, onDelete, onEdit }: ClientCardProp
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -142,5 +169,5 @@ export function ClientCard({ client, onClick, onDelete, onEdit }: ClientCardProp
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,7 +1,7 @@
 // app/api/clients/[id]/route.ts
-import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import type { TaskStatus } from "@prisma/client"
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import type { TaskStatus } from "@prisma/client";
 
 // --- helpers ---
 async function computeClientProgress(clientId: string) {
@@ -10,7 +10,7 @@ async function computeClientProgress(clientId: string) {
     by: ["status"],
     where: { clientId },
     _count: { _all: true },
-  })
+  });
 
   // স্কিমার সব স্ট্যাটাস জিরো-ইনিশিয়ালাইজ
   const base: Record<TaskStatus, number> = {
@@ -23,10 +23,10 @@ async function computeClientProgress(clientId: string) {
     reassigned: 0,
     qc_approved: 0,
     data_entered: 0,
-  }
+  };
 
   for (const row of grouped) {
-    base[row.status] = row._count._all
+    base[row.status] = row._count._all;
   }
 
   const total =
@@ -36,9 +36,9 @@ async function computeClientProgress(clientId: string) {
     base.overdue +
     base.cancelled +
     base.reassigned +
-    base.qc_approved
+    base.qc_approved;
 
-  const progress = total > 0 ? Math.round((base.completed / total) * 100) : 0
+  const progress = total > 0 ? Math.round((base.completed / total) * 100) : 0;
 
   return {
     progress,
@@ -52,28 +52,28 @@ async function computeClientProgress(clientId: string) {
       reassigned: base.reassigned,
       qc_approved: base.qc_approved,
     },
-  }
+  };
 }
 
 async function recalcAndStoreClientProgress(clientId: string) {
-  const { progress, taskCounts } = await computeClientProgress(clientId)
+  const { progress, taskCounts } = await computeClientProgress(clientId);
   await prisma.client.update({
     where: { id: clientId },
     data: { progress },
     select: { id: true }, // শুধু আপডেট নিশ্চিত করতে
-  })
-  return { progress, taskCounts }
+  });
+  return { progress, taskCounts };
 }
 
 // Optional: amId server-side role guard
 async function assertIsAMOrNull(amId: string | null | undefined) {
-  if (!amId) return
+  if (!amId) return;
   const am = await prisma.user.findUnique({
     where: { id: amId },
     include: { role: true },
-  })
+  });
   if (!am || am.role?.name !== "am") {
-    throw new Error("amId is not an Account Manager (role 'am').")
+    throw new Error("amId is not an Account Manager (role 'am').");
   }
 }
 
@@ -82,11 +82,11 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
+  const { id } = await params;
 
   try {
     // সর্বশেষ প্রগ্রেস DB-তে আপডেট করে নিন
-    const fresh = await recalcAndStoreClientProgress(id)
+    const fresh = await recalcAndStoreClientProgress(id);
 
     const client = await prisma.client.findUnique({
       where: { id },
@@ -126,19 +126,26 @@ export async function GET(
           },
         },
       },
-    })
+    });
 
-    if (!client) return NextResponse.json({ message: "Client not found" }, { status: 404 })
+    if (!client)
+      return NextResponse.json(
+        { message: "Client not found" },
+        { status: 404 }
+      );
 
     // রেসপন্সে fresh progress + taskCounts যুক্ত করে পাঠাই
     return NextResponse.json({
       ...client,
       progress: fresh.progress,
       taskCounts: fresh.taskCounts,
-    })
+    });
   } catch (error) {
-    console.error(`Error fetching client ${id}:`, error)
-    return NextResponse.json({ message: "Failed to fetch client" }, { status: 500 })
+    console.error(`Error fetching client ${id}:`, error);
+    return NextResponse.json(
+      { message: "Failed to fetch client" },
+      { status: 500 }
+    );
   }
 }
 
@@ -147,10 +154,10 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
+  const { id } = await params;
 
   try {
-    const body = await req.json()
+    const body = await req.json();
     const {
       name,
       birthdate,
@@ -182,16 +189,17 @@ export async function PUT(
       amId,
       // ⬇️ Arbitrary JSON key/value pairs
       otherField,
-    } = body
+    } = body;
 
     // amId server-side validation (role must be 'am') — allow null to clear
-    const amIdValue = typeof amId === "string" && amId.trim().length > 0 ? amId : null
-    await assertIsAMOrNull(amIdValue)
+    const amIdValue =
+      typeof amId === "string" && amId.trim().length > 0 ? amId : null;
+    await assertIsAMOrNull(amIdValue);
 
     // আপডেট (progress বাদ)
     const updated = await prisma.client.update({
       where: { id },
-      data: ({
+      data: {
         name,
         birthdate: birthdate ? new Date(birthdate) : undefined,
         gender,
@@ -203,7 +211,9 @@ export async function PUT(
         email,
         phone,
         // Persist articleTopics JSON if provided
-        articleTopics: articleTopics ? JSON.parse(JSON.stringify(articleTopics)) : undefined,
+        articleTopics: articleTopics
+          ? JSON.parse(JSON.stringify(articleTopics))
+          : undefined,
         password,
         recoveryEmail,
 
@@ -225,7 +235,7 @@ export async function PUT(
 
         // Persist arbitrary JSON if provided
         otherField: otherField ?? undefined,
-      }) as any,
+      } as any,
       include: {
         socialMedias: true,
         package: true,
@@ -261,26 +271,31 @@ export async function PUT(
           },
         },
       },
-    })
+    });
 
     // আপডেটের পর progress রিক্যালকুলেট করে DB-তে লিখে নিন
-    const fresh = await recalcAndStoreClientProgress(id)
+    const fresh = await recalcAndStoreClientProgress(id);
 
     return NextResponse.json({
       ...updated,
       progress: fresh.progress,
       taskCounts: fresh.taskCounts,
-    })
+    });
   } catch (error) {
-    console.error(`Error updating client ${id}:`, error)
+    console.error(`Error updating client ${id}:`, error);
     // AM invalid হলে 400 দেওয়া হোক
-    const message = error instanceof Error ? error.message : "Failed to update client"
-    const status = message.includes("Account Manager") ? 400 : 500
-    return NextResponse.json({ message }, { status })
+    const message =
+      error instanceof Error ? error.message : "Failed to update client";
+    const status = message.includes("Account Manager") ? 400 : 500;
+    return NextResponse.json({ message }, { status });
   }
 }
 
 // --- post ---
+// --- POST --- (upgrade with migration + auto posting task creation)
+import { headers } from "next/headers";
+// import type { TaskStatus } from "@prisma/client";
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -292,13 +307,18 @@ export async function POST(
     const action = body?.action;
     if (action !== "upgrade") {
       return NextResponse.json(
-        { message: "Unsupported action. Use { action: 'upgrade', newPackageId, createAssignments }" },
+        {
+          message:
+            "Unsupported action. Use { action: 'upgrade', newPackageId, createAssignments, migrateCompleted, createPostingTasks }",
+        },
         { status: 400 }
       );
     }
 
     const newPackageId = String(body?.newPackageId || "").trim();
     const createAssignments = body?.createAssignments ?? true; // default: true
+    const migrateCompleted = body?.migrateCompleted ?? true; // ✅ NEW (default: true)
+    const createPostingTasks = body?.createPostingTasks ?? true; // ✅ NEW (default: true)
 
     if (!newPackageId) {
       return NextResponse.json(
@@ -307,23 +327,46 @@ export async function POST(
       );
     }
 
-    // validate client & package presence
-    const [clientExists, packageExists] = await Promise.all([
-      prisma.client.findUnique({ where: { id: clientId }, select: { id: true } }),
-      prisma.package.findUnique({ where: { id: newPackageId }, select: { id: true } }),
+    // validate client & package presence + capture old package & assignments
+    const [clientRow, pkgRow] = await Promise.all([
+      prisma.client.findUnique({
+        where: { id: clientId },
+        select: { id: true, packageId: true },
+      }),
+      prisma.package.findUnique({
+        where: { id: newPackageId },
+        select: { id: true },
+      }),
     ]);
+    if (!clientRow)
+      return NextResponse.json(
+        { message: "Client not found" },
+        { status: 404 }
+      );
+    if (!pkgRow)
+      return NextResponse.json(
+        { message: "Package not found" },
+        { status: 404 }
+      );
 
-    if (!clientExists) {
-      return NextResponse.json({ message: "Client not found" }, { status: 404 });
-    }
-    if (!packageExists) {
-      return NextResponse.json({ message: "Package not found" }, { status: 404 });
-    }
+    const oldPackageId = clientRow.packageId ?? null;
 
-    console.log(`[Client Upgrade] clientId=${clientId} -> packageId=${newPackageId}, createAssignments=${createAssignments}`);
+    // পুরনো প্যাকেজের assignments (মাইগ্রেশনের জন্য টাস্ক তুলতে লাগবে)
+    const oldAssignments = oldPackageId
+      ? await prisma.assignment.findMany({
+          where: { clientId, template: { packageId: oldPackageId } },
+          select: { id: true },
+        })
+      : [];
+    const oldAssignmentIds = oldAssignments.map((a) => a.id);
 
+    console.log(
+      `[Client Upgrade] clientId=${clientId} -> packageId=${newPackageId}, createAssignments=${createAssignments}, migrateCompleted=${migrateCompleted}, createPostingTasks=${createPostingTasks}`
+    );
+
+    // 1) প্যাকেজ বদল + (ঐচ্ছিক) নতুন assignments (NOT EXISTS guard)
     await prisma.$transaction(async (tx) => {
-      // 1) Update client -> new package
+      // client.packageId আপডেট
       await tx.$executeRaw`
         UPDATE "Client"
         SET "packageId" = ${newPackageId}
@@ -331,23 +374,19 @@ export async function POST(
       `;
 
       if (createAssignments) {
-        // 2) Create assignments for all templates in the new package
-        //    with NOT EXISTS guard to avoid duplicates
         await tx.$executeRaw`
           INSERT INTO "Assignment" ("id", "templateId", "clientId", "assignedAt", "status")
           SELECT gen_random_uuid(), t."id", ${clientId}, now(), 'active'
           FROM "Template" t
           WHERE t."packageId" = ${newPackageId}
             AND NOT EXISTS (
-              SELECT 1
-              FROM "Assignment" a
-              WHERE a."templateId" = t."id"
-                AND a."clientId" = ${clientId}
+              SELECT 1 FROM "Assignment" a
+              WHERE a."templateId" = t."id" AND a."clientId" = ${clientId}
             );
         `;
       }
 
-      // Optional: activity log (skip if no table)
+      // best-effort activity log
       try {
         await tx.activityLog.create({
           data: {
@@ -356,78 +395,125 @@ export async function POST(
             entityId: clientId,
             userId: null,
             action: "upgrade_package",
-            details: {
-              newPackageId,
-              createdAssignments: !!createAssignments,
-            },
+            details: { newPackageId, createdAssignments: !!createAssignments },
           },
         });
-      } catch {
-        // ignore if no activityLog table/shape mismatch
-      }
+      } catch {}
     });
 
-    // fresh client + progress (reuse your existing helper)
-    const freshProgress = await (async () => {
-      try {
-        const { progress, taskCounts } = await (async () => {
-          // reuse your compute & recalc if accessible; otherwise compute here quickly:
-          // but we have your helper:
-          const { progress, taskCounts } = await (async () => {
-            const grouped = await prisma.task.groupBy({
-              by: ["status"],
-              where: { clientId },
-              _count: { _all: true },
-            });
-            const base: Record<TaskStatus, number> = {
-              pending: 0,
-              in_progress: 0,
-              completed: 0,
-              overdue: 0,
-              cancelled: 0,
-              reassigned: 0,
-              qc_approved: 0,
-            };
-            for (const row of grouped) base[row.status] = row._count._all;
-            const total =
-              base.pending +
-              base.in_progress +
-              base.completed +
-              base.overdue +
-              base.cancelled +
-              base.reassigned +
-              base.qc_approved;
-            const progress = total > 0 ? Math.round((base.completed / total) * 100) : 0;
+    // নতুন প্যাকেজের assignments (মাইগ্রেটেড টাস্ক attach করার জন্য)
+    const newAssignments = await prisma.assignment.findMany({
+      where: { clientId, template: { packageId: newPackageId } },
+      select: { id: true },
+      orderBy: { assignedAt: "desc" },
+    });
+    const targetAssignmentId = newAssignments[0]?.id ?? null;
 
-            // persist progress
-            await prisma.client.update({
-              where: { id: clientId },
-              data: { progress },
-              select: { id: true },
-            });
+    // 2) ✅ পুরনো প্যাকেজের done টাস্ক → নতুন প্যাকেজে কপি (status/fields same)
+    let migratedCount = 0;
+    if (migrateCompleted && oldAssignmentIds.length && targetAssignmentId) {
+      const DONE_STATUSES: TaskStatus[] = [
+        "completed",
+        "qc_approved",
+        "data_entered",
+      ];
 
-            return {
-              progress,
-              taskCounts: {
-                total,
-                completed: base.completed,
-                pending: base.pending,
-                in_progress: base.in_progress,
-                overdue: base.overdue,
-                cancelled: base.cancelled,
-                reassigned: base.reassigned,
-                qc_approved: base.qc_approved,
-              },
-            };
-          })();
-          return { progress, taskCounts };
-        })();
-        return freshProgress;
-      } catch {
-        return { progress: 0, taskCounts: null as any };
+      const oldDoneTasks = await prisma.task.findMany({
+        where: {
+          assignmentId: { in: oldAssignmentIds },
+          status: { in: DONE_STATUSES },
+        },
+        select: {
+          name: true,
+          status: true,
+          priority: true,
+          idealDurationMinutes: true,
+          dueDate: true,
+          completedAt: true,
+          completionLink: true,
+          email: true,
+          password: true,
+          username: true,
+          notes: true,
+          category: { select: { id: true, name: true } },
+        },
+      });
+
+      if (oldDoneTasks.length) {
+        // নতুন অ্যাসাইনমেন্টে ডুপ্লিকেট নাম + ক্যাটাগরিতে আগেই আছে কি না চেক
+        const names = Array.from(new Set(oldDoneTasks.map((t) => t.name)));
+        const existing = await prisma.task.findMany({
+          where: {
+            assignmentId: targetAssignmentId,
+            name: { in: names },
+          },
+          select: { name: true },
+        });
+        const existingNames = new Set(existing.map((e) => e.name));
+
+        const createPayloads = oldDoneTasks
+          .filter((t) => !existingNames.has(t.name))
+          .map((t) => ({
+            id: `task_migr_${Date.now()}_${Math.random()
+              .toString(36)
+              .slice(2)}`,
+            name: t.name, // same name; চাইলে "(migrated)" suffix দিতে পারেন
+            status: t.status,
+            priority: t.priority,
+            idealDurationMinutes: t.idealDurationMinutes ?? undefined,
+            dueDate: t.dueDate ?? undefined,
+            completedAt: t.completedAt ?? undefined,
+            completionLink: t.completionLink ?? undefined,
+            email: t.email ?? undefined,
+            password: t.password ?? undefined,
+            username: t.username ?? undefined,
+            notes: t.notes
+              ? `${t.notes}\n\n[migrated-from-old-package]`
+              : "[migrated-from-old-package]",
+            assignment: { connect: { id: targetAssignmentId } },
+            client: { connect: { id: clientId } },
+            ...(t.category?.id
+              ? { category: { connect: { id: t.category.id } } }
+              : undefined),
+          }));
+
+        if (createPayloads.length) {
+          await prisma.$transaction((tx) =>
+            Promise.all(createPayloads.map((data) => tx.task.create({ data })))
+          );
+          migratedCount = createPayloads.length;
+        }
       }
-    })();
+    }
 
+    // 3) ✅ একই রুলে নতুন posting tasks অটো-ক্রিয়েট (বিদ্যমান রুটকে সার্ভার-টু-সার্ভার কল)
+    let createdPosting = 0;
+    if (createPostingTasks) {
+      try {
+        const host = headers().get("host");
+        const url = `${
+          process.env.NEXT_PUBLIC_APP_URL ?? `http://${host}`
+        }/api/tasks/create-posting-tasks`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId }), // templateId/onlyType লাগলে যোগ করুন
+        });
+        const j = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          createdPosting = Number(j?.created ?? 0);
+        } else {
+          console.warn("[create-posting-tasks] failed:", j?.message);
+        }
+      } catch (e) {
+        console.warn("[create-posting-tasks] call error:", e);
+      }
+    }
+
+    // fresh progress
+    const fresh = await recalcAndStoreClientProgress(clientId);
+
+    // upgraded snapshot
     const upgraded = await prisma.client.findUnique({
       where: { id: clientId },
       include: {
@@ -435,10 +521,7 @@ export async function POST(
         package: true,
         accountManager: { include: { role: true } },
         teamMembers: {
-          include: {
-            agent: { include: { role: true } },
-            team: true,
-          },
+          include: { agent: { include: { role: true } }, team: true },
         },
         tasks: {
           include: {
@@ -453,10 +536,7 @@ export async function POST(
               include: {
                 sitesAssets: true,
                 templateTeamMembers: {
-                  include: {
-                    agent: { include: { role: true } },
-                    team: true,
-                  },
+                  include: { agent: { include: { role: true } }, team: true },
                 },
               },
             },
@@ -468,29 +548,25 @@ export async function POST(
     });
 
     return NextResponse.json({
-      message: "Client upgraded successfully",
+      message: "Client upgraded & migrated successfully",
+      stats: {
+        migratedCompletedFromOldPackage: migratedCount,
+        createdPostingTasks: createdPosting,
+      },
       client: {
         ...upgraded,
-        progress: freshProgress.progress,
-        taskCounts: freshProgress.taskCounts,
+        progress: fresh.progress,
+        taskCounts: fresh.taskCounts,
       },
     });
   } catch (error) {
-    console.error(`[Client Upgrade] clientId=${(await params).id} failed:`, error);
+    console.error(
+      `[Client Upgrade] clientId=${(await params).id} failed:`,
+      error
+    );
     return NextResponse.json(
       { message: "Failed to upgrade client" },
       { status: 500 }
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
