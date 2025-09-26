@@ -133,6 +133,7 @@ export default function DataEntryCompleteTasksPanel({
   const [password, setPassword] = useState("");
   const [doneBy, setDoneBy] = useState<string>("");
   const [completedAt, setCompletedAt] = useState<Date | undefined>(undefined);
+  const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [openDate, setOpenDate] = useState(false);
   const [clientName, setClientName] = useState<string>("");
   const [clientEmail, setClientEmail] = useState<string>("");
@@ -443,13 +444,24 @@ export default function DataEntryCompleteTasksPanel({
       const urlObj = new URL(url);
       // Try to extract username from various URL patterns
       // Look for common patterns like /user/username, /profile/username, etc.
-      const pathSegments = urlObj.pathname.split('/').filter(segment => segment.length > 0);
+      const pathSegments = urlObj.pathname
+        .split("/")
+        .filter((segment) => segment.length > 0);
 
       // Common patterns for username in URLs
       for (let i = 0; i < pathSegments.length; i++) {
         const segment = pathSegments[i];
         // Skip common path segments that are unlikely to be usernames
-        if (['user', 'profile', 'account', 'users', 'profiles', 'accounts'].includes(segment.toLowerCase())) {
+        if (
+          [
+            "user",
+            "profile",
+            "account",
+            "users",
+            "profiles",
+            "accounts",
+          ].includes(segment.toLowerCase())
+        ) {
           if (i + 1 < pathSegments.length) {
             return pathSegments[i + 1];
           }
@@ -462,13 +474,22 @@ export default function DataEntryCompleteTasksPanel({
 
       // If no username found in path, try to extract from query parameters
       const searchParams = urlObj.searchParams;
-      if (searchParams.has('user') || searchParams.has('username') || searchParams.has('profile')) {
-        return searchParams.get('user') || searchParams.get('username') || searchParams.get('profile') || '';
+      if (
+        searchParams.has("user") ||
+        searchParams.has("username") ||
+        searchParams.has("profile")
+      ) {
+        return (
+          searchParams.get("user") ||
+          searchParams.get("username") ||
+          searchParams.get("profile") ||
+          ""
+        );
       }
 
-      return '';
+      return "";
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -942,29 +963,68 @@ export default function DataEntryCompleteTasksPanel({
             )}
 
             {/* Agent and Date Section in a final Fieldset */}
-            <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <fieldset className="grid grid-cols-2 gap-6 pt-2">
               <div className="space-y-2">
                 <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
                   <UserRound className="h-4 w-4 text-blue-600" />
                   Done by (agent) *
                 </legend>
                 <Select value={doneBy} onValueChange={setDoneBy}>
-                  <SelectTrigger className="rounded-xl h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50">
+                  <SelectTrigger className="rounded-xl h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50 text-base">
                     <SelectValue placeholder="Select agent..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-gray-200 shadow-lg">
-                    {agents.map((a) => (
-                      <SelectItem
-                        key={a.id}
-                        value={a.id}
-                        className="rounded-lg focus:bg-blue-50"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          {a.name || a.email || a.id}
-                        </div>
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="rounded-xl border-gray-200 shadow-lg p-3 w-[300px]">
+                    <div className="mb-3">
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <Input
+                          placeholder="Search agents by name..."
+                          className="pl-12 h-12 text-base border-2 border-white"
+                          value={agentSearchTerm}
+                          onChange={(e) => setAgentSearchTerm(e.target.value)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.currentTarget.focus();
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1">
+                      {agents
+                        .filter((agent) => {
+                          const search = agentSearchTerm.toLowerCase();
+                          return (
+                            !search ||
+                            agent.name?.toLowerCase().includes(search)
+                          );
+                        })
+                        .sort((a, b) => {
+                          // Sort selected agent to the top
+                          if (a.id === doneBy) return -1;
+                          if (b.id === doneBy) return 1;
+                          return 0;
+                        })
+                        .map((agent) => (
+                          <SelectItem
+                            key={agent.id}
+                            value={agent.id}
+                            className="rounded-lg py-2 px-2 my-1 hover:bg-gray-100 focus:bg-blue-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-4 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div
+                                className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${
+                                  agent.id === doneBy
+                                    ? "bg-blue-500"
+                                    : "bg-green-500"
+                                }`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                {agent.name || "Unnamed Agent"}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
