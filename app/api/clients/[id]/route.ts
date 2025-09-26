@@ -273,3 +273,218 @@ export async function PUT(
     return NextResponse.json({ message }, { status })
   }
 }
+
+// --- post ---
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: clientId } = await params;
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const action = body?.action;
+    if (action !== "upgrade") {
+      return NextResponse.json(
+        { message: "Unsupported action. Use { action: 'upgrade', newPackageId, createAssignments }" },
+        { status: 400 }
+      );
+    }
+
+    const newPackageId = String(body?.newPackageId || "").trim();
+    const createAssignments = body?.createAssignments ?? true; // default: true
+
+    if (!newPackageId) {
+      return NextResponse.json(
+        { message: "newPackageId is required" },
+        { status: 400 }
+      );
+    }
+
+    // validate client & package presence
+    const [clientExists, packageExists] = await Promise.all([
+      prisma.client.findUnique({ where: { id: clientId }, select: { id: true } }),
+      prisma.package.findUnique({ where: { id: newPackageId }, select: { id: true } }),
+    ]);
+
+    if (!clientExists) {
+      return NextResponse.json({ message: "Client not found" }, { status: 404 });
+    }
+    if (!packageExists) {
+      return NextResponse.json({ message: "Package not found" }, { status: 404 });
+    }
+
+    console.log(`[Client Upgrade] clientId=${clientId} -> packageId=${newPackageId}, createAssignments=${createAssignments}`);
+
+    await prisma.$transaction(async (tx) => {
+      // 1) Update client -> new package
+      await tx.$executeRaw`
+        UPDATE "Client"
+        SET "packageId" = ${newPackageId}
+        WHERE "id" = ${clientId};
+      `;
+
+      if (createAssignments) {
+        // 2) Create assignments for all templates in the new package
+        //    with NOT EXISTS guard to avoid duplicates
+        await tx.$executeRaw`
+          INSERT INTO "Assignment" ("id", "templateId", "clientId", "assignedAt", "status")
+          SELECT gen_random_uuid(), t."id", ${clientId}, now(), 'active'
+          FROM "Template" t
+          WHERE t."packageId" = ${newPackageId}
+            AND NOT EXISTS (
+              SELECT 1
+              FROM "Assignment" a
+              WHERE a."templateId" = t."id"
+                AND a."clientId" = ${clientId}
+            );
+        `;
+      }
+
+      // Optional: activity log (skip if no table)
+      try {
+        await tx.activityLog.create({
+          data: {
+            id: crypto.randomUUID(),
+            entityType: "Client",
+            entityId: clientId,
+            userId: null,
+            action: "upgrade_package",
+            details: {
+              newPackageId,
+              createdAssignments: !!createAssignments,
+            },
+          },
+        });
+      } catch {
+        // ignore if no activityLog table/shape mismatch
+      }
+    });
+
+    // fresh client + progress (reuse your existing helper)
+    const freshProgress = await (async () => {
+      try {
+        const { progress, taskCounts } = await (async () => {
+          // reuse your compute & recalc if accessible; otherwise compute here quickly:
+          // but we have your helper:
+          const { progress, taskCounts } = await (async () => {
+            const grouped = await prisma.task.groupBy({
+              by: ["status"],
+              where: { clientId },
+              _count: { _all: true },
+            });
+            const base: Record<TaskStatus, number> = {
+              pending: 0,
+              in_progress: 0,
+              completed: 0,
+              overdue: 0,
+              cancelled: 0,
+              reassigned: 0,
+              qc_approved: 0,
+            };
+            for (const row of grouped) base[row.status] = row._count._all;
+            const total =
+              base.pending +
+              base.in_progress +
+              base.completed +
+              base.overdue +
+              base.cancelled +
+              base.reassigned +
+              base.qc_approved;
+            const progress = total > 0 ? Math.round((base.completed / total) * 100) : 0;
+
+            // persist progress
+            await prisma.client.update({
+              where: { id: clientId },
+              data: { progress },
+              select: { id: true },
+            });
+
+            return {
+              progress,
+              taskCounts: {
+                total,
+                completed: base.completed,
+                pending: base.pending,
+                in_progress: base.in_progress,
+                overdue: base.overdue,
+                cancelled: base.cancelled,
+                reassigned: base.reassigned,
+                qc_approved: base.qc_approved,
+              },
+            };
+          })();
+          return { progress, taskCounts };
+        })();
+        return freshProgress;
+      } catch {
+        return { progress: 0, taskCounts: null as any };
+      }
+    })();
+
+    const upgraded = await prisma.client.findUnique({
+      where: { id: clientId },
+      include: {
+        socialMedias: true,
+        package: true,
+        accountManager: { include: { role: true } },
+        teamMembers: {
+          include: {
+            agent: { include: { role: true } },
+            team: true,
+          },
+        },
+        tasks: {
+          include: {
+            assignedTo: { include: { role: true } },
+            templateSiteAsset: true,
+            category: true,
+          },
+        },
+        assignments: {
+          include: {
+            template: {
+              include: {
+                sitesAssets: true,
+                templateTeamMembers: {
+                  include: {
+                    agent: { include: { role: true } },
+                    team: true,
+                  },
+                },
+              },
+            },
+            siteAssetSettings: { include: { templateSiteAsset: true } },
+            tasks: { include: { assignedTo: true, templateSiteAsset: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      message: "Client upgraded successfully",
+      client: {
+        ...upgraded,
+        progress: freshProgress.progress,
+        taskCounts: freshProgress.taskCounts,
+      },
+    });
+  } catch (error) {
+    console.error(`[Client Upgrade] clientId=${(await params).id} failed:`, error);
+    return NextResponse.json(
+      { message: "Failed to upgrade client" },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
