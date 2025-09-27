@@ -526,7 +526,8 @@ export async function POST(
           .map((a) => a.id);
 
         if (newOnlyAssetIds.length) {
-          const host = headers().get("host");
+          const headersList = await headers();
+          const host = headersList.get("host");
           const url = `${
             process.env.NEXT_PUBLIC_APP_URL ?? `http://${host}`
           }/api/tasks/create-posting-tasks`;
