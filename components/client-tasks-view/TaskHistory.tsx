@@ -202,11 +202,11 @@ export default function TaskHistory({ rows }: { rows: TaskHistoryRow[] }) {
   };
 
   return (
-    <div className="w-full p-6 max-w-7xl mx-auto">
+    <div>
       {/* Header */}
       <div className="mb-6 border-b border-gray-200 pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+          <div className="pl-4">
             <h1 className="text-2xl font-bold text-gray-900">Task History Dashboard</h1>
             <p className="text-sm text-gray-600 mt-1">
               Overview of tasks with selected status
@@ -230,7 +230,7 @@ export default function TaskHistory({ rows }: { rows: TaskHistoryRow[] }) {
             {/* Filter Toggle Button */}
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-md border border-gray-300 hover:border-gray-400 bg-white shadow-sm transition-colors"
+              className="flex mr-4 items-center text-sm font-medium text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-md border border-gray-300 hover:border-gray-400 bg-white shadow-sm transition-colors"
             >
               {isFilterOpen ? 'Hide Filters' : 'Show Filters'}
               <svg 
@@ -593,7 +593,7 @@ export default function TaskHistory({ rows }: { rows: TaskHistoryRow[] }) {
       </div>
 
       {/* Legend and Info */}
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs text-gray-500">
+      <div className="mt-4 flex flex-col sm:flex-row pr-4 pl-4 mb-2 justify-between items-start sm:items-center text-xs text-gray-500">
         <div className="mb-2 sm:mb-0">
           <span className="font-medium mr-2">Legend:</span>
           <span className="text-green-700 font-medium mr-3">− = finished faster</span>
