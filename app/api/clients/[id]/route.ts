@@ -1744,7 +1744,7 @@ const CATEGORY_BY_ASSET_TYPE: Record<string, string> = {
   content_studio: "Content Studio",
   content_writing: "Content Writing",
   backlinks: "Backlinks",
-  completed_communication: "Completed Communication",
+  completed_com: "Completed Communication",
   youtube_video_optimization: "YouTube Video Optimization",
   monitoring: "Monitoring",
   review_removal: "Review Removal",
