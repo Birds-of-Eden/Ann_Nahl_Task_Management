@@ -1,6 +1,4 @@
 // components/clients/PackageUpgradeDialog.tsx
-// Uses your existing /api/zisanpackages route (no new API needed)
-
 "use client";
 
 import * as React from "react";
@@ -10,6 +8,7 @@ import {
   ShieldCheck,
   TrendingUp,
   Search,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,7 +33,6 @@ type ZisanPackage = {
   totalMonths: number | null;
   createdAt: string;
   updatedAt: string;
-  // when include=stats
   stats?: {
     clients: number;
     templates: number;
@@ -46,18 +44,14 @@ type ZisanPackage = {
   };
 };
 
-function money(n: number | null | undefined) {
-  if (n == null) return "—";
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(n);
-  } catch {
-    return `$${n}`;
-  }
-}
+type Template = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string | null;
+  packageId: string;
+  _count?: { sitesAssets: number; templateTeamMembers: number };
+};
 
 interface Props {
   open: boolean;
@@ -75,29 +69,35 @@ export default function PackageUpgradeDialog({
   onUpgraded,
 }: Props) {
   const [loading, setLoading] = React.useState(false);
-  const [fetching, setFetching] = React.useState(false);
+  const [fetchingPkgs, setFetchingPkgs] = React.useState(false);
+  const [fetchingTpls, setFetchingTpls] = React.useState(false);
   const [packages, setPackages] = React.useState<ZisanPackage[]>([]);
+  const [templates, setTemplates] = React.useState<Template[]>([]);
   const [query, setQuery] = React.useState("");
-  const [selected, setSelected] = React.useState<string | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = React.useState<
+    string | null
+  >(null);
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<
+    string | null
+  >(null);
 
   // toggles
   const [createAssignments, setCreateAssignments] = React.useState(true);
   const [migrateCompleted, setMigrateCompleted] = React.useState(true);
   const [createPostingTasks, setCreatePostingTasks] = React.useState(true);
 
+  // load packages
   React.useEffect(() => {
     if (!open) return;
-    const run = async () => {
+    (async () => {
       try {
-        setFetching(true);
-        // use your existing endpoint with stats payload
+        setFetchingPkgs(true);
         const url = new URL(`/api/zisanpackages`, window.location.origin);
         url.searchParams.set("include", "stats");
         const res = await fetch(url.toString(), { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch packages");
         const data: ZisanPackage[] = await res.json();
 
-        // client-side exclude current package + simple search filter
         const q = query.trim().toLowerCase();
         const filtered = data
           .filter((p) => p.id !== (currentPackageId || "")) // exclude current
@@ -107,28 +107,51 @@ export default function PackageUpgradeDialog({
               : p.name?.toLowerCase().includes(q) ||
                 (p.description ?? "").toLowerCase().includes(q)
           )
-          // a neat sort for UX (active template-rich packages first)
           .sort(
             (a, b) =>
               (b.stats?.activeTemplates ?? 0) - (a.stats?.activeTemplates ?? 0)
           );
-
         setPackages(filtered);
       } catch (e: any) {
         console.error(e);
         toast.error(e?.message || "Could not load packages");
       } finally {
-        setFetching(false);
+        setFetchingPkgs(false);
       }
-    };
-    run();
+    })();
   }, [open, query, currentPackageId]);
 
-  const handleConfirm = async () => {
-    if (!selected) {
-      toast.error("Please select a package to upgrade.");
+  // load templates for selected package
+  React.useEffect(() => {
+    if (!open) return;
+    if (!selectedPackageId) {
+      setTemplates([]);
+      setSelectedTemplateId(null);
       return;
     }
+    (async () => {
+      try {
+        setFetchingTpls(true);
+        const url = new URL(`/api/packages/templates`, window.location.origin);
+        url.searchParams.set("packageId", selectedPackageId);
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch templates");
+        const data: Template[] = await res.json();
+        setTemplates(data);
+        setSelectedTemplateId(null);
+      } catch (e: any) {
+        console.error(e);
+        toast.error(e?.message || "Could not load templates");
+      } finally {
+        setFetchingTpls(false);
+      }
+    })();
+  }, [open, selectedPackageId]);
+
+  const handleConfirm = async () => {
+    if (!selectedPackageId) return toast.error("Please select a package.");
+    if (!selectedTemplateId) return toast.error("Please select a template.");
+
     setLoading(true);
     try {
       const res = await fetch(`/api/clients/${clientId}`, {
@@ -136,10 +159,11 @@ export default function PackageUpgradeDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "upgrade",
-          newPackageId: selected,
+          newPackageId: selectedPackageId,
+          templateId: selectedTemplateId, // ✅ send selected template
           createAssignments,
-          migrateCompleted, // include completed/QC/data_entered into new package
-          createPostingTasks, // auto-generate posting tasks per new package
+          migrateCompleted, // copy done tasks from old package
+          createPostingTasks, // auto-generate tasks for non-common assets of this template
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -157,106 +181,154 @@ export default function PackageUpgradeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-cyan-600" />
             Upgrade Client Package
           </DialogTitle>
           <DialogDescription>
-            Pick a new package. Completed work from the old package can be
-            included automatically.
+            Pick a new package, then choose a template under that package.
+            Completed work from the old package can be included automatically.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-8"
-              placeholder="Search packages..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <div className="mt-1">
+        <div className="space-y-5">
+          {/* Package picker */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search packages..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
               <Badge variant="outline">
-                {fetching ? "Loading..." : `${packages.length} found`}
+                {fetchingPkgs ? "Loading..." : `${packages.length} found`}
               </Badge>
             </div>
+
+            <ScrollArea className="h-40 rounded-md border">
+              <div className="divide-y">
+                {packages.length === 0 && (
+                  <div className="p-6 text-sm text-muted-foreground">
+                    No other packages available.
+                  </div>
+                )}
+                {packages.map((p) => {
+                  const isSelected = selectedPackageId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPackageId(p.id)}
+                      className={cn(
+                        "w-full text-left p-3 hover:bg-cyan-50/60 transition-colors",
+                        isSelected && "bg-cyan-50 ring-1 ring-cyan-200"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            <Package className="h-4 w-4 text-cyan-600" />
+                            {p.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground line-clamp-1">
+                            {p.description || "—"}
+                          </div>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              Months: {p.totalMonths ?? "—"}
+                            </Badge>
+                            {!!p.stats && (
+                              <>
+                                <Badge variant="outline" className="text-xs">
+                                  Templates: {p.stats.templates}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Active: {p.stats.activeTemplates}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Assets: {p.stats.sitesAssets}
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </div>
 
-          <ScrollArea className="h-72 rounded-md border">
-            <div className="divide-y">
-              {packages.length === 0 && (
-                <div className="p-6 text-sm text-muted-foreground">
-                  No other packages available.
-                </div>
-              )}
-
-              {packages.map((p) => {
-                const isSelected = selected === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelected(p.id)}
-                    className={cn(
-                      "w-full text-left p-4 hover:bg-cyan-50/60 transition-colors",
-                      isSelected && "bg-cyan-50 ring-1 ring-cyan-200"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-cyan-600" />
-                          <span className="font-semibold">{p.name}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {p.description || "No description"}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            Months: {p.totalMonths ?? "—"}
-                          </Badge>
-                          {p.stats && (
-                            <>
-                              <Badge variant="outline" className="text-xs">
-                                Templates: {p.stats.templates}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Active: {p.stats.activeTemplates}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Assets: {p.stats.sitesAssets}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Team: {p.stats.teamMembers}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                Tasks: {p.stats.tasks}
-                              </Badge>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {/* Price not in this API; keep placeholder or remove */}
-                      <div className="text-right">
-                        <div className="text-base font-semibold">
-                          {money(null)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          plan
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+          {/* Template picker (depends on selected package) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <LayoutTemplate className="h-4 w-4 text-purple-600" />
+              <div className="text-sm font-medium">
+                Templates under selected package
+              </div>
+              <Badge variant="outline">
+                {fetchingTpls ? "Loading..." : `${templates.length} found`}
+              </Badge>
             </div>
-          </ScrollArea>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            <ScrollArea className="h-44 rounded-md border">
+              <div className="divide-y">
+                {!selectedPackageId && (
+                  <div className="p-6 text-sm text-muted-foreground">
+                    Select a package to view its templates.
+                  </div>
+                )}
+                {selectedPackageId &&
+                  templates.length === 0 &&
+                  !fetchingTpls && (
+                    <div className="p-6 text-sm text-muted-foreground">
+                      No templates under this package.
+                    </div>
+                  )}
+                {templates.map((t) => {
+                  const isSel = selectedTemplateId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setSelectedTemplateId(t.id)}
+                      className={cn(
+                        "w-full text-left p-3 hover:bg-purple-50/60 transition-colors",
+                        isSel && "bg-purple-50 ring-1 ring-purple-200"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="font-semibold">{t.name}</div>
+                          <div className="text-xs text-muted-foreground line-clamp-1">
+                            {t.description || "—"}
+                          </div>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            <Badge variant="outline" className="text-xs">
+                              Status: {t.status ?? "—"}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Assets: {t._count?.sitesAssets ?? 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Members: {t._count?.templateTeamMembers ?? 0}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* toggles */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <label className="flex items-center gap-2 rounded-md border p-3">
               <Checkbox
                 checked={createAssignments}
@@ -292,7 +364,7 @@ export default function PackageUpgradeDialog({
               <div className="text-sm">
                 <div className="font-medium">Auto-create posting tasks</div>
                 <div className="text-muted-foreground text-xs">
-                  Generate tasks per new plan.
+                  Generate tasks for non-common assets of the selected template.
                 </div>
               </div>
             </label>
@@ -305,11 +377,11 @@ export default function PackageUpgradeDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={loading || !selected}
+            disabled={loading || !selectedPackageId || !selectedTemplateId}
             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Upgrade Package
+            Upgrade & Migrate
           </Button>
         </DialogFooter>
       </DialogContent>

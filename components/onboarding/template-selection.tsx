@@ -1,11 +1,19 @@
+// components/onboarding/template-selection.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Package, Sparkles, Clock, Users } from 'lucide-react';
+import { CheckCircle, Package, Sparkles, Clock, Users } from "lucide-react";
 import type { StepProps } from "@/types/onboarding";
 import { toast } from "sonner";
 
@@ -21,10 +29,17 @@ interface Template {
   };
 }
 
-export function TemplateSelection({ formData, updateFormData, onNext, onPrevious }: StepProps) {
+export function TemplateSelection({
+  formData,
+  updateFormData,
+  onNext,
+  onPrevious,
+}: StepProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(formData.templateId || "");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(
+    formData.templateId || ""
+  );
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -35,9 +50,11 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
 
       setLoading(true);
       try {
-        const res = await fetch(`/api/packages/templates?packageId=${formData.packageId}`);
+        const res = await fetch(
+          `/api/packages/templates?packageId=${formData.packageId}`
+        );
         const data = await res.json();
-        
+
         if (res.ok) {
           setTemplates(data);
           if (data.length === 0) {
@@ -65,14 +82,14 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'archived':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case "active":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "draft":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "archived":
+        return "bg-gray-100 text-gray-800 border-gray-200";
       default:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return "bg-blue-100 text-blue-800 border-blue-200";
     }
   };
 
@@ -83,9 +100,11 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Select Template
           </h1>
-          <p className="text-gray-500 mt-2">Loading available templates for your package...</p>
+          <p className="text-gray-500 mt-2">
+            Loading available templates for your package...
+          </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="relative overflow-hidden">
@@ -123,20 +142,23 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
           <div className="mx-auto w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mb-4">
             <Package className="w-12 h-12 text-purple-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Templates Available</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            No Templates Available
+          </h3>
           <p className="text-gray-500 max-w-md mx-auto">
-            There are no templates available for the selected package. Please contact support or try a different package.
+            There are no templates available for the selected package. Please
+            contact support or try a different package.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {templates.map((template) => (
-            <Card 
-              key={template.id} 
+            <Card
+              key={template.id}
               className={`relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-                selectedTemplate === template.id 
-                  ? 'ring-2 ring-purple-500 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50' 
-                  : 'hover:shadow-md'
+                selectedTemplate === template.id
+                  ? "ring-2 ring-purple-500 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50"
+                  : "hover:shadow-md"
               }`}
               onClick={() => handleTemplateSelect(template.id)}
             >
@@ -147,9 +169,9 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
                   </div>
                 </div>
               )}
-              
+
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-              
+
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -158,21 +180,24 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
                       {template.name}
                     </CardTitle>
                     <CardDescription className="text-sm text-gray-600 line-clamp-2">
-                      {template.description || "A comprehensive template designed to meet your project needs."}
+                      {template.description ||
+                        "A comprehensive template designed to meet your project needs."}
                     </CardDescription>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2 mt-3">
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs font-medium ${getStatusColor(template.status)}`}
+                  <Badge
+                    variant="outline"
+                    className={`text-xs font-medium ${getStatusColor(
+                      template.status
+                    )}`}
                   >
-                    {template.status || 'Active'}
+                    {template.status || "Active"}
                   </Badge>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <div className="flex items-center gap-4">
@@ -185,24 +210,28 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
                     {template._count?.templateTeamMembers && (
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
-                        <span>{template._count.templateTeamMembers} Members</span>
+                        <span>
+                          {template._count.templateTeamMembers} Members
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
-                
-                <Button 
+
+                <Button
                   className={`w-full mt-4 transition-all duration-200 ${
                     selectedTemplate === template.id
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-md'
-                      : 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-purple-100 hover:to-pink-100 text-gray-700 hover:text-purple-700'
+                      ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-md"
+                      : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-purple-100 hover:to-pink-100 text-gray-700 hover:text-purple-700"
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleTemplateSelect(template.id);
                   }}
                 >
-                  {selectedTemplate === template.id ? 'Selected' : 'Select Template'}
+                  {selectedTemplate === template.id
+                    ? "Selected"
+                    : "Select Template"}
                 </Button>
               </CardContent>
             </Card>
@@ -211,15 +240,15 @@ export function TemplateSelection({ formData, updateFormData, onNext, onPrevious
       )}
 
       <div className="flex justify-between pt-6">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={onPrevious}
           className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:text-purple-700 hover:border-purple-300"
         >
           Previous
         </Button>
-        <Button 
-          onClick={onNext} 
+        <Button
+          onClick={onNext}
           disabled={!selectedTemplate}
           className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
