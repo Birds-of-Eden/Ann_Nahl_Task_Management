@@ -1,28 +1,25 @@
-// app/api/tasks/create-posting-tasks/route.ts
+// app/api/tasks/remain-tasks-create-and-distrubution/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { type NextRequest, NextResponse } from "next/server";
-import type { TaskPriority, TaskStatus } from "@prisma/client";
+import type { TaskPriority, TaskStatus, SiteAssetType } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { calculateTaskDueDate, extractCycleNumber } from "@/utils/working-days";
 
-// ---------- Constants ----------
-const ALLOWED_ASSET_TYPES = [
+// ================== CONSTANTS ==================
+const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "social_site",
   "web2_site",
   "other_asset",
-] as const;
+];
+
 const CAT_SOCIAL_ACTIVITY = "Social Activity";
 const CAT_BLOG_POSTING = "Blog Posting";
-
-// 👉 NEW
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
-const WEB2_FIXED_PLATFORMS = ["medium", "tumblr", "wordpress"] as const;
 
-// --- NEW: Web2 fixed platform metadata (label + default URL)
+const WEB2_FIXED_PLATFORMS = ["medium", "tumblr", "wordpress"] as const;
 const PLATFORM_META: Record<
-  "medium" | "tumblr" | "wordpress",
+  (typeof WEB2_FIXED_PLATFORMS)[number],
   { label: string; url: string }
 > = {
   medium: { label: "Medium", url: "https://medium.com/" },
@@ -30,7 +27,12 @@ const PLATFORM_META: Record<
   wordpress: { label: "Wordpress", url: "https://wordpress.com/" },
 };
 
-// ---------- Helpers ----------
+// ================== SMALL UTILS ==================
+const makeId = () =>
+  `task_${Date.now()}_${
+    globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
+  }`;
+
 function normalizeTaskPriority(v: unknown): TaskPriority {
   switch (String(v ?? "").toLowerCase()) {
     case "low":
@@ -46,68 +48,16 @@ function normalizeTaskPriority(v: unknown): TaskPriority {
   }
 }
 
-function resolveCategoryFromType(assetType?: string): string {
+function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
   if (!assetType) return CAT_SOCIAL_ACTIVITY;
   if (assetType === "web2_site") return CAT_BLOG_POSTING;
-  return CAT_SOCIAL_ACTIVITY; // social_site + other_asset
+  return CAT_SOCIAL_ACTIVITY;
 }
 
 function baseNameOf(name: string): string {
   return String(name)
     .replace(/\s*-\s*\d+$/i, "")
     .trim();
-}
-
-// Compute the number of elapsed months between start and now.
-// Rules:
-// - If start is in the future, return 0.
-// - Otherwise, count inclusive partial month as 1 (i.e., if within first month, return 1).
-// - Cap by maxCap if provided (>0).
-function computeElapsedMonths(start: Date | null | undefined, now: Date, maxCap?: number): number {
-  if (!start) return maxCap && maxCap > 0 ? Math.min(1, maxCap) : 1; // no start -> assume first month
-  const s = new Date(start);
-  const yDiff = now.getFullYear() - s.getFullYear();
-  const mDiff = now.getMonth() - s.getMonth();
-  let months = yDiff * 12 + mDiff;
-  // If day-of-month has reached or passed, include current month, else not
-  // This makes the first (partial) month count as 1.
-  if (now >= s) {
-    months += now.getDate() >= s.getDate() ? 1 : 0;
-    if (months < 1) months = 1; // within first month but before same day -> still 1
-  } else {
-    months = 0; // start in future
-  }
-  if (typeof maxCap === "number" && maxCap > 0) months = Math.min(months, Math.floor(maxCap));
-  return months;
-}
-
-function getFrequency(opts: {
-  required?: number | null | undefined;
-  defaultFreq?: number | null | undefined;
-}): number {
-  const fromRequired = Number(opts.required);
-  if (Number.isFinite(fromRequired) && fromRequired! > 0)
-    return Math.floor(fromRequired);
-  const fromDefault = Number(opts.defaultFreq);
-  if (Number.isFinite(fromDefault) && fromDefault! > 0)
-    return Math.floor(fromDefault);
-  return 1;
-}
-
-function countByStatus(tasks: { status: TaskStatus }[]) {
-  const base: Record<TaskStatus, number> = {
-    pending: 0,
-    in_progress: 0,
-    completed: 0,
-    overdue: 0,
-    cancelled: 0,
-    reassigned: 0,
-    qc_approved: 0,
-    paused: 0,
-    data_entered: 0,
-  };
-  for (const t of tasks) base[t.status] += 1;
-  return base;
 }
 
 function safeErr(err: unknown) {
@@ -122,14 +72,69 @@ function safeErr(err: unknown) {
 
 function fail(stage: string, err: unknown, http = 500) {
   const e = safeErr(err);
-  console.error(`[create-posting-tasks] ${stage} ERROR:`, err);
+  console.error(`[remain-tasks-create-and-distrubution] ${stage} ERROR:`, err);
   return NextResponse.json(
     { message: "Internal Server Error", stage, error: e },
     { status: http }
   );
 }
 
-// --- NEW: Helpers to match web2 platform from task name and collect creds from web2 sources
+// ================== WORKING-DAY CADENCE (7WD for ALL cycles including cycle-1) ==================
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function addWorkingDays(startDate: Date, workingDays: number): Date {
+  let result = new Date(startDate);
+  let daysAdded = 0;
+
+  while (daysAdded < workingDays) {
+    result.setDate(result.getDate() + 1);
+    if (!isWeekend(result)) {
+      daysAdded++;
+    }
+  }
+
+  return result;
+}
+
+function calculateTaskDueDate(startDate: Date, cycleNumber: number): Date {
+  // ALL cycles (including cycle 1) = 7 working days × cycleNumber from start date
+  const workingDays = 7 * cycleNumber;
+  return addWorkingDays(startDate, workingDays);
+}
+
+function countCyclesUntil(start: Date | null, targetDate: Date): number {
+  if (!start) return 0;
+  if (targetDate < start) return 0;
+
+  let cycleCount = 0;
+
+  while (true) {
+    cycleCount++;
+    const nextDue = calculateTaskDueDate(start, cycleCount);
+
+    if (nextDue > targetDate) {
+      return cycleCount - 1;
+    }
+  }
+}
+
+// ================== FREQUENCY & CREDENTIALS ==================
+function getFrequency(opts: {
+  required?: number | null | undefined;
+  defaultFreq?: number | null | undefined;
+}): number {
+  const fromRequired = Number(opts.required);
+  if (Number.isFinite(fromRequired) && fromRequired > 0)
+    return Math.floor(fromRequired);
+  const fromDefault = Number(opts.defaultFreq);
+  if (Number.isFinite(fromDefault) && fromDefault > 0)
+    return Math.floor(fromDefault);
+  return 1;
+}
+
 function normalize(str: string) {
   return String(str).toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -140,15 +145,10 @@ function matchPlatformFromWeb2Name(
   const n = normalize(name);
   if (/\bmedium\b/.test(n)) return "medium";
   if (/\btumblr\b/.test(n)) return "tumblr";
-  // WordPress/Wordpress/word press—সব ধরার জন্য
   if (/\bwordpress\b/.test(n) || /\bword\s*press\b/.test(n)) return "wordpress";
   return null;
 }
 
-/**
- * কেবল web2_site সোর্স টাস্ক থেকেই প্ল্যাটফর্মভিত্তিক পুরো ক্রেডেনশিয়াল টেনে আনবে।
- * শর্ত: username, email, password, completionLink (url) — চারটিই থাকতে হবে।
- */
 function collectWeb2PlatformSources(
   srcTasks: {
     name: string;
@@ -156,7 +156,7 @@ function collectWeb2PlatformSources(
     email: string | null;
     password: string | null;
     completionLink: string | null;
-    templateSiteAsset?: { type: string | null } | null;
+    templateSiteAsset?: { type: SiteAssetType | null } | null;
     idealDurationMinutes?: number | null;
   }[]
 ) {
@@ -174,20 +174,17 @@ function collectWeb2PlatformSources(
 
   for (const t of srcTasks) {
     if (t.templateSiteAsset?.type !== "web2_site") continue;
-
     const p = matchPlatformFromWeb2Name(t.name);
     if (!p) continue;
 
     const username = t.username ?? "";
     const email = t.email ?? "";
     const password = t.password ?? "";
-    const url = t.completionLink ?? ""; // url হিসেবে completionLink
+    const url = t.completionLink ?? "";
     const idealDurationMinutes = t.idealDurationMinutes ?? null;
 
-    // চারটিই না থাকলে স্কিপ
     if (!username || !email || !password || !url) continue;
 
-    // প্রথম ম্যাচটাই রাখছি (প্রয়োজনে স্কোরিং/বেস্ট পিক করতে পারেন)
     if (!map.has(p)) {
       map.set(p, {
         username,
@@ -202,226 +199,65 @@ function collectWeb2PlatformSources(
   return map;
 }
 
-// Node 18+ has global crypto.randomUUID()
-const makeId = () =>
-  `task_${Date.now()}_${
-    globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
-  }`;
-
-// ---------- GET: preview ----------
-export async function GET(req: NextRequest) {
+// ================== ASSIGNEE PICKER ==================
+async function findTopAgentForClient(clientId: string) {
   try {
-    const { searchParams } = new URL(req.url);
-    const clientId = searchParams.get("clientId") ?? undefined;
-    const templateIdRaw = searchParams.get("templateId") ?? undefined;
-    const onlyType = searchParams.get("onlyType") ?? undefined;
-
-    if (!clientId)
-      return NextResponse.json(
-        { message: "clientId is required" },
-        { status: 400 }
-      );
-
-    // Quick DB preflight (surfaces P1001/P1017 immediately)
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch (e) {
-      return fail("GET.db-preflight", e);
-    }
-
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
-      select: {
-        id: true,
-        startDate: true,
-        package: { select: { totalMonths: true } },
-      },
-    });
-
-    if (!client)
-      return NextResponse.json(
-        { message: "Client not found" },
-        { status: 404 }
-      );
-
-    // months = normalized package months (min 1; capped to avoid accidents)
-    const packageTotalMonthsRaw = Number(client.package?.totalMonths ?? 1);
-    const packageTotalMonths =
-      Number.isFinite(packageTotalMonthsRaw) && packageTotalMonthsRaw > 0
-        ? Math.min(Math.floor(packageTotalMonthsRaw), 120)
-        : 1;
-
-    const templateId =
-      templateIdRaw === "none" || templateIdRaw === "" ? null : templateIdRaw;
-    const assignment = await prisma.assignment.findFirst({
+    // Find agent with most tasks for this client
+    const agentTaskCounts = await prisma.task.groupBy({
+      by: ["assignedToId"],
       where: {
         clientId,
-        ...(templateIdRaw !== undefined
-          ? { templateId: templateId ?? undefined }
-          : {}),
+        assignedToId: { not: null },
       },
-      orderBy: { assignedAt: "desc" },
-      select: { id: true },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 1,
     });
-    if (!assignment) {
-      return NextResponse.json(
-        {
-          message:
-            "No existing assignment found for this client. Please create one first.",
-        },
-        { status: 404 }
-      );
+
+    if (agentTaskCounts.length > 0 && agentTaskCounts[0].assignedToId) {
+      const topAgentId = agentTaskCounts[0].assignedToId;
+      const agent = await prisma.user.findUnique({
+        where: { id: topAgentId },
+        select: { id: true, name: true, email: true },
+      });
+      if (agent) return agent;
     }
 
-    const sourceTasks = await prisma.task.findMany({
+    // Fallback to any available agent with specified roles
+    const availableAgent = await prisma.user.findFirst({
       where: {
-        assignmentId: assignment.id,
-        templateSiteAsset: {
-          is: {
-            ...(onlyType
-              ? { type: onlyType as any }
-              : { type: { in: ALLOWED_ASSET_TYPES as unknown as string[] } }),
-          },
+        role: {
+          name: { in: ["agent", "data_entry", "staff"] },
         },
       },
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        priority: true,
-        idealDurationMinutes: true,
-        completionLink: true,
-        email: true,
-        password: true,
-        username: true,
-        notes: true,
-        templateSiteAsset: {
-          select: { id: true, type: true, defaultPostingFrequency: true },
-        },
-      },
+      select: { id: true, name: true, email: true },
+      orderBy: { createdAt: "asc" },
     });
 
-    const countsByStatus = countByStatus(sourceTasks as any);
-    const allApproved =
-      sourceTasks.length > 0 &&
-      sourceTasks.every((t) => t.status === "qc_approved");
-
-    const assetIds = Array.from(
-      new Set(
-        sourceTasks
-          .map((s) => s.templateSiteAsset?.id)
-          .filter((v): v is number => typeof v === "number")
-      )
-    );
-    const settings = assetIds.length
-      ? await prisma.assignmentSiteAssetSetting.findMany({
-          where: {
-            assignmentId: assignment.id,
-            templateSiteAssetId: { in: assetIds },
-          },
-          select: { templateSiteAssetId: true, requiredFrequency: true },
-        })
-      : [];
-    const requiredByAssetId = new Map<number, number | null | undefined>();
-    for (const s of settings)
-      requiredByAssetId.set(s.templateSiteAssetId, s.requiredFrequency);
-
-    const tasks = sourceTasks.map((src) => {
-      const assetId = src.templateSiteAsset?.id;
-      const freq = getFrequency({
-        required: assetId ? requiredByAssetId.get(assetId) : undefined,
-        defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
-      });
-      const assetType = src.templateSiteAsset?.type;
-      return {
-        id: src.id,
-        name: src.name,
-        baseName: baseNameOf(src.name),
-        status: src.status,
-        priority: src.priority,
-        assetType,
-        // 👇 multiply original frequency by package months
-        frequency: freq * packageTotalMonths,
-        categoryName: resolveCategoryFromType(assetType),
-      };
-    });
-
-    // --- NEW: Build Social Communication previews ---
-
-    // Only social_site: প্রতি অ্যাসেটে ১টা করে SC
-    const scAssetSources = sourceTasks.filter((s) => {
-      const t = s.templateSiteAsset?.type;
-      return t === "social_site";
-    });
-
-    const scFromAssets = scAssetSources.map((src) => ({
-      id: `${src.id}::sc-asset`,
-      name: `${baseNameOf(src.name) || "Social"} - ${CAT_SOCIAL_COMMUNICATION}`,
-      baseName: baseNameOf(src.name) || "Social",
-      status: src.status,
-      priority: src.priority,
-      assetType: (src.templateSiteAsset?.type ?? "other_asset") as
-        | "social_site"
-        | "other_asset",
-      frequency: 1,
-      categoryName: CAT_SOCIAL_COMMUNICATION,
-    }));
-
-    // ফিক্সড ৩টা web2 প্ল্যাটফর্ম (অবিকল আগের মতোই)
-    const scFromWeb2Fixed = WEB2_FIXED_PLATFORMS.map((p) => ({
-      id: `sc-web2-${p}`,
-      name: `${
-        p.charAt(0).toUpperCase() + p.slice(1)
-      } - ${CAT_SOCIAL_COMMUNICATION}`,
-      baseName: p.charAt(0).toUpperCase() + p.slice(1),
-      status: "qc_approved" as TaskStatus,
-      priority: "medium" as const,
-      assetType: "web2_site" as const,
-      frequency: 1,
-      categoryName: CAT_SOCIAL_COMMUNICATION,
-    }));
-
-    // আগের + নতুন SC প্রিভিউ একসাথে
-    const tasksWithSC = [...tasks, ...scFromAssets, ...scFromWeb2Fixed];
-
-    const totalWillCreate = tasksWithSC.reduce(
-      (acc, t) => acc + (t.frequency ?? 1),
-      0
-    );
-
-    // const totalWillCreate = tasks.reduce(
-    //   (acc, t) => acc + (t.frequency ?? 1),
-    //   0
-    // );
-
-    return NextResponse.json({
-      message: "Preview of source tasks for copying.",
-      assignmentId: assignment.id,
-      tasks: tasksWithSC,
-      countsByStatus,
-      allApproved,
-      totalWillCreate,
-      packageTotalMonths, // 👈 added
-      runtime: "nodejs",
-    });
-  } catch (err) {
-    return fail("GET.catch", err);
+    return availableAgent;
+  } catch (error) {
+    console.error("Error finding top agent:", error);
+    return null;
   }
 }
 
-// ---------- POST: create (SC dueDate = last social posting cycle) ----------
+// ================== POST: Create tasks from TODAY → dueDate ==================
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const clientId: string | undefined = body?.clientId;
     const templateIdRaw: string | undefined = body?.templateId;
-    const onlyType: string | undefined = body?.onlyType;
+    const onlyType: SiteAssetType | undefined = body?.onlyType;
+    const overridePriority = body?.priority
+      ? normalizeTaskPriority(body?.priority)
+      : undefined;
 
-    if (!clientId)
+    if (!clientId) {
       return NextResponse.json(
         { message: "clientId is required" },
         { status: 400 }
       );
+    }
 
     // DB preflight
     try {
@@ -430,33 +266,69 @@ export async function POST(req: NextRequest) {
       return fail("POST.db-preflight", e);
     }
 
+    // Find top agent for assignment
+    const topAgent = await findTopAgentForClient(clientId);
+    if (!topAgent) {
+      return NextResponse.json(
+        { message: "No available agent found to assign tasks" },
+        { status: 400 }
+      );
+    }
+
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: {
         id: true,
-        package: { select: { totalMonths: true } },
         startDate: true,
+        dueDate: true,
       },
     });
 
-    if (!client)
+    if (!client) {
       return NextResponse.json(
         { message: "Client not found" },
         { status: 404 }
       );
+    }
 
-    // months = normalized package months (min 1; capped)
-    const monthsRaw = Number(client.package?.totalMonths ?? 1);
-    const packageMonths =
-      Number.isFinite(monthsRaw) && monthsRaw > 0
-        ? Math.min(Math.floor(monthsRaw), 120)
-        : 1;
+    if (!client.dueDate) {
+      return NextResponse.json(
+        { message: "Client due date is required for future task generation" },
+        { status: 400 }
+      );
+    }
 
-    // Campaign start and months elapsed
-    const campaignStart: Date | null = client.startDate ? new Date(client.startDate as any) : null;
+    if (!client.startDate) {
+      return NextResponse.json(
+        { message: "Client start date is required" },
+        { status: 400 }
+      );
+    }
+
     const now = new Date();
-    const monthsElapsed = computeElapsedMonths(campaignStart, now, packageMonths);
+    const campaignStart = new Date(client.startDate);
+    const dueDate = new Date(client.dueDate);
 
+    // Calculate cycles from start to today and start to dueDate
+    const cyclesUpToToday = countCyclesUntil(campaignStart, now);
+    const totalCycles = countCyclesUntil(campaignStart, dueDate);
+
+    // Future cycles = cycles from (today + 1) to dueDate
+    const futureCycles = Math.max(0, totalCycles - cyclesUpToToday);
+
+    if (futureCycles === 0) {
+      return NextResponse.json(
+        {
+          message: "No future cycles remain between today and due date.",
+          created: 0,
+          futureCycles: 0,
+          tasks: [],
+        },
+        { status: 200 }
+      );
+    }
+
+    // Find latest assignment
     const templateId = templateIdRaw === "none" ? null : templateIdRaw;
     const assignment = await prisma.assignment.findFirst({
       where: {
@@ -468,24 +340,23 @@ export async function POST(req: NextRequest) {
       orderBy: { assignedAt: "desc" },
       select: { id: true },
     });
+
     if (!assignment) {
       return NextResponse.json(
-        {
-          message:
-            "No existing assignment found for this client. Please create one first.",
-        },
+        { message: "No existing assignment found for this client." },
         { status: 404 }
       );
     }
 
+    // Get source tasks (QC approved only)
     const sourceTasks = await prisma.task.findMany({
       where: {
         assignmentId: assignment.id,
         templateSiteAsset: {
           is: {
             ...(onlyType
-              ? { type: onlyType as any }
-              : { type: { in: ALLOWED_ASSET_TYPES as unknown as string[] } }),
+              ? { type: onlyType }
+              : { type: { in: ALLOWED_ASSET_TYPES } }),
           },
         },
       },
@@ -509,12 +380,12 @@ export async function POST(req: NextRequest) {
 
     if (!sourceTasks.length) {
       return NextResponse.json(
-        { message: "No source tasks found to copy.", tasks: [] },
+        { message: "No source tasks found to copy.", created: 0, tasks: [] },
         { status: 200 }
       );
     }
 
-    // QC gate
+    // QC gate - enforce approved tasks only
     const notApproved = sourceTasks.filter((t) => t.status !== "qc_approved");
     if (notApproved.length) {
       return NextResponse.json(
@@ -522,23 +393,20 @@ export async function POST(req: NextRequest) {
           message:
             "All source tasks must be 'qc_approved' before creating posting tasks.",
           notApprovedTaskIds: notApproved.map((t) => t.id),
-          countsByStatus: countByStatus(sourceTasks as any),
         },
         { status: 400 }
       );
     }
 
-    // --- NEW: Build creds map for Medium/Tumblr/Wordpress strictly from web2 sources
-    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
-
-    // per-asset frequency overrides
+    // Get frequency overrides
     const assetIds = Array.from(
       new Set(
         sourceTasks
           .map((s) => s.templateSiteAsset?.id)
-          .filter((v): v is number => typeof v === "number")
+          .filter((v): v is number => v !== undefined && v !== null)
       )
     );
+
     const settings = assetIds.length
       ? await prisma.assignmentSiteAssetSetting.findMany({
           where: {
@@ -548,11 +416,13 @@ export async function POST(req: NextRequest) {
           select: { templateSiteAssetId: true, requiredFrequency: true },
         })
       : [];
-    const requiredByAssetId = new Map<number, number | null | undefined>();
-    for (const s of settings)
-      requiredByAssetId.set(s.templateSiteAssetId, s.requiredFrequency);
 
-    // Ensure categories WITHOUT relying on unique(name)
+    const requiredByAssetId = new Map<number, number | null | undefined>();
+    for (const s of settings) {
+      requiredByAssetId.set(s.templateSiteAssetId, s.requiredFrequency);
+    }
+
+    // Ensure categories exist
     const ensureCategory = async (name: string) => {
       const found = await prisma.taskCategory.findFirst({
         where: { name },
@@ -574,27 +444,31 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // Ensure 3 categories (includes Social Communication)
     const [socialCat, blogCat, scCat] = await Promise.all([
       ensureCategory(CAT_SOCIAL_ACTIVITY),
       ensureCategory(CAT_BLOG_POSTING),
-      ensureCategory("Social Communication"), // constant exists in your file
+      ensureCategory(CAT_SOCIAL_COMMUNICATION),
     ]);
+
     const categoryIdByName = new Map<string, string>([
       [socialCat.name, socialCat.id],
       [blogCat.name, blogCat.id],
       [scCat.name, scCat.id],
     ]);
 
-    // Expand copies: (per-asset frequency) × (package months)
+    // Build web2 credentials map
+    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+
+    // ========= EXPAND FUTURE TASKS =========
     const expandedCopies: {
       src: (typeof sourceTasks)[number];
       name: string;
       catName: string;
+      cycleNumber: number; // Global cycle number continuing from campaign start
     }[] = [];
 
-    // NEW: Social Activity সিরিজের প্রতিটি base-এর last cycle dueDate ক্যাশ
-    const lastCycleDueByBase = new Map<string, Date>();
+    // Track last due dates per base for Social Communication
+    const lastDueByBase = new Map<string, Date>();
 
     for (const src of sourceTasks) {
       const assetType = src.templateSiteAsset?.type;
@@ -605,91 +479,146 @@ export async function POST(req: NextRequest) {
         defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
       });
 
-      const catName = resolveCategoryFromType(assetType);
-      const base = baseNameOf(src.name);
+      const futureCopies = Math.max(0, Math.floor(freq * futureCycles));
+      if (futureCopies === 0) continue;
 
-      // total copies = freq * monthsElapsed (create only up to current elapsed months)
-      const totalCopies = Math.max(0, Math.floor(freq * monthsElapsed));
-      // If none to create for this base yet, skip pushing copies
-      if (totalCopies === 0) continue;
-      for (let i = 1; i <= totalCopies; i++) {
-        expandedCopies.push({ src, catName, name: `${base} -${i}` });
+      const base = baseNameOf(src.name);
+      const catName = resolveCategoryFromType(assetType);
+
+      // Create future tasks with continuous cycle numbering
+      for (let i = 1; i <= futureCopies; i++) {
+        const cycleNumber = cyclesUpToToday + i; // Continue from where we left off
+        expandedCopies.push({
+          src,
+          catName,
+          cycleNumber,
+          name: `${base} -${cycleNumber}`,
+        });
       }
 
-      // NEW: কেবল Social Activity-এর জন্য last cycle dueDate ক্যাশ করো
-      if (catName === CAT_SOCIAL_ACTIVITY) {
-        // Anchor from campaign start if available so cycles follow plan timeline
-        const anchor = campaignStart || src.createdAt || new Date();
-        const lastDue = calculateTaskDueDate(anchor, totalCopies); // uses your working-days rules
-        lastCycleDueByBase.set(base, lastDue);
+      // Store last due date for Social Activity bases
+      if (catName === CAT_SOCIAL_ACTIVITY && futureCopies > 0) {
+        const lastCycle = cyclesUpToToday + futureCopies;
+        const lastDue = calculateTaskDueDate(campaignStart, lastCycle);
+        lastDueByBase.set(base, lastDue);
       }
     }
 
-    // Prepare SC names for dedupe
-    const scNamesFromAssets = sourceTasks
-      .filter((s) => {
-        const t = s.templateSiteAsset?.type;
-        return t === "social_site";
-      })
-      .map((s) => `${baseNameOf(s.name) || "Social"} - Social Communication`);
+    if (expandedCopies.length === 0) {
+      return NextResponse.json(
+        {
+          message: "No future tasks to create for the remaining cycles.",
+          created: 0,
+          futureCycles,
+          tasks: [],
+        },
+        { status: 200 }
+      );
+    }
 
-    const scNamesFromWeb2 = ["medium", "tumblr", "wordpress"].map(
-      (p) => `${p.charAt(0).toUpperCase() + p.slice(1)} - Social Communication`
-    );
+    // ========= CHECK FOR EXISTING TASKS =========
+    const scAssetNames = sourceTasks
+      .filter((s) => s.templateSiteAsset?.type === "social_site")
+      .map(
+        (s) => `${baseNameOf(s.name) || "Social"} - ${CAT_SOCIAL_COMMUNICATION}`
+      );
 
-    // De-dup by name within target cats (3 categories)
+    const scWeb2Names = WEB2_FIXED_PLATFORMS.filter((p) =>
+      web2PlatformCreds.get(p)
+    ).map((p) => `${PLATFORM_META[p].label} - ${CAT_SOCIAL_COMMUNICATION}`);
+
     const namesToCheck = Array.from(
       new Set([
         ...expandedCopies.map((e) => e.name),
-        ...scNamesFromAssets,
-        ...scNamesFromWeb2,
+        ...scAssetNames,
+        ...scWeb2Names,
       ])
     );
 
-    const existingCopies = await prisma.task.findMany({
-      where: {
-        assignmentId: assignment.id,
-        name: { in: namesToCheck },
-        category: {
-          is: {
-            name: {
-              in: [
-                CAT_SOCIAL_ACTIVITY,
-                CAT_BLOG_POSTING,
-                CAT_SOCIAL_COMMUNICATION,
-              ],
+    const existingTasks =
+      namesToCheck.length > 0
+        ? await prisma.task.findMany({
+            where: {
+              assignmentId: assignment.id,
+              name: { in: namesToCheck },
+              category: {
+                name: {
+                  in: [
+                    CAT_SOCIAL_ACTIVITY,
+                    CAT_BLOG_POSTING,
+                    CAT_SOCIAL_COMMUNICATION,
+                  ],
+                },
+              },
             },
-          },
-        },
-      },
-      select: { name: true },
-    });
-    const skipNameSet = new Set(existingCopies.map((t) => t.name));
+            select: { name: true },
+          })
+        : [];
 
-    const overridePriority = body?.priority
-      ? normalizeTaskPriority(body?.priority)
-      : undefined;
+    const skipNameSet = new Set(existingTasks.map((t) => t.name));
 
+    // ========= CREATE TASK PAYLOADS =========
     type TaskCreate = Parameters<typeof prisma.task.create>[0]["data"];
     const payloads: TaskCreate[] = [];
 
-    // 1) Original two categories (unchanged logic)
+    // 1) Social Activity / Blog Posting tasks
     for (const item of expandedCopies) {
       if (skipNameSet.has(item.name)) continue;
 
       const src = item.src;
-      const catId = categoryIdByName.get(item.catName)!;
+      const catId = categoryIdByName.get(item.catName);
+      if (!catId) continue;
 
-      const n = extractCycleNumber(item.name);
-      const cycleNumber = Number.isFinite(n) && n > 0 ? n : 1;
-
-      // Anchor to campaign start if available so due dates align with campaign cycles
-      const anchor = campaignStart || new Date();
-      const dueDate = calculateTaskDueDate(anchor, cycleNumber);
+      const dueDate = calculateTaskDueDate(campaignStart, item.cycleNumber);
 
       payloads.push({
         id: makeId(),
         name: item.name,
+        status: "pending" as TaskStatus,
+        priority: overridePriority ?? src.priority,
+        idealDurationMinutes: src.idealDurationMinutes ?? undefined,
+        dueDate: dueDate.toISOString(),
+        completionLink: src.completionLink ?? undefined,
+        email: src.email ?? undefined,
+        password: src.password ?? undefined,
+        username: src.username ?? undefined,
+        notes: src.notes ?? undefined,
+        assignment: { connect: { id: assignment.id } },
+        client: { connect: { id: clientId } },
+        category: { connect: { id: catId } },
+        assignedTo: { connect: { id: topAgent.id } },
+      });
+    }
+
+    // 2) Social Communication from social_site assets
+    for (const src of sourceTasks) {
+      if (src.templateSiteAsset?.type !== "social_site") continue;
+
+      const base = baseNameOf(src.name) || "Social";
+      const scName = `${base} - ${CAT_SOCIAL_COMMUNICATION}`;
+      if (skipNameSet.has(scName)) continue;
+
+      const assetId = src.templateSiteAsset?.id;
+      const freq = getFrequency({
+        required: assetId ? requiredByAssetId.get(assetId) : undefined,
+        defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
+      });
+
+      const futureCopies = Math.max(0, Math.floor(freq * futureCycles));
+      if (futureCopies === 0) continue;
+
+      let dueDate = lastDueByBase.get(base);
+      if (!dueDate) {
+        const lastCycle = cyclesUpToToday + futureCopies;
+        dueDate = calculateTaskDueDate(campaignStart, lastCycle);
+      }
+
+      const catId = categoryIdByName.get(CAT_SOCIAL_COMMUNICATION);
+      if (!catId) continue;
+
+      payloads.push({
+        id: makeId(),
+        name: scName,
         status: "pending",
         priority: overridePriority ?? src.priority,
         idealDurationMinutes: src.idealDurationMinutes ?? undefined,
@@ -702,145 +631,100 @@ export async function POST(req: NextRequest) {
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
         category: { connect: { id: catId } },
-      } as TaskCreate);
+        assignedTo: { connect: { id: topAgent.id } },
+      });
     }
 
-    // Social Communication from assets (only social_site), 1 per asset
-    for (const src of sourceTasks) {
-      if (monthsElapsed === 0) continue; // campaign not started -> no SC yet
-      const t = src.templateSiteAsset?.type;
-      if (t !== "social_site") continue;
+    // 3) Social Communication for fixed Web2 platforms
+    const maxSocialDue =
+      Array.from(lastDueByBase.values()).sort(
+        (a, b) => b.getTime() - a.getTime()
+      )[0] || calculateTaskDueDate(campaignStart, cyclesUpToToday + 1);
 
-      const base = baseNameOf(src.name) || "Social";
-      const scName = `${base} - Social Communication`;
-      if (skipNameSet.has(scName)) continue;
-
-      // NEW: ওই base-এর last social cycle due date নাও
-      let dueDate = lastCycleDueByBase.get(base);
-      if (!dueDate) {
-        // very rare fallback: আগে ক্যাশ না থাকলে এখানেই হিসাব করে নাও
-        const assetId = src.templateSiteAsset?.id;
-        const freq = getFrequency({
-          required: assetId ? requiredByAssetId.get(assetId) : undefined,
-          defaultFreq: src.templateSiteAsset?.defaultPostingFrequency,
-        });
-        const totalCopies = Math.max(0, Math.floor(freq * monthsElapsed));
-        const anchor = campaignStart || src.createdAt || new Date();
-        dueDate = calculateTaskDueDate(anchor, totalCopies);
-      }
-
-      const catId = categoryIdByName.get("Social Communication")!;
-      payloads.push({
-        id: makeId(),
-        name: scName,
-        status: "pending",
-        priority: overridePriority ?? src.priority,
-        idealDurationMinutes: src.idealDurationMinutes ?? undefined,
-        dueDate: dueDate.toISOString(), // EXACT last social posting due date
-        completionLink: src.completionLink ?? undefined,
-        email: src.email ?? undefined,
-        password: src.password ?? undefined,
-        username: src.username ?? undefined,
-        notes: src.notes ?? undefined,
-        assignment: { connect: { id: assignment.id } },
-        client: { connect: { id: clientId } },
-        category: { connect: { id: catId } },
-      } as TaskCreate);
-    }
-
-    // NEW: সব Social Activity বেসের মধ্যে overall last social due date
-    const maxLastSocialDue =
-      Array.from(lastCycleDueByBase.values())
-        .sort((a, b) => a.getTime() - b.getTime())
-        .pop() ?? calculateTaskDueDate(new Date(), 1); // fallback = today + 15 days (cycle 1)
-
-    // --- REPLACE: Fixed Web2 SC creation (guarded by creds from web2 sources)
-    for (const p of ["medium", "tumblr", "wordpress"] as const) {
-      if (monthsElapsed === 0) continue; // campaign not started -> no SC yet
-      const scName = `${PLATFORM_META[p].label} - Social Communication`;
-      if (skipNameSet.has(scName)) continue;
-
-      // কেবল তখনই বানাবো, যখন web2PlatformCreds থেকে পুরো ক্রেডেনশিয়াল + url পাওয়া যায়
+    for (const p of WEB2_FIXED_PLATFORMS) {
       const creds = web2PlatformCreds.get(p);
-      if (!creds) {
-        // চাইলে লগ দিতে পারেন কেন স্কিপ হলো
-        // console.log(`[SC Web2] Skip ${p}: missing complete creds/url in web2 sources`);
-        continue;
-      }
+      if (!creds) continue;
 
-      const catId = categoryIdByName.get("Social Communication")!;
+      const scName = `${PLATFORM_META[p].label} - ${CAT_SOCIAL_COMMUNICATION}`;
+      if (skipNameSet.has(scName)) continue;
+
+      const catId = categoryIdByName.get(CAT_SOCIAL_COMMUNICATION);
+      if (!catId) continue;
+
       payloads.push({
         id: makeId(),
         name: scName,
         status: "pending",
         priority: overridePriority ?? "medium",
-        dueDate: maxLastSocialDue.toISOString(),
-
-        // 🔐 কপি হচ্ছে web2 সোর্স থেকে
+        dueDate: maxSocialDue.toISOString(),
         username: creds.username,
         email: creds.email,
         password: creds.password,
-        completionLink: creds.url, // url
+        completionLink: creds.url,
         idealDurationMinutes: creds.idealDurationMinutes ?? undefined,
-
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
         category: { connect: { id: catId } },
-      } as TaskCreate);
+        assignedTo: { connect: { id: topAgent.id } },
+      });
     }
 
-    if (!payloads.length) {
+    if (payloads.length === 0) {
       return NextResponse.json(
         {
-          message:
-            "All copies already exist under 'Social Activity' / 'Blog Posting' / 'Social Communication'.",
+          message: "All future tasks already exist.",
           created: 0,
           skipped: namesToCheck.length,
           assignmentId: assignment.id,
+          futureCycles,
           tasks: [],
         },
         { status: 200 }
       );
     }
 
-    // Create inside a transaction (can chunk if very large)
-    const created = await prisma.$transaction((tx) =>
-      Promise.all(
-        payloads.map((data) =>
-          tx.task.create({
-            data,
-            select: {
-              id: true,
-              name: true,
-              status: true,
-              priority: true,
-              createdAt: true,
-              dueDate: true,
-              idealDurationMinutes: true,
-              completionLink: true,
-              email: true,
-              password: true,
-              username: true,
-              notes: true,
-              assignment: { select: { id: true } },
-              category: { select: { id: true, name: true } },
-              templateSiteAsset: {
-                select: { id: true, name: true, type: true },
-              },
+    // Create tasks in transaction
+    const created = await prisma.$transaction(
+      payloads.map((data) =>
+        prisma.task.create({
+          data,
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            priority: true,
+            createdAt: true,
+            dueDate: true,
+            idealDurationMinutes: true,
+            completionLink: true,
+            email: true,
+            password: true,
+            username: true,
+            notes: true,
+            assignedTo: { select: { id: true, name: true, email: true } },
+            assignment: { select: { id: true } },
+            category: { select: { id: true, name: true } },
+            templateSiteAsset: {
+              select: { id: true, name: true, type: true },
             },
-          })
-        )
+          },
+        })
       )
     );
 
     return NextResponse.json(
       {
-        message: `Created ${created.length} task(s) across Social Activity, Blog Posting, and Social Communication.`,
+        message: `Created ${created.length} future task(s) for cycles ${
+          cyclesUpToToday + 1
+        } to ${totalCycles} and assigned to ${topAgent.name}.`,
         created: created.length,
-        skipped: Array.from(skipNameSet).length,
+        skipped: skipNameSet.size,
         assignmentId: assignment.id,
+        assignedTo: topAgent,
+        futureCycles,
+        cyclesRange: `${cyclesUpToToday + 1} to ${totalCycles}`,
+        cadence: "7 working days per cycle (all cycles)",
         tasks: created,
-        runtime: "nodejs",
       },
       { status: 201 }
     );
