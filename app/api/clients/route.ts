@@ -92,7 +92,6 @@ export async function GET(req: Request) {
       const client = await prisma.client.findUnique({
         where: { id },
         include: {
-          socialMedias: true,
           accountManager: { select: { id: true, name: true, email: true } },
         },
       });
@@ -101,7 +100,14 @@ export async function GET(req: Request) {
         where: { clientId: id, role: { name: "client" } },
         select: { id: true },
       });
-      return NextResponse.json({ ...client, clientUserId: user?.id ?? null });
+      const socialMedias = Array.isArray((client as any).socialMedia)
+        ? ((client as any).socialMedia as any[])
+        : [];
+      return NextResponse.json({
+        ...client,
+        socialMedias,
+        clientUserId: user?.id ?? null,
+      });
     }
 
     const clients = await prisma.client.findMany({
@@ -110,7 +116,6 @@ export async function GET(req: Request) {
         amId: amId || undefined,
       },
       include: {
-        socialMedias: true,
         accountManager: { select: { id: true, name: true, email: true } },
         // (optional) include other relations if needed
         // package: { select: { id: true, name: true } },
@@ -141,11 +146,15 @@ export async function GET(req: Request) {
 
     const result = clients.map((c) => ({
       ...c,
+      socialMedias: Array.isArray((c as any).socialMedia)
+        ? ((c as any).socialMedia as any[])
+        : [],
       clientUserId: clientIdToUserId.get(c.id) ?? null,
     }));
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error("POST /api/clients error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
@@ -208,13 +217,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const client = await prisma.client.create({
-      data: {
-        name,
-        birthdate: birthdate ? new Date(birthdate) : undefined,
-        company,
-        gender,
-        designation,
+    // Basic validation
+    const trimmedName = String(name ?? "").trim();
+    if (!trimmedName) {
+      return NextResponse.json({ error: "Client name is required" }, { status: 400 });
+    }
+
+    // Validate optional foreign keys
+    if (packageId) {
+      const pkg = await prisma.package.findUnique({ where: { id: packageId } });
+      if (!pkg) {
+        return NextResponse.json({ error: "Invalid packageId" }, { status: 400 });
+      }
+    }
+
+    // Coerce progress to number when provided
+    const progressNumber =
+      progress === undefined || progress === null || progress === ""
+        ? undefined
+        : Number(progress);
+    if (progressNumber !== undefined && Number.isNaN(progressNumber)) {
+      return NextResponse.json({ error: "progress must be a number" }, { status: 400 });
+    }
+
+    // Parse dates only if valid
+    const parseDate = (v: any) => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? undefined : d;
+    };
+
+    let client;
+    try {
+      client = await prisma.client.create({
+        data: {
+          name: trimmedName,
+          birthdate: parseDate(birthdate),
+          company,
+          gender,
+          designation,
         location,
 
         // NEW fields saved
@@ -231,41 +272,50 @@ export async function POST(req: NextRequest) {
         biography,
         imageDrivelink,
         avatar,
-        progress,
+        progress: progressNumber as any,
         status,
         packageId,
-        startDate: startDate ? new Date(startDate) : undefined,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
+        startDate: parseDate(startDate) as any,
+        dueDate: parseDate(dueDate) as any,
         otherField: Array.isArray(otherField) ? otherField : [],
+
+        // Persist social links into required JSON field
+        socialMedia: Array.isArray(socialLinks)
+          ? socialLinks
+              .filter((l: any) => l && (l.platform || l.url))
+              .map((l: any) => ({
+                platform: normalizePlatform(l.platform),
+                url: l.url ?? null,
+                username: l.username ?? null,
+                email: l.email ?? null,
+                phone: l.phone ?? null,
+                password: l.password ?? null,
+                notes: l.notes ?? null,
+              }))
+          : [],
 
         // Save normalized article topics (default empty array if not provided)
         articleTopics: normalizeArticleTopics(articleTopics),
 
         // NEW: link AM
         amId: amId || undefined,
-
-        socialMedias: {
-          create: Array.isArray(socialLinks)
-            ? socialLinks
-                .filter((l: any) => l && l.platform && l.url)
-                .map((l: any) => ({
-                  platform: normalizePlatform(l.platform) as any,
-                  url: String(l.url),
-                  username: l.username ?? null,
-                  email: l.email ?? null,
-                  phone: l.phone ?? null,
-                  password: l.password ?? null,
-                  notes: l.notes ?? null,
-                }))
-            : [],
-        },
       } as any,
-      include: {
-        socialMedias: true,
-        accountManager: { select: { id: true, name: true, email: true } },
-      },
-    });
-
+        include: {
+          accountManager: { select: { id: true, name: true, email: true } },
+        },
+      });
+    } catch (err: any) {
+      // Log Prisma error details for debugging
+      console.error("POST /api/clients prisma create error:", err?.code, err?.message, err?.meta);
+      // Map some known Prisma errors
+      if (err?.code === "P2003") {
+        return NextResponse.json({ error: "Foreign key constraint failed" }, { status: 400 });
+      }
+      if (err?.code === "P2002") {
+        return NextResponse.json({ error: "Unique constraint violation" }, { status: 409 });
+      }
+      throw err;
+    }
     return NextResponse.json(client, { status: 201 });
   } catch (error) {
     return NextResponse.json(
@@ -317,8 +367,6 @@ export async function PUT(req: NextRequest) {
     } = body;
 
     // Replace social medias with the provided set
-    await prisma.socialMedia.deleteMany({ where: { clientId: id } });
-
     const updated = await prisma.client.update({
       where: { id },
       data: {
@@ -348,24 +396,9 @@ export async function PUT(req: NextRequest) {
         // Only update articleTopics when provided in payload
         articleTopics: articleTopics !== undefined ? normalizeArticleTopics(articleTopics) : undefined,
         amId: amId ?? null,
-        socialMedias: {
-          create: Array.isArray(socialLinks)
-            ? socialLinks
-                .filter((l: any) => l && l.platform && l.url)
-                .map((l: any) => ({
-                  platform: normalizePlatform(l.platform) as any,
-                  url: String(l.url),
-                  username: l.username ?? null,
-                  email: l.email ?? null,
-                  phone: l.phone ?? null,
-                  password: l.password ?? null,
-                  notes: l.notes ?? null,
-                }))
-            : [],
-        },
+       
       },
       include: {
-        socialMedias: true,
         accountManager: { select: { id: true, name: true, email: true } },
       },
     });
@@ -444,7 +477,6 @@ export async function DELETE(req: NextRequest) {
       }
 
       // 5) Other client-owned records
-      await tx.socialMedia.deleteMany({ where: { clientId: id } });
       await tx.clientTeamMember.deleteMany({ where: { clientId: id } });
 
       // 6) Finally delete the client

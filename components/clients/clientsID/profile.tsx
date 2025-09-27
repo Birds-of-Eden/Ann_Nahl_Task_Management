@@ -1,12 +1,12 @@
 // ////components/clients/clientsID/profile.tsx
-"use client"
+"use client";
 
-import { useMemo, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   MapPin,
@@ -33,115 +33,154 @@ import {
   Plus,
   UserCircle2,
   Shield,
-} from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Client } from "@/types/client"
-import { toast } from "sonner"
-import { useUserSession } from "@/lib/hooks/use-user-session"
-import ClientEditModal from "../client-edit-modal"
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Client } from "@/types/client";
+import { toast } from "sonner";
+import { useUserSession } from "@/lib/hooks/use-user-session";
+import ClientEditModal from "../client-edit-modal";
 
 type ClientWithSocial = Client & {
   // new optional fields (present in your Prisma model & API)
-  email?: string | null
-  phone?: string | null
-  password?: string | null
-  recoveryEmail?: string | null
-  amId?: string | null
-  gender?: string | null
+  email?: string | null;
+  phone?: string | null;
+  password?: string | null;
+  recoveryEmail?: string | null;
+  amId?: string | null;
+  gender?: string | null;
   accountManager?: {
-    id: string
-    name?: string | null
-    email?: string | null
-    role?: { name?: string | null } | null
-  } | null
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role?: { name?: string | null } | null;
+  } | null;
 
   socialMedias?: Array<{
-    id?: string
-    platform?: string
-    url?: string | null
-    username?: string | null
-    email?: string | null
-    phone?: string | null
-    password?: string | null
-    notes?: string | null
-  }>
-}
+    id?: string;
+    platform?: string;
+    url?: string | null;
+    username?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    password?: string | null;
+    notes?: string | null;
+  }>;
+  // server may also provide raw JSON under socialMedia
+  socialMedia?: unknown;
+};
+
+type SocialRow = {
+  id: string;
+  platform?: string | null;
+  url?: string | null;
+  username?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  password?: string | null;
+  notes?: string | null;
+};
 
 interface ProfileProps {
-  clientData: ClientWithSocial
-  currentUserRole?: string
+  clientData: ClientWithSocial;
+  currentUserRole?: string;
 }
 
 type FormValues = {
-  name: string
-  birthdate?: string
-  gender?: string
-  company?: string
-  designation?: string
-  location?: string
+  name: string;
+  birthdate?: string;
+  gender?: string;
+  company?: string;
+  designation?: string;
+  location?: string;
 
   // contact/credentials
-  email?: string | null
-  phone?: string | null
-  password?: string | null
-  recoveryEmail?: string | null
+  email?: string | null;
+  phone?: string | null;
+  password?: string | null;
+  recoveryEmail?: string | null;
 
   // websites & media
-  website?: string
-  website2?: string
-  website3?: string
-  companywebsite?: string
-  companyaddress?: string
-  biography?: string
-  imageDrivelink?: string
-  avatar?: string
+  website?: string;
+  website2?: string;
+  website3?: string;
+  companywebsite?: string;
+  companyaddress?: string;
+  biography?: string;
+  imageDrivelink?: string;
+  avatar?: string;
 
-  progress?: number
-  status?: string
-  packageId?: string
-  startDate?: string
-  dueDate?: string
+  progress?: number;
+  status?: string;
+  packageId?: string;
+  startDate?: string;
+  dueDate?: string;
 
   // AM
-  amId?: string | null
+  amId?: string | null;
+};
+
+type AMUser = { id: string; name: string | null; email: string | null };
+
+function asSocialArray(json: unknown): SocialRow[] {
+  if (!json) return [];
+  try {
+    const arr = Array.isArray(json) ? json : [];
+    return arr.map((r: any) => ({
+      id: typeof r?.id === "string" ? r.id : crypto.randomUUID(),
+      platform: r?.platform ?? null,
+      url: r?.url ?? null,
+      username: r?.username ?? null,
+      email: r?.email ?? null,
+      phone: r?.phone ?? null,
+      password: r?.password ?? null,
+      notes: r?.notes ?? null,
+    }));
+  } catch {
+    return [];
+  }
 }
 
-type AMUser = { id: string; name: string | null; email: string | null }
-
 export function Profile({ clientData, currentUserRole }: ProfileProps) {
-
   // --- password reveal (display mode) for social rows
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({})
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>(
+    {}
+  );
   const togglePasswordVisibility = (key: string) => {
-    setShowPasswords((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
+    setShowPasswords((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
   const mask = (value?: string | null, visible?: boolean) => {
-    if (!value) return "—"
-    const plain = value.trim()
-    if (/gmail\s*login/i.test(plain)) return plain
-    if (visible) return plain
-    return "•".repeat(Math.min(plain.length, 10))
-  }
+    if (!value) return "—";
+    const plain = value.trim();
+    if (/gmail\s*login/i.test(plain)) return plain;
+    if (visible) return plain;
+    return "•".repeat(Math.min(plain.length, 10));
+  };
 
   // --- client main password reveal
-  const [showClientPassword, setShowClientPassword] = useState(false)
+  const [showClientPassword, setShowClientPassword] = useState(false);
+
+  // Accept either API shape: prefer array socialMedias, else JSON socialMedia
+  const socialRows = asSocialArray(
+    (clientData as any).socialMedias ?? (clientData as any).socialMedia
+  );
+  const hasSocial = socialRows.length > 0;
 
   // --- inline Social row edit state
   type SocialDraft = {
-    platform?: string | null
-    url?: string | null
-    username?: string | null
-    email?: string | null
-    phone?: string | null
-    password?: string | null
-    notes?: string | null
-  }
-  const [editingRow, setEditingRow] = useState<Record<string, boolean>>({})
-  const [rowDrafts, setRowDrafts] = useState<Record<string, SocialDraft>>({})
-  const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({})
+    platform?: string | null;
+    url?: string | null;
+    username?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    password?: string | null;
+    notes?: string | null;
+  };
+  const [editingRow, setEditingRow] = useState<Record<string, boolean>>({});
+  const [rowDrafts, setRowDrafts] = useState<Record<string, SocialDraft>>({});
+  const [rowSaving, setRowSaving] = useState<Record<string, boolean>>({});
 
   // --- add-row state
-  const [addingRow, setAddingRow] = useState(false)
+  const [addingRow, setAddingRow] = useState(false);
   const [addDraft, setAddDraft] = useState<SocialDraft>({
     platform: "",
     url: "",
@@ -150,17 +189,20 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
     phone: "",
     password: "",
     notes: "",
-  })
-  const [addSaving, setAddSaving] = useState(false)
+  });
+  const [addSaving, setAddSaving] = useState(false);
 
   const nullIfEmpty = (v?: string | null) => {
-    if (v === undefined || v === null) return undefined // leave untouched
-    const t = String(v).trim()
-    return t === "" ? null : t
-  }
+    if (v === undefined || v === null) return undefined; // leave untouched
+    const t = String(v).trim();
+    return t === "" ? null : t;
+  };
 
-  const startEditRow = (id: string, sm: NonNullable<ClientWithSocial["socialMedias"]>[number]) => {
-    setEditingRow((p) => ({ ...p, [id]: true }))
+  const startEditRow = (
+    id: string,
+    sm: SocialRow
+  ) => {
+    setEditingRow((p) => ({ ...p, [id]: true }));
     setRowDrafts((p) => ({
       ...p,
       [id]: {
@@ -172,16 +214,16 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
         password: sm.password ?? "",
         notes: sm.notes ?? "",
       },
-    }))
-  }
+    }));
+  };
 
   const cancelEditRow = (id: string) => {
-    setEditingRow((p) => ({ ...p, [id]: false }))
+    setEditingRow((p) => ({ ...p, [id]: false }));
     setRowDrafts((p) => {
-      const { [id]: _omit, ...rest } = p
-      return rest
-    })
-  }
+      const { [id]: _omit, ...rest } = p;
+      return rest;
+    });
+  };
 
   const changeDraft = (id: string, key: keyof SocialDraft, value: string) => {
     setRowDrafts((p) => ({
@@ -190,197 +232,229 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
         ...(p[id] || {}),
         [key]: value,
       },
-    }))
-  }
+    }));
+  };
 
-  const saveRow = async (id: string) => {
+  async function saveRow(id: string) {
     try {
-      setRowSaving((p) => ({ ...p, [id]: true }))
-      const draft = rowDrafts[id] || {}
+      setRowSaving((p) => ({ ...p, [id]: true }));
+      const draft = rowDrafts[id] || {};
 
-      const payload = {
-        platform: nullIfEmpty(draft.platform ?? undefined),
-        url: nullIfEmpty(draft.url ?? undefined),
-        username: nullIfEmpty(draft.username ?? undefined),
-        email: nullIfEmpty(draft.email ?? undefined),
-        phone: nullIfEmpty(draft.phone ?? undefined),
-        password: nullIfEmpty(draft.password ?? undefined),
-        notes: nullIfEmpty(draft.notes ?? undefined),
-      }
+      const updated = socialRows.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              platform: nullIfEmpty(draft.platform ?? r.platform) ?? null,
+              url: nullIfEmpty(draft.url ?? r.url) ?? null,
+              username: nullIfEmpty(draft.username ?? r.username) ?? null,
+              email: nullIfEmpty(draft.email ?? r.email) ?? null,
+              phone: nullIfEmpty(draft.phone ?? r.phone) ?? null,
+              password: nullIfEmpty(draft.password ?? r.password) ?? null,
+              notes: nullIfEmpty(draft.notes ?? r.notes) ?? null,
+            }
+          : r
+      );
 
-      const res = await fetch(`/api/social-medias/${id}`, {
+      const res = await fetch(`/api/clients/${clientData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+        body: JSON.stringify({ socialMedia: updated }),
+      });
+      if (!res.ok)
+        throw new Error(
+          (await res.json().catch(() => ({})))?.message || "Failed"
+        );
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.message || `Failed with ${res.status}`)
-      }
-
-      toast.success("Social media updated")
-      setEditingRow((p) => ({ ...p, [id]: false }))
+      toast.success("Social media updated");
+      setEditingRow((p) => ({ ...p, [id]: false }));
       setRowDrafts((p) => {
-        const { [id]: _omit, ...rest } = p
-        return rest
-      })
-      router.refresh()
+        const { [id]: _omit, ...rest } = p;
+        return rest;
+      });
+      router.refresh();
     } catch (e: any) {
-      console.error(e)
-      toast.error(e?.message || "Failed to update social media")
+      toast.error(e?.message || "Failed to update social media");
     } finally {
-      setRowSaving((p) => ({ ...p, [id]: false }))
+      setRowSaving((p) => ({ ...p, [id]: false }));
     }
   }
 
   // --- create social row
-  const createRow = async () => {
+  async function createRowViaClientPUT() {
+    setAddSaving(true);
     try {
-      setAddSaving(true)
-      const payload = {
-        clientId: clientData.id,
-        platform: nullIfEmpty(addDraft.platform),
-        url: nullIfEmpty(addDraft.url),
-        username: nullIfEmpty(addDraft.username),
-        email: nullIfEmpty(addDraft.email),
-        phone: nullIfEmpty(addDraft.phone),
-        password: nullIfEmpty(addDraft.password),
-        notes: nullIfEmpty(addDraft.notes),
-      }
+      const newRow: SocialRow = {
+        id: crypto.randomUUID(),
+        platform: nullIfEmpty(addDraft.platform) ?? null,
+        url: nullIfEmpty(addDraft.url) ?? null,
+        username: nullIfEmpty(addDraft.username) ?? null,
+        email: nullIfEmpty(addDraft.email) ?? null,
+        phone: nullIfEmpty(addDraft.phone) ?? null,
+        password: nullIfEmpty(addDraft.password) ?? null,
+        notes: nullIfEmpty(addDraft.notes) ?? null,
+      };
+      const next = [...socialRows, newRow];
 
-      const res = await fetch(`/api/social-medias`, {
-        method: "POST",
+      const res = await fetch(`/api/clients/${clientData.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+        body: JSON.stringify({ socialMedia: next }),
+      });
+      if (!res.ok)
+        throw new Error(
+          (await res.json().catch(() => ({})))?.message || "Failed"
+        );
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.message || `Failed with ${res.status}`)
-      }
-
-      toast.success("Social media added")
-      setAddingRow(false)
-      setAddDraft({ platform: "", url: "", username: "", email: "", phone: "", password: "", notes: "" })
-      router.refresh()
+      toast.success("Social profile added");
+      setAddingRow(false);
+      setAddDraft({
+        platform: "",
+        url: "",
+        username: "",
+        email: "",
+        phone: "",
+        password: "",
+        notes: "",
+      });
+      router.refresh();
     } catch (e: any) {
-      console.error(e)
-      toast.error(e?.message || "Failed to add social media")
+      toast.error(e?.message || "Failed to add social profile");
     } finally {
-      setAddSaving(false)
+      setAddSaving(false);
     }
   }
 
   // --- edit dialog (client profile) state
-  const [open, setOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Packages for selector (name display, id submit)
-  type PackageOption = { id: string; name: string }
-  const [packages, setPackages] = useState<PackageOption[]>([])
-  const [packagesLoading, setPackagesLoading] = useState(false)
+  type PackageOption = { id: string; name: string };
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
 
   // AMs for selector
-  const [ams, setAms] = useState<AMUser[]>([])
-  const [amsLoading, setAmsLoading] = useState(false)
-  const [amsError, setAmsError] = useState<string | null>(null)
-  const router = useRouter()
-  const { user } = useUserSession()
-  const isAgent = (
-    (currentUserRole ?? (user as any)?.role?.name ?? (user as any)?.role ?? "")
-      .toLowerCase() === "agent"
-  )
-  const isClient = (
-    (currentUserRole ?? (user as any)?.role?.name ?? (user as any)?.role ?? "")
-      .toLowerCase() === "client"
-  )
+  const [ams, setAms] = useState<AMUser[]>([]);
+  const [amsLoading, setAmsLoading] = useState(false);
+  const [amsError, setAmsError] = useState<string | null>(null);
+  const router = useRouter();
+  const { user } = useUserSession();
+  const isAgent =
+    (
+      currentUserRole ??
+      (user as any)?.role?.name ??
+      (user as any)?.role ??
+      ""
+    ).toLowerCase() === "agent";
+  const isClient =
+    (
+      currentUserRole ??
+      (user as any)?.role?.name ??
+      (user as any)?.role ??
+      ""
+    ).toLowerCase() === "client";
 
   const fetchPackages = async () => {
     try {
-      setPackagesLoading(true)
-      const res = await fetch("/api/packages", { cache: "no-store" })
-      if (!res.ok) throw new Error(`Failed to load packages: ${res.status}`)
-      const data = await res.json().catch(() => [])
-      const list = Array.isArray(data) ? data : Array.isArray(data?.packages) ? data.packages : []
+      setPackagesLoading(true);
+      const res = await fetch("/api/packages", { cache: "no-store" });
+      if (!res.ok) throw new Error(`Failed to load packages: ${res.status}`);
+      const data = await res.json().catch(() => []);
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.packages)
+        ? data.packages
+        : [];
       const options: PackageOption[] = list
-        .map((p: any) => ({ id: String(p.id ?? ""), name: String(p.name ?? "Unnamed") }))
-        .filter((p: PackageOption) => p.id)
-      setPackages(options)
+        .map((p: any) => ({
+          id: String(p.id ?? ""),
+          name: String(p.name ?? "Unnamed"),
+        }))
+        .filter((p: PackageOption) => p.id);
+      setPackages(options);
     } catch (e) {
-      console.error(e)
-      setPackages([])
+      console.error(e);
+      setPackages([]);
     } finally {
-      setPackagesLoading(false)
+      setPackagesLoading(false);
     }
-  }
+  };
 
   const fetchAMs = async () => {
     try {
-      setAmsLoading(true)
-      setAmsError(null)
-      const res = await fetch("/api/users?role=am&limit=100", { cache: "no-store" })
-      const json = await res.json()
-      const raw = (json?.users ?? json?.data ?? []) as any[]
+      setAmsLoading(true);
+      setAmsError(null);
+      const res = await fetch("/api/users?role=am&limit=100", {
+        cache: "no-store",
+      });
+      const json = await res.json();
+      const raw = (json?.users ?? json?.data ?? []) as any[];
       const list = raw
         .filter((u) => u?.role?.name === "am")
-        .map((u) => ({ id: String(u.id), name: u.name ?? null, email: u.email ?? null }))
-      setAms(list)
+        .map((u) => ({
+          id: String(u.id),
+          name: u.name ?? null,
+          email: u.email ?? null,
+        }));
+      setAms(list);
     } catch (e) {
-      console.error(e)
-      setAms([])
-      setAmsError("Failed to load AMs")
+      console.error(e);
+      setAms([]);
+      setAmsError("Failed to load AMs");
     } finally {
-      setAmsLoading(false)
+      setAmsLoading(false);
     }
-  }
+  };
 
   // Load packages & AMs only if needed and dialog is open
   useEffect(() => {
     if (open && !isAgent) {
-      fetchPackages()
-      fetchAMs()
+      fetchPackages();
+      fetchAMs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isAgent])
+  }, [open, isAgent]);
 
   const toDateInput = (v?: string | null) => {
-    if (!v) return ""
-    const d = new Date(v)
-    if (Number.isNaN(d.getTime())) return ""
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-  }
+    if (!v) return "";
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const formatPlatformLabel = (value?: string) =>
     (value || "")
       .toLowerCase()
       .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
   const statusBadgeClass = (status?: string) => {
     switch ((status ?? "").toLowerCase()) {
       case "active":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "in_progress":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "paused":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
       case "inactive":
-        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
       default:
-        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+        return "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
     }
-  }
+  };
 
   const websites: string[] = useMemo(
     () =>
@@ -391,8 +465,8 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
         clientData.companywebsite?.startsWith("http")
           ? clientData.companywebsite
           : clientData.companywebsite
-            ? `https://${clientData.companywebsite}`
-            : "",
+          ? `https://${clientData.companywebsite}`
+          : "",
       ].filter((url) => url && url.trim() !== ""),
     [
       clientData.website,
@@ -400,7 +474,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       clientData.website3,
       clientData.companywebsite,
     ]
-  )
+  );
 
   // Task-derived progress (same formula as in Tasks component)
   const normalizeStatus = (raw?: string | null) => {
@@ -408,20 +482,57 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       .toString()
       .trim()
       .toLowerCase()
-      .replace(/[\-\s]+/g, "_")
-    if (["done", "complete", "completed", "finished", "qc_approved", "approved"].includes(s)) return "completed"
-    if (["in_progress", "in-progress", "progress", "doing", "working"].includes(s)) return "in_progress"
-    if (["overdue", "late"].includes(s)) return "overdue"
-    if (["pending", "todo", "not_started", "on_hold", "paused", "backlog"].includes(s)) return "pending"
-    return s || "pending"
-  }
+      .replace(/[\-\s]+/g, "_");
+    if (
+      [
+        "done",
+        "complete",
+        "completed",
+        "finished",
+        "qc_approved",
+        "approved",
+      ].includes(s)
+    )
+      return "completed";
+    if (
+      ["in_progress", "in-progress", "progress", "doing", "working"].includes(s)
+    )
+      return "in_progress";
+    if (["overdue", "late"].includes(s)) return "overdue";
+    if (
+      [
+        "pending",
+        "todo",
+        "not_started",
+        "on_hold",
+        "paused",
+        "backlog",
+      ].includes(s)
+    )
+      return "pending";
+    return s || "pending";
+  };
 
-  const totalTasks = clientData.tasks?.length || 0
-  const completedTasks = clientData.tasks?.filter((t: any) => normalizeStatus(t?.status) === "completed").length || 0
-  const inProgressTasks = clientData.tasks?.filter((t: any) => normalizeStatus(t?.status) === "in_progress").length || 0
-  const pendingTasks = clientData.tasks?.filter((t: any) => normalizeStatus(t?.status) === "pending").length || 0
-  const overdueTasks = clientData.tasks?.filter((t: any) => normalizeStatus(t?.status) === "overdue").length || 0
-  const derivedProgress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const totalTasks = clientData.tasks?.length || 0;
+  const completedTasks =
+    clientData.tasks?.filter(
+      (t: any) => normalizeStatus(t?.status) === "completed"
+    ).length || 0;
+  const inProgressTasks =
+    clientData.tasks?.filter(
+      (t: any) => normalizeStatus(t?.status) === "in_progress"
+    ).length || 0;
+  const pendingTasks =
+    clientData.tasks?.filter(
+      (t: any) => normalizeStatus(t?.status) === "pending"
+    ).length || 0;
+  const overdueTasks =
+    clientData.tasks?.filter(
+      (t: any) => normalizeStatus(t?.status) === "overdue"
+    ).length || 0;
+  const derivedProgress = totalTasks
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
   // --- Client edit dialog (existing fields + NEW)
   const { register, handleSubmit, reset } = useForm<FormValues>({
@@ -450,8 +561,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       dueDate: toDateInput(clientData.dueDate as any),
       amId: clientData.amId ?? null,
     },
-  })
-
+  });
 
   const onOpenEdit = () => {
     reset({
@@ -478,15 +588,15 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       startDate: toDateInput(clientData.startDate as any),
       dueDate: toDateInput(clientData.dueDate as any),
       amId: clientData.amId ?? null,
-    })
-    setOpen(true)
-  }
+    });
+    setOpen(true);
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
-      setIsSaving(true)
+      setIsSaving(true);
 
-      let payload: Partial<FormValues>
+      let payload: Partial<FormValues>;
 
       if (isAgent) {
         const allowed: (keyof FormValues)[] = [
@@ -495,15 +605,22 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           "password",
           "recoveryEmail",
           "imageDrivelink",
-        ]
+        ];
         payload = allowed.reduce((acc, key) => {
-          const val = (values as any)[key]
-          if (val !== undefined) (acc as any)[key] = val
-          return acc
-        }, {} as Partial<FormValues>)
+          const val = (values as any)[key];
+          if (val !== undefined) (acc as any)[key] = val;
+          return acc;
+        }, {} as Partial<FormValues>);
       } else {
         // Non-agents: explicitly omit sensitive fields
-        const { email, phone, password, recoveryEmail, imageDrivelink, ...rest } = values
+        const {
+          email,
+          phone,
+          password,
+          recoveryEmail,
+          imageDrivelink,
+          ...rest
+        } = values;
         payload = {
           ...rest,
           progress:
@@ -514,35 +631,35 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           startDate: values.startDate || undefined,
           dueDate: values.dueDate || undefined,
           amId: values.amId && values.amId.trim() !== "" ? values.amId : null,
-        }
+        };
       }
 
       const res = await fetch(`/api/clients/${clientData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.message || `Failed with ${res.status}`)
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message || `Failed with ${res.status}`);
       }
-      toast.success("Client updated")
-      setOpen(false)
-      router.refresh()
+      toast.success("Client updated");
+      setOpen(false);
+      router.refresh();
     } catch (e: any) {
-      console.error(e)
-      toast.error(e?.message || "Failed to update client")
+      console.error(e);
+      toast.error(e?.message || "Failed to update client");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
-
-  const hasSocial = !!clientData.socialMedias?.length
 
   const amDisplay = clientData.accountManager
-    ? (clientData.accountManager.name || clientData.accountManager.email || clientData.accountManager.id)
-    : "Unassigned"
+    ? clientData.accountManager.name ||
+      clientData.accountManager.email ||
+      clientData.accountManager.id
+    : "Unassigned";
 
   return (
     <>
@@ -552,7 +669,11 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           <Button
             variant="outline"
             onClick={onOpenEdit}
-            title={isClient ? "Clients cannot edit the profile" : "Edit client profile"}
+            title={
+              isClient
+                ? "Clients cannot edit the profile"
+                : "Edit client profile"
+            }
             className="gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <PencilLine className="h-4 w-4" />
@@ -573,13 +694,21 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Full Name</label>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{clientData.name}</p>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Full Name
+                </label>
+                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {clientData.name}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Status</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Status
+                </label>
                 <div className="mt-1">
-                  <Badge className={statusBadgeClass(clientData.status ?? undefined)}>
+                  <Badge
+                    className={statusBadgeClass(clientData.status ?? undefined)}
+                  >
                     {(clientData.status ?? "inactive").replace(/_/g, " ")}
                   </Badge>
                 </div>
@@ -588,35 +717,51 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Birth Date</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Birth Date
+                </label>
                 <div className="flex items-center mt-1">
                   <Calendar className="h-4 w-4 text-slate-400 mr-2" />
                   <span className="text-slate-900 dark:text-slate-100">
-                    {clientData.birthdate ? formatDate(clientData.birthdate as any) : "N/A"}
+                    {clientData.birthdate
+                      ? formatDate(clientData.birthdate as any)
+                      : "N/A"}
                   </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Location</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Location
+                </label>
                 <div className="flex items-center mt-1">
                   <MapPin className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.location ?? ""}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.location ?? ""}
+                  </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Gender</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Gender
+                </label>
                 <div className="flex items-center mt-1">
                   <Shield className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.gender ?? ""}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.gender ?? ""}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Progress</label>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Progress
+              </label>
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm text-slate-600 dark:text-slate-300">Completion</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-300">
+                    Completion
+                  </span>
                   <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {derivedProgress}%
                   </span>
@@ -643,43 +788,63 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Account Manager</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Account Manager
+                </label>
                 <div className="flex items-center mt-1">
                   <BadgeCheck className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{amDisplay}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {amDisplay}
+                  </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Email</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Email
+                </label>
                 <div className="flex items-center mt-1">
                   <Mail className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.email ?? "—"}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.email ?? "—"}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Phone</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Phone
+                </label>
                 <div className="flex items-center mt-1">
                   <PhoneIcon className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.phone ?? "—"}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.phone ?? "—"}
+                  </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Recovery Email</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Recovery Email
+                </label>
                 <div className="flex items-center mt-1">
                   <Mail className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.recoveryEmail ?? "—"}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.recoveryEmail ?? "—"}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Password</label>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Password
+              </label>
               <div className="flex items-center gap-2 mt-1">
                 <Lock className="h-4 w-4 text-slate-400" />
-                <span className="font-mono">{mask(clientData.password, showClientPassword)}</span>
+                <span className="font-mono">
+                  {mask(clientData.password, showClientPassword)}
+                </span>
                 {!!clientData.password && (
                   <Button
                     type="button"
@@ -687,9 +852,15 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                     size="sm"
                     className="h-7 px-2"
                     onClick={() => setShowClientPassword((s) => !s)}
-                    title={showClientPassword ? "Hide password" : "Show password"}
+                    title={
+                      showClientPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showClientPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    {showClientPassword ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
                   </Button>
                 )}
               </div>
@@ -708,28 +879,42 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Company</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Company
+                </label>
                 <div className="flex items-center mt-1">
                   <Building className="h-4 w-4 text-slate-400 mr-2" />
-                  <span className="text-slate-900 dark:text-slate-100">{clientData.company ?? ""}</span>
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.company ?? ""}
+                  </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Designation</label>
-                <p className="text-slate-900 dark:text-slate-100 mt-1">{clientData.designation ?? ""}</p>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Designation
+                </label>
+                <p className="text-slate-900 dark:text-slate-100 mt-1">
+                  {clientData.designation ?? ""}
+                </p>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Company Address</label>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Company Address
+              </label>
               <div className="flex items-center mt-1">
                 <MapPin className="h-4 w-4 text-slate-400 mr-2" />
-                <span className="text-slate-900 dark:text-slate-100">{clientData.companyaddress ?? ""}</span>
+                <span className="text-slate-900 dark:text-slate-100">
+                  {clientData.companyaddress ?? ""}
+                </span>
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Websites</label>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Websites
+              </label>
               <div className="mt-2 space-y-2">
                 {websites.length > 0 ? (
                   websites.map((url, index) => (
@@ -750,7 +935,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 italic">No websites configured</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+                    No websites configured
+                  </p>
                 )}
               </div>
             </div>
@@ -768,45 +955,63 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Package Name</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Package Name
+                </label>
                 <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-1">
                   {clientData.package?.name ?? ""}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Template</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Template
+                </label>
                 <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-1">
                   {clientData.assignments?.[0]?.template?.name ?? ""}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Start Date</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Start Date
+                </label>
                 <div className="flex items-center mt-1">
                   <Clock className="h-4 w-4 text-slate-400 mr-2" />
                   <span className="text-slate-900 dark:text-slate-100">
-                    {clientData.startDate ? formatDate(clientData.startDate as any) : "N/A"}
+                    {clientData.startDate
+                      ? formatDate(clientData.startDate as any)
+                      : "N/A"}
                   </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Due Date</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Due Date
+                </label>
                 <div className="flex items-center mt-1">
                   <Calendar className="h-4 w-4 text-slate-400 mr-2" />
                   <span className="text-slate-900 dark:text-slate-100">
-                    {clientData.dueDate ? formatDate(clientData.dueDate as any) : "N/A"}
+                    {clientData.dueDate
+                      ? formatDate(clientData.dueDate as any)
+                      : "N/A"}
                   </span>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Package ID</label>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Package ID
+                </label>
                 <p className="text-slate-900 dark:text-slate-100 mt-1 font-mono text-sm">
                   {(clientData.packageId as string) ?? ""}
                 </p>
               </div>
             </div>
             <div className="mt-4">
-              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Description</label>
-              <p className="text-slate-700 dark:text-slate-300 mt-1">{clientData.package?.description ?? ""}</p>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Description
+              </label>
+              <p className="text-slate-700 dark:text-slate-300 mt-1">
+                {clientData.package?.description ?? ""}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -818,7 +1023,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
               <CardTitle className="flex items-center space-x-2">
                 <Share2 className="h-5 w-5 text-rose-600" />
                 <span>Social Media</span>
-                <Badge variant="secondary">{clientData.socialMedias?.length ?? 0}</Badge>
+                <Badge variant="secondary">
+                  {socialRows.length}
+                </Badge>
               </CardTitle>
 
               {!isClient && (
@@ -836,7 +1043,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
           </CardHeader>
 
           <CardContent className="p-0">
-            {(!hasSocial && !addingRow) ? (
+            {!hasSocial && !addingRow ? (
               <div className="p-8 text-center text-slate-500 dark:text-slate-400">
                 No social media configured
               </div>
@@ -853,7 +1060,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                       <th className="px-4 py-3 font-semibold">PASSWORD</th>
                       <th className="px-4 py-3 font-semibold">NOTES</th>
                       {!isClient && (
-                        <th className="px-4 py-3 font-semibold text-right">ACTIONS</th>
+                        <th className="px-4 py-3 font-semibold text-right">
+                          ACTIONS
+                        </th>
                       )}
                     </tr>
                   </thead>
@@ -864,21 +1073,36 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.platform ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, platform: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                platform: e.target.value,
+                              }))
+                            }
                             placeholder="Platform (e.g., Facebook)"
                           />
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.url ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, url: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                url: e.target.value,
+                              }))
+                            }
                             placeholder="https://"
                           />
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.username ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, username: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                username: e.target.value,
+                              }))
+                            }
                             placeholder="@username"
                           />
                         </td>
@@ -886,28 +1110,48 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                           <Input
                             type="email"
                             value={addDraft.email ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, email: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                email: e.target.value,
+                              }))
+                            }
                             placeholder="email@example.com"
                           />
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.phone ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, phone: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                phone: e.target.value,
+                              }))
+                            }
                             placeholder="+8801..."
                           />
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.password ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, password: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                password: e.target.value,
+                              }))
+                            }
                             placeholder="(optional)"
                           />
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             value={addDraft.notes ?? ""}
-                            onChange={(e) => setAddDraft((p) => ({ ...p, notes: e.target.value }))}
+                            onChange={(e) =>
+                              setAddDraft((p) => ({
+                                ...p,
+                                notes: e.target.value,
+                              }))
+                            }
                             placeholder="Notes"
                           />
                         </td>
@@ -918,8 +1162,16 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  setAddingRow(false)
-                                  setAddDraft({ platform: "", url: "", username: "", email: "", phone: "", password: "", notes: "" })
+                                  setAddingRow(false);
+                                  setAddDraft({
+                                    platform: "",
+                                    url: "",
+                                    username: "",
+                                    email: "",
+                                    phone: "",
+                                    password: "",
+                                    notes: "",
+                                  });
                                 }}
                                 className="h-8 px-2"
                                 title="Cancel"
@@ -929,7 +1181,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={createRow}
+                                onClick={createRowViaClientPUT}
                                 className="h-8 px-2"
                                 title="Save"
                                 disabled={addSaving}
@@ -948,19 +1200,21 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
 
                     {/* Existing rows */}
                     {hasSocial &&
-                      [...clientData.socialMedias!]
+                      [...socialRows]
                         .sort((a, b) => {
-                          const ap = (a.platform ?? "").toLowerCase()
-                          const bp = (b.platform ?? "").toLowerCase()
-                          return ap.localeCompare(bp)
+                          const ap = (a.platform ?? "").toLowerCase();
+                          const bp = (b.platform ?? "").toLowerCase();
+                          return ap.localeCompare(bp);
                         })
                         .map((sm, idx) => {
-                          const id = sm.id || `row-${idx}`
-                          const link = (sm.url?.trim() ?? "")
-                          const show = !!showPasswords[id]
-                          const revealable = !!sm.password && !/gmail\s*login/i.test(sm.password ?? "")
-                          const isEditing = !!editingRow[id]
-                          const draft = rowDrafts[id] || {}
+                          const id = sm.id || `row-${idx}`;
+                          const link = sm.url?.trim() ?? "";
+                          const show = !!showPasswords[id];
+                          const revealable =
+                            !!sm.password &&
+                            !/gmail\s*login/i.test(sm.password ?? "");
+                          const isEditing = !!editingRow[id];
+                          const draft = rowDrafts[id] || {};
 
                           return (
                             <tr
@@ -976,7 +1230,13 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 ) : (
                                   <Input
                                     value={draft.platform ?? ""}
-                                    onChange={(e) => changeDraft(id, "platform", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(
+                                        id,
+                                        "platform",
+                                        e.target.value
+                                      )
+                                    }
                                     placeholder="Platform (e.g., Facebook)"
                                   />
                                 )}
@@ -1001,7 +1261,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 ) : (
                                   <Input
                                     value={draft.url ?? ""}
-                                    onChange={(e) => changeDraft(id, "url", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(id, "url", e.target.value)
+                                    }
                                     placeholder="https://"
                                   />
                                 )}
@@ -1010,11 +1272,19 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                               {/* USERNAME */}
                               <td className="px-4 py-3">
                                 {!isEditing ? (
-                                  <span className="font-mono">{sm.username ?? "—"}</span>
+                                  <span className="font-mono">
+                                    {sm.username ?? "—"}
+                                  </span>
                                 ) : (
                                   <Input
                                     value={draft.username ?? ""}
-                                    onChange={(e) => changeDraft(id, "username", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(
+                                        id,
+                                        "username",
+                                        e.target.value
+                                      )
+                                    }
                                     placeholder="@username"
                                   />
                                 )}
@@ -1023,12 +1293,16 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                               {/* EMAIL */}
                               <td className="px-4 py-3">
                                 {!isEditing ? (
-                                  <span className="font-mono">{sm.email ?? "—"}</span>
+                                  <span className="font-mono">
+                                    {sm.email ?? "—"}
+                                  </span>
                                 ) : (
                                   <Input
                                     type="email"
                                     value={draft.email ?? ""}
-                                    onChange={(e) => changeDraft(id, "email", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(id, "email", e.target.value)
+                                    }
                                     placeholder="email@example.com"
                                   />
                                 )}
@@ -1037,11 +1311,15 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                               {/* PHONE */}
                               <td className="px-4 py-3">
                                 {!isEditing ? (
-                                  <span className="font-mono">{sm.phone ?? "—"}</span>
+                                  <span className="font-mono">
+                                    {sm.phone ?? "—"}
+                                  </span>
                                 ) : (
                                   <Input
                                     value={draft.phone ?? ""}
-                                    onChange={(e) => changeDraft(id, "phone", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(id, "phone", e.target.value)
+                                    }
                                     placeholder="+8801..."
                                   />
                                 )}
@@ -1051,17 +1329,29 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                               <td className="px-4 py-3">
                                 {!isEditing ? (
                                   <div className="flex items-center gap-2">
-                                    <span className="font-mono">{mask(sm.password, show)}</span>
+                                    <span className="font-mono">
+                                      {mask(sm.password, show)}
+                                    </span>
                                     {revealable ? (
                                       <Button
                                         type="button"
                                         variant="outline"
                                         size="sm"
                                         className="h-7 px-2"
-                                        onClick={() => togglePasswordVisibility(id)}
-                                        title={show ? "Hide password" : "Show password"}
+                                        onClick={() =>
+                                          togglePasswordVisibility(id)
+                                        }
+                                        title={
+                                          show
+                                            ? "Hide password"
+                                            : "Show password"
+                                        }
                                       >
-                                        {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                        {show ? (
+                                          <EyeOff className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <Eye className="h-3.5 w-3.5" />
+                                        )}
                                       </Button>
                                     ) : sm.password ? (
                                       <Lock className="h-3.5 w-3.5 text-slate-400" />
@@ -1070,7 +1360,13 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 ) : (
                                   <Input
                                     value={draft.password ?? ""}
-                                    onChange={(e) => changeDraft(id, "password", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(
+                                        id,
+                                        "password",
+                                        e.target.value
+                                      )
+                                    }
                                     placeholder="(optional)"
                                   />
                                 )}
@@ -1085,7 +1381,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 ) : (
                                   <Input
                                     value={draft.notes ?? ""}
-                                    onChange={(e) => changeDraft(id, "notes", e.target.value)}
+                                    onChange={(e) =>
+                                      changeDraft(id, "notes", e.target.value)
+                                    }
                                     placeholder="Notes"
                                   />
                                 )}
@@ -1136,7 +1434,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
                                 </td>
                               )}
                             </tr>
-                          )
+                          );
                         })}
                   </tbody>
                 </table>
@@ -1154,5 +1452,5 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
         onSaved={() => router.refresh()}
       />
     </>
-  )
+  );
 }

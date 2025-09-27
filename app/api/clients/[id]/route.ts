@@ -4,6 +4,12 @@ import prisma from "@/lib/prisma";
 import type { TaskStatus } from "@prisma/client";
 
 // --- helpers ---
+function coerceSocialMedia(input: any): any[] | undefined {
+  if (input === undefined) return undefined;
+  if (Array.isArray(input)) return input;
+  return [];
+}
+
 async function computeClientProgress(clientId: string) {
   // সব টাস্ক নিয়ে groupBy করে কাউন্ট
   const grouped = await prisma.task.groupBy({
@@ -96,7 +102,6 @@ export async function GET(
     const client = await prisma.client.findUnique({
       where: { id },
       include: {
-        socialMedias: true,
         package: true,
         // AM সম্পর্ক দেখাতে
         accountManager: { include: { role: true } },
@@ -139,9 +144,13 @@ export async function GET(
         { status: 404 }
       );
 
-    // রেসপন্সে fresh progress + taskCounts যুক্ত করে পাঠাই
+    // রেসপন্সে fresh progress + taskCounts + socialMedias (derived from JSON socialMedia) যুক্ত করে পাঠাই
+    const socialMedias = Array.isArray((client as any).socialMedia)
+      ? ((client as any).socialMedia as any[])
+      : [];
     return NextResponse.json({
       ...client,
+      socialMedias,
       progress: fresh.progress,
       taskCounts: fresh.taskCounts,
     });
@@ -194,6 +203,7 @@ export async function PUT(
       amId,
       // ⬇️ Arbitrary JSON key/value pairs
       otherField,
+      socialMedia,
     } = body;
 
     // amId server-side validation (role must be 'am') — allow null to clear
@@ -240,9 +250,12 @@ export async function PUT(
 
         // Persist arbitrary JSON if provided
         otherField: otherField ?? undefined,
+        socialMedia:
+          coerceSocialMedia(socialMedia) === undefined
+            ? undefined
+            : JSON.parse(JSON.stringify(coerceSocialMedia(socialMedia))),
       } as any,
       include: {
-        socialMedias: true,
         package: true,
         accountManager: { include: { role: true } }, // AM দেখাতে
         teamMembers: {
@@ -662,7 +675,6 @@ export async function POST(
     const upgraded = await prisma.client.findUnique({
       where: { id: clientId },
       include: {
-        socialMedias: true,
         package: true,
         accountManager: { include: { role: true } },
         teamMembers: {

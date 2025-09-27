@@ -32,12 +32,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       notes: body.notes ?? undefined,
     }
 
-    const updated = await prisma.socialMedia.update({
-      where: { id },
-      data,
-    })
+   
 
-    return NextResponse.json(updated)
   } catch (error: any) {
     // Not found → 404
     if (error?.code === "P2025") {

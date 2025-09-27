@@ -31,7 +31,6 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<OnboardingFormData>({
     name: "",
-    socialLinks: [],
     progress: 0,
   });
 

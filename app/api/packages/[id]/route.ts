@@ -13,11 +13,12 @@ function getPermissionNames(user: any): string[] {
 // GET: Single package with templates (+sitesAssets)
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const pkg = await prisma.package.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         templates: {
           include: { sitesAssets: true },
@@ -41,8 +42,9 @@ export async function GET(
 // PUT: Update package (name/description + optional template linking)
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // ✅ Session → user
     const cookieStore = await cookies();
@@ -87,7 +89,7 @@ export async function PUT(
       }
 
       const current = await prisma.package.findUnique({
-        where: { id: params.id },
+        where: { id },
         include: { templates: true },
       });
       if (!current) {
@@ -114,7 +116,7 @@ export async function PUT(
     }
 
     const updated = await prisma.package.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         description,
@@ -138,8 +140,9 @@ export async function PUT(
 // DELETE: Guarded delete (disconnect templates, ensure no clients)
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("session-token")?.value;
@@ -157,7 +160,7 @@ export async function DELETE(
     }
 
     const existing = await prisma.package.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { templates: true, clients: true },
     });
 
@@ -175,12 +178,12 @@ export async function DELETE(
     // disconnect templates first
     if ((existing.templates?.length ?? 0) > 0) {
       await prisma.package.update({
-        where: { id: params.id },
+        where: { id },
         data: { templates: { set: [] } },
       });
     }
 
-    await prisma.package.delete({ where: { id: params.id } });
+    await prisma.package.delete({ where: { id } });
     return NextResponse.json(
       { message: "Package deleted successfully" },
       { status: 200 }
