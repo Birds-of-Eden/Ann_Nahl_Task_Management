@@ -1,7 +1,8 @@
 // app/api/clients/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import type { TaskStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 // --- helpers ---
 function coerceSocialMedia(input: any): any[] | undefined {
@@ -309,20 +310,76 @@ export async function PUT(
   }
 }
 
-// --- post ---
-// --- POST --- (upgrade with migration + auto posting task creation)
-// --- POST --- (upgrade with template-scoped non-common assets & done-task migration)
-import { headers } from "next/headers";
 
+
+
+
+
+// POST api
+// ---------- helpers ----------
+const makeId = () =>
+  `task_${Date.now()}_${
+    globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
+  }`;
+
+const norm = (s: string | null | undefined) =>
+  String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+
+const keyOf = (a: {
+  name: string | null | undefined;
+  type: string | null | undefined;
+}) => `${norm(a.type)}::${norm(a.name)}`;
+
+// --- helpers for naming & dedupe ---
+function stripTaskSuffix(s: string) {
+  return String(s).replace(/\s*task\s*$/i, "").trim();
+}
+function normalizeForDedupe(s: string) {
+  return stripTaskSuffix(String(s).replace(/\s*-\s*\d+$/i, "").trim())
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+// --- end helpers ---
+
+// creation-category per asset type (for seeding base sources)
+const CREATION_CATEGORY_BY_ASSET_TYPE: Record<string, string> = {
+  social_site: "Social Asset Creation",
+  web2_site: "Web 2.0 Asset Creation",
+  other_asset: "Additional Asset Creation",
+};
+
+async function ensureCategoryByName(name: string) {
+  const found = await prisma.taskCategory.findFirst({
+    where: { name },
+    select: { id: true, name: true },
+  });
+  if (found) return found;
+  try {
+    return await prisma.taskCategory.create({
+      data: { name },
+      select: { id: true, name: true },
+    });
+  } catch {
+    // race-safe
+    return await prisma.taskCategory.findFirst({
+      where: { name },
+      select: { id: true, name: true },
+    });
+  }
+}
+
+// ---------- POST ----------
 export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const { id: clientId } = await params;
+  const clientId = params.id;
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({} as any));
     const action = body?.action;
+
     if (action !== "upgrade") {
       return NextResponse.json(
         {
@@ -339,9 +396,9 @@ export async function POST(
         ? body.templateId.trim()
         : null;
 
-    const createAssignments: boolean = body?.createAssignments ?? true; // default: true
-    const migrateCompleted: boolean = body?.migrateCompleted ?? true; // default: true
-    const createPostingTasks: boolean = body?.createPostingTasks ?? true; // default: true
+    const createAssignments: boolean = body?.createAssignments ?? true;
+    const migrateCompleted: boolean = body?.migrateCompleted ?? true;
+    const createPostingTasks: boolean = body?.createPostingTasks ?? true;
 
     if (!newPackageId) {
       return NextResponse.json(
@@ -350,62 +407,43 @@ export async function POST(
       );
     }
 
-    // validate client & package presence, and capture oldPackageId
+    // validate
     const clientRow = await prisma.client.findUnique({
       where: { id: clientId },
       select: { id: true, packageId: true },
     });
-    if (!clientRow) {
-      return NextResponse.json(
-        { message: "Client not found" },
-        { status: 404 }
-      );
-    }
-    const oldPackageId = clientRow.packageId;
+    if (!clientRow)
+      return NextResponse.json({ message: "Client not found" }, { status: 404 });
+    const oldPackageId = clientRow.packageId ?? null;
 
     const pkg = await prisma.package.findUnique({
       where: { id: newPackageId },
-      select: { id: true },
+      select: { id: true, totalMonths: true },
     });
-    if (!pkg) {
-      return NextResponse.json(
-        { message: "Package not found" },
-        { status: 404 }
-      );
-    }
+    if (!pkg)
+      return NextResponse.json({ message: "Package not found" }, { status: 404 });
 
-    console.log(
-      `[Client Upgrade] clientId=${clientId} oldPackageId=${
-        oldPackageId ?? "null"
-      } -> newPackageId=${newPackageId} templateId=${
-        selectedTemplateId ?? "null"
-      } createAssignments=${createAssignments} migrateCompleted=${migrateCompleted} createPostingTasks=${createPostingTasks}`
-    );
-
-    // --- 1) Update client package & (optionally) create assignments for new package templates
+    // 1) update client → new package; optionally create assignments for all templates
     await prisma.$transaction(async (tx) => {
-      // 1.a) update client -> new package
-      await tx.$executeRaw`
-        UPDATE "Client"
-        SET "packageId" = ${newPackageId}
-        WHERE "id" = ${clientId};
-      `;
+      await tx.client.update({
+        where: { id: clientId },
+        data: { packageId: newPackageId },
+        select: { id: true },
+      });
 
-      // 1.b) create assignments (if opted-in)
       if (createAssignments) {
         await tx.$executeRaw`
-          INSERT INTO "Assignment" ("id", "templateId", "clientId", "assignedAt", "status")
+          INSERT INTO "Assignment" ("id","templateId","clientId","assignedAt","status")
           SELECT gen_random_uuid(), t."id", ${clientId}, now(), 'active'
           FROM "Template" t
           WHERE t."packageId" = ${newPackageId}
-            AND NOT EXISTS (
-              SELECT 1 FROM "Assignment" a
-              WHERE a."templateId" = t."id" AND a."clientId" = ${clientId}
-            );
+          AND NOT EXISTS (
+            SELECT 1 FROM "Assignment" a
+            WHERE a."templateId" = t."id" AND a."clientId" = ${clientId}
+          );
         `;
       }
 
-      // 1.c) activity log (best-effort)
       try {
         await tx.activityLog.create({
           data: {
@@ -421,23 +459,19 @@ export async function POST(
             },
           },
         });
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     });
 
-    // --- 2) (Option) Migrate done tasks from old package → into a target new assignment
-    // We copy: completed/qc_approved/data_entered — keep status/fields; skip duplicate names in target
+    // 2) migrate completed/qc_approved/data_entered (keep original status)
     if (migrateCompleted && oldPackageId) {
       try {
-        // old assignments under old package
         const oldAssignments = await prisma.assignment.findMany({
           where: { clientId, template: { packageId: oldPackageId } },
           select: { id: true },
         });
         const oldAssignmentIds = oldAssignments.map((a) => a.id);
+
         if (oldAssignmentIds.length) {
-          // target assignment: selected template if provided; else newest under new package
           let targetAssignment = selectedTemplateId
             ? await prisma.assignment.findFirst({
                 where: { clientId, templateId: selectedTemplateId },
@@ -450,7 +484,6 @@ export async function POST(
                 select: { id: true },
               });
 
-          // if not found (e.g. createAssignments=false), create one against selected template (if provided)
           if (!targetAssignment && selectedTemplateId) {
             targetAssignment = await prisma.assignment.create({
               data: {
@@ -464,14 +497,13 @@ export async function POST(
           }
 
           if (targetAssignment) {
-            // fetch existing task names in target (avoid duplicates by name)
+            // dedupe by exact name (migration keeps original names)
             const existingNames = await prisma.task.findMany({
               where: { assignmentId: targetAssignment.id },
               select: { name: true },
             });
             const nameSkip = new Set(existingNames.map((t) => t.name));
 
-            // fetch done tasks from old package
             const doneStatuses: TaskStatus[] = [
               "completed",
               "qc_approved",
@@ -483,8 +515,8 @@ export async function POST(
                 status: { in: doneStatuses },
               },
               select: {
-                name: true,
-                status: true,
+                name: true, // keep exact name
+                status: true, // preserve status
                 priority: true,
                 idealDurationMinutes: true,
                 dueDate: true,
@@ -494,8 +526,9 @@ export async function POST(
                 username: true,
                 notes: true,
                 categoryId: true,
+                templateSiteAssetId: true, // keep link
               },
-              take: 2000, // safety cap
+              take: 5000,
             });
 
             if (oldDone.length) {
@@ -503,10 +536,8 @@ export async function POST(
               for (const src of oldDone) {
                 if (!src.name || nameSkip.has(src.name)) continue;
                 payloads.push({
-                  id: `task_migrate_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .slice(2)}`,
-                  name: src.name,
+                  id: makeId(),
+                  name: src.name, // ← EXACT same name as before
                   status: src.status,
                   priority: src.priority,
                   idealDurationMinutes: src.idealDurationMinutes ?? undefined,
@@ -521,21 +552,23 @@ export async function POST(
                   ...(src.categoryId
                     ? { category: { connect: { id: src.categoryId } } }
                     : {}),
+                  ...(src.templateSiteAssetId
+                    ? {
+                        templateSiteAsset: {
+                          connect: { id: src.templateSiteAssetId },
+                        },
+                      }
+                    : {}),
                 });
               }
 
               if (payloads.length) {
-                // chunk create to avoid big transactions (simple batching)
                 const chunk = 100;
                 for (let i = 0; i < payloads.length; i += chunk) {
                   const slice = payloads.slice(i, i + chunk);
-                  // transaction-per-chunk
                   await prisma.$transaction(
                     slice.map((data) =>
-                      prisma.task.create({
-                        data,
-                        select: { id: true },
-                      })
+                      prisma.task.create({ data, select: { id: true } })
                     )
                   );
                 }
@@ -548,11 +581,12 @@ export async function POST(
       }
     }
 
-    // --- 3) Auto-create posting tasks ONLY for non-common assets of the SELECTED TEMPLATE
-    let createdPosting = 0;
+    // 3) seed base sources in correct creation categories (dedupe by asset & by normalized name), then create posting cycles (pending)
+    let createdPostingNewOnly = 0;
+    let createdPostingCommon = 0;
+
     if (createPostingTasks) {
       try {
-        // old vs new-scoped assets
         const [oldAssets, newScopedAssets] = await Promise.all([
           oldPackageId
             ? prisma.templateSiteAsset.findMany({
@@ -565,58 +599,222 @@ export async function POST(
           prisma.templateSiteAsset.findMany({
             where: {
               template: selectedTemplateId
-                ? { id: selectedTemplateId } // template-scoped
-                : { packageId: newPackageId }, // fallback: whole new package
+                ? { id: selectedTemplateId }
+                : { packageId: newPackageId },
             },
             select: { id: true, name: true, type: true },
           }),
         ]);
 
-        const norm = (s: string | null | undefined) =>
-          String(s ?? "")
-            .toLowerCase()
-            .replace(/\s+/g, " ")
-            .trim();
-        const keyOf = (a: { name: string | null; type: string | null }) =>
-          `${norm(a.type)}::${norm(a.name)}`;
-
         const oldKeys = new Set(oldAssets.map(keyOf));
         const newOnlyAssetIds = newScopedAssets
           .filter((a) => !oldKeys.has(keyOf(a)))
           .map((a) => a.id);
+        const commonAssetIds = newScopedAssets
+          .filter((a) => oldKeys.has(keyOf(a)))
+          .map((a) => a.id);
 
-        if (newOnlyAssetIds.length) {
-          const base =
-            process.env.NEXT_PUBLIC_APP_URL ??
-            process.env.APP_URL ??
-            `http://${headers().get("host")}`;
-          const resp = await fetch(`${base}/api/tasks/create-posting-tasks`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              clientId,
-              templateId: selectedTemplateId ?? undefined, // optional pass-through
-              includeAssetIds: newOnlyAssetIds, // only non-common assets
-            }),
+        // target assignment
+        let targetAssignment = selectedTemplateId
+          ? await prisma.assignment.findFirst({
+              where: { clientId, templateId: selectedTemplateId },
+              orderBy: { assignedAt: "desc" },
+              select: { id: true },
+            })
+          : await prisma.assignment.findFirst({
+              where: { clientId, template: { packageId: newPackageId } },
+              orderBy: { assignedAt: "desc" },
+              select: { id: true },
+            });
+
+        if (!targetAssignment && selectedTemplateId) {
+          await prisma.$executeRaw`
+            INSERT INTO "Assignment" ("id","templateId","clientId","assignedAt","status")
+            VALUES (gen_random_uuid(), ${selectedTemplateId}, ${clientId}, now(), 'active');
+          `;
+          targetAssignment = await prisma.assignment.findFirst({
+            where: { clientId, templateId: selectedTemplateId },
+            orderBy: { assignedAt: "desc" },
+            select: { id: true },
           });
-          const j = await resp.json().catch(() => ({}));
-          if (resp.ok) {
-            createdPosting = Number(j?.created ?? 0);
-          } else {
-            console.warn("[create-posting-tasks] failed:", j?.message);
-          }
-        } else {
-          console.log("[create-posting-tasks] skipped: no non-common assets");
         }
+
+        // seed base per asset in proper *creation* category (strong dedupe here)
+        if (targetAssignment) {
+          const toCheckIds = [...newOnlyAssetIds, ...commonAssetIds];
+          if (toCheckIds.length) {
+            const metaById = new Map(newScopedAssets.map((a) => [a.id, a]));
+
+            // Pull all existing tasks in this assignment once
+            const existingInAssignment = await prisma.task.findMany({
+              where: {
+                assignmentId: targetAssignment.id,
+              },
+              select: {
+                name: true,
+                templateSiteAsset: { select: { id: true, name: true, type: true } },
+                category: { select: { name: true } },
+              },
+            });
+
+            // a) any already seeded by exact new asset id
+            const seededAssetIds = new Set<number>(
+              existingInAssignment
+                .map((t) => t.templateSiteAsset?.id)
+                .filter((n): n is number => typeof n === "number")
+                .filter((id) => (toCheckIds as number[]).includes(id))
+            );
+
+            // b) existing normalized name bases (any category)
+            const existingNameBases = new Set(
+              existingInAssignment.map((t) => normalizeForDedupe(t.name || ""))
+            );
+
+            // c) existing semantic keys by (type::assetNameBase) from linked assets
+            const existingAssetKeys = new Set(
+              existingInAssignment
+                .map((t) => {
+                  const typ = t.templateSiteAsset?.type;
+                  const nm = t.templateSiteAsset?.name;
+                  if (!typ || !nm) return null;
+                  return `${norm(typ)}::${normalizeForDedupe(nm)}`;
+                })
+                .filter((v): v is string => !!v)
+            );
+
+            // d) existing keys inside creation categories by (type::baseName)
+            const CREATION_CATEGORY_NAMES = new Set([
+              "Social Asset Creation",
+              "Web 2.0 Asset Creation",
+              "Additional Asset Creation",
+            ]);
+            const existingCreationKeys = new Set(
+              existingInAssignment
+                .filter((t) => CREATION_CATEGORY_NAMES.has(t.category?.name || ""))
+                .map((t) => {
+                  const baseFromTaskName = normalizeForDedupe(t.name || "");
+                  const typ = norm(t.templateSiteAsset?.type || "other_asset");
+                  return `${typ}::${baseFromTaskName}`;
+                })
+            );
+
+            // figure out which new assets truly need seeding
+            const needSeeds = toCheckIds.filter((assetId) => {
+              const meta = metaById.get(assetId);
+              const rawName = meta?.name || `Asset ${assetId}`;
+              const rawType = norm(meta?.type || "other_asset");
+
+              // Final name we would create (always "<name> Task")
+              const finalName = `${stripTaskSuffix(rawName)} Task`;
+              const finalBase = normalizeForDedupe(finalName);
+
+              // Asset key based on (type::assetNameBase)
+              const assetKey = `${rawType}::${normalizeForDedupe(rawName)}`;
+
+              // Creation-category key based on (type::finalBase)
+              const creationKey = `${rawType}::${finalBase}`;
+
+              if (
+                seededAssetIds.has(assetId) ||
+                existingNameBases.has(finalBase) ||
+                existingAssetKeys.has(assetKey) ||
+                existingCreationKeys.has(creationKey)
+              ) {
+                return false; // DO NOT seed — duplicate
+              }
+
+              return true; // safe to seed
+            });
+
+            if (needSeeds.length) {
+              // ensure required creation categories
+              const creationCats = new Set<string>();
+              for (const id of needSeeds) {
+                const meta = metaById.get(id);
+                const catName =
+                  CREATION_CATEGORY_BY_ASSET_TYPE[
+                    String(meta?.type ?? "").toLowerCase()
+                  ] ?? "Additional Asset Creation";
+                creationCats.add(catName);
+              }
+              const catIdByName = new Map<string, string>();
+              for (const nm of Array.from(creationCats)) {
+                const cat = await ensureCategoryByName(nm);
+                if (cat) catIdByName.set(nm, cat.id);
+              }
+
+              await prisma.$transaction(
+                needSeeds.map((assetId) => {
+                  const meta = metaById.get(assetId);
+                  const raw = meta?.name || `Asset ${assetId}`;
+                  const finalName = `${stripTaskSuffix(raw)} Task`;
+                  const catName =
+                    CREATION_CATEGORY_BY_ASSET_TYPE[
+                      String(meta?.type ?? "").toLowerCase()
+                    ] ?? "Additional Asset Creation";
+                  const catId = catIdByName.get(catName)!;
+                  return prisma.task.create({
+                    data: {
+                      id: makeId(),
+                      // Always "<assetName> Task"
+                      name: finalName,
+                      // All new tasks should be pending
+                      status: "pending",
+                      priority: "medium",
+                      assignment: { connect: { id: targetAssignment!.id } },
+                      client: { connect: { id: clientId } },
+                      templateSiteAsset: { connect: { id: assetId } },
+                      category: { connect: { id: catId } }, // creation category
+                    },
+                    select: { id: true },
+                  });
+                })
+              );
+            }
+          }
+        }
+
+        // run posting creation twice (both create **pending** tasks)
+        const baseURL =
+          process.env.NEXT_PUBLIC_APP_URL ??
+          process.env.APP_URL ??
+          `http://${req.headers.get("host")}`;
+
+        async function runCreatePosting(includeAssetIds: number[]) {
+          if (!includeAssetIds.length) return 0;
+          const resp = await fetch(
+            `${baseURL}/api/tasks/migration-posting-tasks`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                clientId,
+                templateId: selectedTemplateId ?? undefined,
+                includeAssetIds,
+              }),
+            }
+          );
+          const j = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            console.warn("[migration-posting-tasks] failed:", j?.message);
+            return 0;
+          }
+          return Number(j?.created ?? 0);
+        }
+
+        createdPostingNewOnly = await runCreatePosting(newOnlyAssetIds);
+        createdPostingCommon = await runCreatePosting(commonAssetIds);
       } catch (e) {
-        console.warn("[create-posting-tasks] call error:", e);
+        console.warn("[migration-posting-tasks] flow error:", e);
       }
     }
 
-    // --- 4) fresh client + progress
+    const createdPosting =
+      (createdPostingNewOnly || 0) + (createdPostingCommon || 0);
+
+    // 4) progress recompute
     const freshProgress = await (async () => {
       try {
-        // reuse your compute & persist
         const grouped = await prisma.task.groupBy({
           by: ["status"],
           where: { clientId },
@@ -672,6 +870,7 @@ export async function POST(
       }
     })();
 
+    // 5) return fresh snapshot
     const upgraded = await prisma.client.findUnique({
       where: { id: clientId },
       include: {
@@ -712,6 +911,8 @@ export async function POST(
 
     return NextResponse.json({
       message: "Client upgraded successfully",
+      createdPostingNewOnly,
+      createdPostingCommon,
       createdPosting,
       client: {
         ...upgraded,
@@ -720,10 +921,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error(
-      `[Client Upgrade] clientId=${(await params).id} failed:`,
-      error
-    );
+    console.error(`[Client Upgrade] clientId=${params.id} failed:`, error);
     return NextResponse.json(
       { message: "Failed to upgrade client" },
       { status: 500 }
