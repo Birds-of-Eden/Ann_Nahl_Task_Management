@@ -14,7 +14,6 @@ export async function GET(req: Request) {
       packageId: packageId || undefined,
     },
     include: {
-      socialMedias: true,
       tasks: {
         include: {
           templateSiteAsset: true,
@@ -123,7 +122,6 @@ export async function GET(req: Request) {
       status: client.status ?? null,
       package: client.package ? { name: client.package.name } : null,
       avatar: client.avatar ?? null,
-      socialMedias: client.socialMedias,
 
       // top-level flags used in client cards
       postingTasksCreated,
@@ -238,7 +236,6 @@ export async function POST(req: NextRequest) {
             : [],
         },
       } as any,
-      include: { socialMedias: true },
     });
 
     return NextResponse.json(client, { status: 201 });

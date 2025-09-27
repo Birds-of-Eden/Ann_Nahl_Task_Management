@@ -168,24 +168,22 @@ export async function POST(req: NextRequest) {
         // ⬇️ Persist arbitrary JSON if provided
         otherField: otherField ?? undefined,
 
-        socialMedias: {
-          create: Array.isArray(socialLinks)
-            ? socialLinks
-                .filter((l: any) => l && l.platform && l.url)
-                .map((l: any) => ({
-                  platform: normalizePlatform(l.platform) as any,
-                  url: l.url as string,
-                  username: l.username ?? null,
-                  email: l.email ?? null,
-                  phone: l.phone ?? null,
-                  password: l.password ?? null,
-                  notes: l.notes ?? null,
-                }))
-            : [],
-        },
+        // ⬇️ Persist social links into required JSON field on Client
+        socialMedia: Array.isArray(socialLinks)
+          ? socialLinks
+              .filter((l: any) => l && (l.platform || l.url))
+              .map((l: any) => ({
+                platform: normalizePlatform(l.platform),
+                url: l.url ?? null,
+                username: l.username ?? null,
+                email: l.email ?? null,
+                phone: l.phone ?? null,
+                password: l.password ?? null,
+                notes: l.notes ?? null,
+              }))
+          : [],
       } as any,
       include: {
-        socialMedias: true,
         accountManager: { select: { id: true, name: true, email: true } }, // optional
       },
     });
