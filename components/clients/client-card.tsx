@@ -267,7 +267,7 @@ export function ClientCard({
 
   const handleViewTasks = () => {
     if (segment === "data_entry") {
-      router.push(`/data_entry/clients/${clientId}/tasks`);
+      router.push(`/data_entry/data_entry/clients/${clientId}/tasks`);
     } else {
       router.push(`/${segment}/clients/${clientId}/tasks`);
     }
