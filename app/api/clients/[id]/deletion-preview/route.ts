@@ -70,10 +70,18 @@ export async function GET(
           : 0,
       ]);
 
-    const [socialMedia, clientTeamMembers] = await Promise.all([
-      prisma.socialMedia.count({ where: { clientId: id } }),
-      prisma.clientTeamMember.count({ where: { clientId: id } }),
-    ]);
+    // Social profiles are stored as JSON on Client (not a separate model)
+    const clientSocial = await prisma.client.findUnique({
+      where: { id },
+      select: { socialMedia: true },
+    });
+    const socialMedia = Array.isArray((clientSocial as any)?.socialMedia)
+      ? ((clientSocial as any).socialMedia as any[]).length
+      : (clientSocial as any)?.socialMedia &&
+        typeof (clientSocial as any).socialMedia === "object"
+      ? Object.keys((clientSocial as any).socialMedia as Record<string, unknown>).length
+      : 0;
+    const clientTeamMembers = await prisma.clientTeamMember.count({ where: { clientId: id } });
 
     // Add any other client-owned models here as needed
     return NextResponse.json(
