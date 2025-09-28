@@ -56,12 +56,12 @@ export function addCalendarDays(startDate: Date, days: number): Date {
  */
 export function calculateTaskDueDate(assetCreatedAt: Date, cycleNumber: number): Date {
   if (cycleNumber === 1) {
-    // First cycle: 15 calendar days after asset creation
-    return addCalendarDays(assetCreatedAt, 15)
+    // First cycle: 10 working days after asset creation
+    return addWorkingDays(assetCreatedAt, 10)
   } else {
-    // Subsequent cycles: 7 working days after the previous cycle's due date
+    // Subsequent cycles: 5 working days after the previous cycle's due date
     const previousCycleDueDate = calculateTaskDueDate(assetCreatedAt, cycleNumber - 1)
-    return addWorkingDays(previousCycleDueDate, 7)
+    return addWorkingDays(previousCycleDueDate, 5 )
   }
 }
 
