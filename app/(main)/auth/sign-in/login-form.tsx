@@ -112,7 +112,7 @@ export function LoginForm() {
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent animate-gradient leading-tight">
             TASK MANAGEMENT
           </CardTitle>
-          <p className="text-slate-300 text-lg font-medium tracking-wider bg-gradient-to-r from-slate-300 to-slate-400 bg-clip-text text-transparent">
+          <p className="text-lg font-medium tracking-wider bg-gradient-to-r from-slate-300 to-slate-400 bg-clip-text text-transparent">
             Secure Workspace Access
           </p>
         </div>
@@ -203,7 +203,7 @@ export function LoginForm() {
           </Button>
 
           <div className="text-center pt-2">
-            <p className="text-sm text-slate-400 font-medium bg-gradient-to-r from-slate-400 to-slate-500 bg-clip-text text-transparent">
+            <p className="text-sm font-medium bg-gradient-to-r from-slate-400 to-slate-500 bg-clip-text text-transparent">
               Enterprise-Grade Security • Premium Experience
             </p>
           </div>
