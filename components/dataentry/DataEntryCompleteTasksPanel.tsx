@@ -131,6 +131,7 @@ export default function DataEntryCompleteTasksPanel({
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [lastUsedPassword, setLastUsedPassword] = useState<string | null>(null);
   const [doneBy, setDoneBy] = useState<string>("");
   const [completedAt, setCompletedAt] = useState<Date | undefined>(undefined);
   const [lastUsedDate, setLastUsedDate] = useState<Date | null>(null);
@@ -414,7 +415,7 @@ export default function DataEntryCompleteTasksPanel({
     setLink("");
     setEmail("");
     setUsername("");
-    setPassword(""); // Always keep password blank
+    // Don't reset password - keep the last used one
     setDoneBy("");
     setCompletedAt(undefined);
   };
@@ -431,7 +432,8 @@ export default function DataEntryCompleteTasksPanel({
     // Auto-fill email with client email
     setEmail(clientEmail || "");
     setUsername(""); // Keep blank initially, will be auto-filled when link changes
-    setPassword(""); // Keep blank
+    // Don't reset password - keep the last used one
+    setPassword(password); // Keep current password value
     
     // Set completed date: first try task's completedAt, then last used date, then current date
     if (t.completedAt) {
@@ -478,10 +480,22 @@ export default function DataEntryCompleteTasksPanel({
             "users",
             "profiles",
             "accounts",
+            "dashboard",
+            "settings",
+            "admin",
+            "api",
+            "auth",
+            "login",
+            "signup",
+            "register",
           ].includes(segment.toLowerCase())
         ) {
           if (i + 1 < pathSegments.length) {
-            return pathSegments[i + 1];
+            const nextSegment = pathSegments[i + 1];
+            // Check if next segment looks like a username (alphanumeric, not too long)
+            if (/^[a-zA-Z0-9._-]{3,30}$/.test(nextSegment)) {
+              return nextSegment;
+            }
           }
         }
         // If segment looks like a username (alphanumeric, not too long)
@@ -495,14 +509,22 @@ export default function DataEntryCompleteTasksPanel({
       if (
         searchParams.has("user") ||
         searchParams.has("username") ||
-        searchParams.has("profile")
+        searchParams.has("profile") ||
+        searchParams.has("u")
       ) {
         return (
           searchParams.get("user") ||
           searchParams.get("username") ||
           searchParams.get("profile") ||
+          searchParams.get("u") ||
           ""
         );
+      }
+
+      // Try to extract from fragment (hash)
+      const fragment = urlObj.hash.substring(1); // Remove the #
+      if (fragment && /^[a-zA-Z0-9._-]{3,30}$/.test(fragment)) {
+        return fragment;
       }
 
       return "";
@@ -511,12 +533,34 @@ export default function DataEntryCompleteTasksPanel({
     }
   };
 
-  // Auto-fill email with client email when modal opens
+  // Load last used password from localStorage on mount
   useEffect(() => {
-    if (selected && clientEmail && !email) {
-      setEmail(clientEmail);
+    try {
+      if (typeof window !== "undefined") {
+        const savedPassword = localStorage.getItem("lastUsedPassword");
+        if (savedPassword) {
+          setLastUsedPassword(savedPassword);
+          setPassword(savedPassword);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
     }
-  }, [selected, clientEmail, email]);
+  }, []);
+
+  // Save password to localStorage when it changes
+  useEffect(() => {
+    if (password) {
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("lastUsedPassword", password);
+          setLastUsedPassword(password);
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [password]);
 
   // Auto-fill username from URL when link changes
   useEffect(() => {
@@ -526,7 +570,7 @@ export default function DataEntryCompleteTasksPanel({
         setUsername(extractedUsername);
       }
     }
-  }, [link]);
+  }, [link, username]); // Added username to dependencies to prevent unnecessary re-runs
 
   const submit = async () => {
     if (!user?.id || !selected) return;
@@ -970,16 +1014,27 @@ export default function DataEntryCompleteTasksPanel({
                     <label className="text-sm font-medium text-gray-700">
                       Password
                     </label>
-                    {/* Password input with a new copy button for better UX */}
+                    {/* Password input - now editable and visible */}
                     <div className="relative">
                       <Input
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password or Enter Gmail Login"
-                        type="password"
+                        placeholder={lastUsedPassword ? "Using previously saved password" : "Enter password"}
+                        type="text"
                         className="rounded-xl h-11 bg-white border-gray-300 font-mono pr-10"
                       />
+                      {lastUsedPassword && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          SAVED
+                        </div>
+                      )}
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {lastUsedPassword
+                        ? "Using your last saved password. You can edit it above."
+                        : "Enter password if required. Will be saved for next use."
+                      }
+                    </p>
                   </div>
                 </div>
               </fieldset>

@@ -3,171 +3,127 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Target, Loader2, Calendar, UserCheck } from "lucide-react";
+import { Target, Loader2 } from "lucide-react";
 
 interface CreateTasksButtonProps {
   clientId: string;
   disabled?: boolean;
   onTaskCreationComplete?: () => void;
-  variant?: "default" | "outline" | "secondary";
-  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function CreateTasksButton({
-  clientId,
+export default function CreateTasksButton({ 
+  clientId, 
   disabled = false,
-  onTaskCreationComplete,
-  variant = "default",
-  size = "default",
+  onTaskCreationComplete 
 }: CreateTasksButtonProps) {
   const [isCreating, setIsCreating] = useState(false);
 
   const createTasks = async () => {
-    if (!clientId) {
-      toast.error("Client ID is required");
-      return;
-    }
-
     setIsCreating(true);
     try {
       const response = await fetch("/api/tasks/create-dataentry-posting-tasks", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache"
         },
         body: JSON.stringify({ clientId }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.message || 
-          data?.error || 
-          `Failed to create tasks (${response.status})`
+        throw new Error(data.error || "Failed to create tasks");
+      }
+
+      const createdTasks: Array<{ id: string; dueDate?: string | null }> = Array.isArray(data?.tasks) ? data.tasks : [];
+      const createdCount = Number(data?.created ?? createdTasks.length);
+
+      // Try auto-assign to a data_entry user
+      try {
+        const usersRes = await fetch(`/api/users?role=data_entry&limit=50`, { cache: "no-store" });
+        const usersJson = await usersRes.json().catch(() => ({}));
+        const dataEntryUsers: any[] = (usersJson?.users ?? usersJson?.data ?? []).filter(
+          (u: any) => u?.role?.name?.toLowerCase() === "data_entry"
         );
-      }
 
-      const createdCount = Number(data?.created ?? 0);
-      const assigneeName = data?.assignee?.name;
-      const cyclesCreated = data?.cyclesToCreate;
-      const targetDate = data?.targetDate ? new Date(data.targetDate).toLocaleDateString() : null;
+        if (dataEntryUsers.length === 0) {
+          toast.warning("Tasks created, but no data_entry users found to assign.");
+        } else if (createdTasks.length === 0) {
+          toast.success("Tasks already existed or none created. No assignment needed.");
+        } else {
+          const assignee = dataEntryUsers[0];
+          const assignments = createdTasks.map((t) => ({
+            taskId: t.id,
+            agentId: assignee.id,
+            note: "Auto-assigned to data_entry after posting creation",
+            dueDate:
+              t?.dueDate && typeof t.dueDate === "string"
+                ? t.dueDate
+                : (() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7);
+                    return d.toISOString();
+                  })(),
+          }));
 
-      if (createdCount > 0) {
-        let successMessage = data?.message || `Created ${createdCount} task(s)`;
-        
-        if (assigneeName) {
-          successMessage += ` and assigned to ${assigneeName}`;
+          const distRes = await fetch(`/api/tasks/dataentry-distribute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId, assignments }),
+          });
+
+          if (distRes.ok) {
+            toast.success(`Created ${createdCount} posting task(s) and assigned to data_entry`);
+          } else {
+            const dj = await distRes.json().catch(() => ({}));
+            console.error("Distribute failed", dj);
+            toast.warning(`Created ${createdCount} posting task(s), but auto-assignment failed`);
+          }
         }
-        if (cyclesCreated && targetDate) {
-          successMessage += ` for ${cyclesCreated} cycle(s) up to ${targetDate}`;
-        }
-
-        toast.success(successMessage, {
-          duration: 5000,
-          description: targetDate ? `Tasks created until ${targetDate}` : undefined,
-        });
-      } else {
-        toast.info(data?.message || "All tasks already exist - nothing to create.", {
-          duration: 4000,
-        });
+      } catch (assignErr) {
+        console.error(assignErr);
+        toast.warning("Tasks created, but auto-assignment to data_entry failed");
       }
 
-      onTaskCreationComplete?.();
-      
-      // Optional: Add a small delay before reloading to show the success message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-
-    } catch (err: any) {
-      console.error("Task creation error:", err);
-      
-      // More specific error messages
-      if (err.message.includes("qc_approved")) {
-        toast.error("QC Approval Required", {
-          description: "All source tasks must be QC approved before creating posting tasks",
-          duration: 6000,
-        });
-      } else if (err.message.includes("start date")) {
-        toast.error("Missing Start Date", {
-          description: "Client start date is required to create tasks",
-          duration: 5000,
-        });
-      } else if (err.message.includes("data_entry")) {
-        toast.error("No Data Entry Staff", {
-          description: "No data entry users available to assign tasks",
-          duration: 5000,
-        });
-      } else {
-        toast.error("Creation Failed", {
-          description: err.message || "Failed to create posting tasks",
-          duration: 5000,
-        });
+      if (!createdCount) {
+        // If nothing new was created, still show a friendly message
+        toast.info(data?.message || "No new posting tasks to create (already exists)");
       }
+
+      // Call the callback if provided
+      if (onTaskCreationComplete) {
+        onTaskCreationComplete();
+      }
+      
+      // Refresh the page to show updated status
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error creating tasks:", error);
+      toast.error(error.message || "Failed to create tasks");
     } finally {
       setIsCreating(false);
     }
-  };
-
-  // Size classes
-  const sizeClasses = {
-    sm: "h-9 px-3 text-xs",
-    default: "h-11 px-6 text-sm",
-    lg: "h-12 px-8 text-base",
-    icon: "h-11 w-11"
-  };
-
-  // Variant classes
-  const variantClasses = {
-    default: "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl",
-    outline: "border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white",
-    secondary: "bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white"
   };
 
   return (
     <Button
       onClick={createTasks}
       disabled={isCreating || disabled}
-      className={`
-        ${sizeClasses[size]} 
-        ${variantClasses[variant]}
-        rounded-xl font-semibold transition-all duration-300 
-        transform hover:scale-105 active:scale-95
-        disabled:transform-none disabled:hover:scale-100
-        flex items-center justify-center gap-2
-        ${disabled ? "opacity-50 cursor-not-allowed grayscale" : ""}
-        ${size === "icon" ? "flex-col" : ""}
-      `}
-      title={
-        disabled 
-          ? "Tasks already created or client not ready" 
-          : "Create posting tasks from start date to today/due date"
-      }
+      className={`bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white h-11 flex-1 rounded-xl font-semibold transition-all duration-300 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      title={disabled ? 'Tasks already created' : 'Create posting tasks for this client'}
     >
       {isCreating ? (
         <>
-          <Loader2 className={`${size === "icon" ? "h-5 w-5" : "h-4 w-4"} animate-spin`} />
-          {size !== "icon" && (
-            <span>{size === "sm" ? "Creating..." : "Creating Tasks..."}</span>
-          )}
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          Creating Tasks...
         </>
       ) : (
         <>
-          {variant === "outline" ? (
-            <Calendar className={size === "icon" ? "h-5 w-5" : "h-4 w-4"} />
-          ) : (
-            <Target className={size === "icon" ? "h-5 w-5" : "h-4 w-4"} />
-          )}
-          {size !== "icon" && (
-            <span className="flex items-center gap-1">
-              {size === "sm" ? "Create Tasks" : "Create Posting Tasks"}
-              <UserCheck className="h-3 w-3 opacity-80" />
-            </span>
-          )}
+          <Target className="h-4 w-4 mr-2" />
+          Create Tasks
         </>
       )}
     </Button>
   );
 }
+
