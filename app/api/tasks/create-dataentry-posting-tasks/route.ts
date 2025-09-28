@@ -90,20 +90,19 @@ function addWorkingDays(startDate: Date, workingDays: number): Date {
   let daysToAdd = workingDays;
   while (daysToAdd > 0) {
     result.setDate(result.getDate() + 1);
-    if (!isWeekend(result)) daysToAdd--;
+    if (!isWeekend(result)) {
+      daysToAdd--;
+    }
   }
   return result;
 }
-
 // 👇 Inclusive month count: counts the start month and end month if any overlap
 function monthsBetweenInclusive(d1: Date, d2: Date): number {
   const a = new Date(d1.getFullYear(), d1.getMonth(), 1);
   const b = new Date(d2.getFullYear(), d2.getMonth(), 1);
   const diff = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-  return diff + 1;
+  return Math.max(diff + 1, 0);
 }
-
-// ================== FREQUENCY HELPERS ==================
 function normalizeStr(str: string) {
   return String(str).toLowerCase().replace(/\s+/g, " ").trim();
 }
