@@ -229,11 +229,11 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
 
   const handleSubmit = async () => {
     setIsSaving(true);
-
     try {
       const clientData = {
         name: formData.name,
         birthdate: formData.birthdate,
+        gender: formData.gender,
         company: formData.company,
         designation: formData.designation,
         location: formData.location,
