@@ -132,7 +132,7 @@ const PAUSE_KEY = "pausedTaskTimer"; // at most one paused task
 const LOCK_KEY = "globalTimerLock"; // navigation lock
 
 // Exclude these categories from display
-const EXCLUDED_CATEGORIES = ["Social Communication"]; 
+const EXCLUDED_CATEGORIES = ["Social Communication"];
 
 type StoredTimer = TimerState & { savedAt?: number; agentId?: string };
 
@@ -338,12 +338,15 @@ export function ClientTasksView({
       setStats({
         total: visibleTasks.length,
         pending: visibleTasks.filter((t) => t.status === "pending").length,
-        inProgress: visibleTasks.filter((t) => t.status === "in_progress").length,
+        inProgress: visibleTasks.filter((t) => t.status === "in_progress")
+          .length,
         completed: visibleTasks.filter((t) => t.status === "completed").length,
         overdue: visibleTasks.filter((t) => t.status === "overdue").length, // status-based only
         cancelled: visibleTasks.filter((t) => t.status === "cancelled").length,
-        reassigned: visibleTasks.filter((t) => t.status === "reassigned").length,
-        qc_approved: visibleTasks.filter((t) => t.status === "qc_approved").length,
+        reassigned: visibleTasks.filter((t) => t.status === "reassigned")
+          .length,
+        qc_approved: visibleTasks.filter((t) => t.status === "qc_approved")
+          .length,
       });
     } catch (err: any) {
       const errorMessage = err.message || "Failed to fetch client tasks.";
@@ -756,54 +759,46 @@ export function ClientTasksView({
     return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
   };
 
+  // ClientTasksView এর ভিতরে (component scope)
+  const stopTimerNow = useCallback(
+    (taskId: string) => {
+      if (timerState?.taskId !== taskId) return;
+
+      // লোকাল ভ্যার এ রাখলাম যাতে পরে প্রয়োজনে রোলব্যাক করা যায়
+      const snapshot = timerState;
+
+      // সাথে সাথেই UI/interval থামান + স্টোরেজ আনলক করুন
+      setTimerState(null);
+      saveTimerToStorage(null);
+      // paused snapshot থাকলে মুছে দিন
+      try {
+        localStorage.removeItem("pausedTaskTimer");
+      } catch {}
+
+      return snapshot; // rollback এর কাজে লাগবে
+    },
+    [timerState, saveTimerToStorage]
+  );
+
   const handleTaskCompletion = useCallback(async () => {
     if (!taskToComplete) return;
+
+    // ➊ আগে থেকে duration হিসাব করে রাখুন (কারণ এখনই timer বন্ধ করবো)
+    let actualDurationMinutes = taskToComplete.actualDurationMinutes;
+    if (
+      timerState?.taskId === taskToComplete.id &&
+      taskToComplete.idealDurationMinutes
+    ) {
+      const totalTimeUsedSeconds =
+        (timerState.totalSeconds || 0) - (timerState.remainingSeconds || 0);
+      const mins = Math.ceil(totalTimeUsedSeconds / 60);
+      actualDurationMinutes = Math.max(1, mins || 0);
+    }
+
+    // ➋ সাথে সাথে টাইমার থামান (optimistic)
+    const rollback = stopTimerNow(taskToComplete.id);
+
     try {
-      let actualDurationMinutes = taskToComplete.actualDurationMinutes;
-
-      if (
-        timerState?.taskId === taskToComplete.id &&
-        taskToComplete.idealDurationMinutes
-      ) {
-        const totalTimeUsedSeconds =
-          timerState.totalSeconds - timerState.remainingSeconds;
-        actualDurationMinutes = Math.ceil(totalTimeUsedSeconds / 60);
-        if (actualDurationMinutes < 1 && totalTimeUsedSeconds > 0)
-          actualDurationMinutes = 1;
-
-        const idealMinutes = taskToComplete.idealDurationMinutes;
-        const actualMinutes = actualDurationMinutes;
-
-        if (timerState.remainingSeconds <= 0) {
-          const overtimeSeconds = Math.abs(timerState.remainingSeconds);
-          const overtimeDisplay = formatTimerDisplay(overtimeSeconds);
-          toast.success(
-            `Task "${taskToComplete.name}" completed with overtime!`,
-            {
-              description: `Ideal: ${formatDuration(
-                idealMinutes
-              )}, Actual: ${formatDuration(
-                actualMinutes
-              )} (+${overtimeDisplay} overtime)`,
-              duration: 5000,
-            }
-          );
-        } else {
-          const savedTime = formatTimerDisplay(timerState.remainingSeconds);
-          toast.success(
-            `Task "${taskToComplete.name}" completed ahead of schedule!`,
-            {
-              description: `Completed in ${formatDuration(
-                actualMinutes
-              )} (${savedTime} saved)`,
-              duration: 5000,
-            }
-          );
-        }
-      } else {
-        toast.success(`Task "${taskToComplete.name}" marked as completed!`);
-      }
-
       const updates: any = {
         status: "completed",
         completedAt: new Date().toISOString(),
@@ -813,32 +808,49 @@ export function ClientTasksView({
       if (username?.trim()) updates.username = username.trim();
       if (email?.trim()) updates.email = email.trim();
       if (password?.trim()) updates.password = password;
-      if (typeof actualDurationMinutes === "number")
+      if (typeof actualDurationMinutes === "number") {
         updates.actualDurationMinutes = actualDurationMinutes;
+      }
 
       await handleUpdateTask(taskToComplete.id, updates);
 
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskToComplete.id
-            ? { ...t, ...updates, actualDurationMinutes }
-            : t
-        )
+        prev.map((t) => (t.id === taskToComplete.id ? { ...t, ...updates } : t))
       );
 
-      if (timerState?.taskId === taskToComplete.id) {
-        setTimerState(null);
-        saveTimerToStorage(null);
-        toast.info("Timer stopped. All tasks are now available.");
-      }
-
+      // ✅ UI cleanups
       setIsCompletionConfirmOpen(false);
       setTaskToComplete(null);
       setCompletionLink("");
       setUsername("");
       setEmail("");
       setPassword("");
+
+      // টোস্ট (আগেরটার মত)
+      if (
+        timerState?.taskId === taskToComplete.id &&
+        taskToComplete.idealDurationMinutes
+      ) {
+        const ideal = taskToComplete.idealDurationMinutes;
+        if ((timerState?.remainingSeconds ?? 0) <= 0) {
+          toast.success(
+            `Task "${taskToComplete.name}" completed with overtime!`
+          );
+        } else {
+          toast.success(
+            `Task "${taskToComplete.name}" completed ahead of schedule!`
+          );
+        }
+      } else {
+        toast.success(`Task "${taskToComplete.name}" marked as completed!`);
+      }
     } catch (e) {
+      // ❗ ফেল করলে আগের টাইমার ফিরিয়ে দিন
+      if (rollback) {
+        setTimerState(rollback);
+        // running হলে আবার লক/স্টোরেজ সেট করুন
+        if (rollback.isRunning) saveTimerToStorage(rollback);
+      }
       console.error("Failed to complete task:", e);
       toast.error("Failed to complete task. Please try again.");
     }
@@ -849,8 +861,9 @@ export function ClientTasksView({
     username,
     email,
     password,
-    saveTimerToStorage,
+    stopTimerNow,
     handleUpdateTask,
+    saveTimerToStorage,
   ]);
 
   const handleCompletionCancel = useCallback(() => {
