@@ -101,7 +101,7 @@ function buildSchedule(startDate: Date, end: Date): Date[] {
   out.push(first);
   let cur = new Date(first);
   while (true) {
-    const next = addWorkingDays(cur, 5);
+    const next = addWorkingDays(cur, 7);
     if (next > end) break;
     out.push(next);
     cur = next;
@@ -117,7 +117,7 @@ function sequenceIndexFromStart(startDate: Date, target: Date): number {
   let cur = new Date(first);
   while (true) {
     if (cur.getTime() === target.getTime()) return idx;
-    const next = addWorkingDays(cur, 5);
+    const next = addWorkingDays(cur, 7);
     if (next > target) return idx; // safety
     idx++;
     cur = next;
