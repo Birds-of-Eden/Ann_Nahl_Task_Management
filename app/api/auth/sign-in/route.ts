@@ -9,7 +9,6 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
-    // 1) user + credentials + role + permissions
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -21,27 +20,24 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user || user.accounts.length === 0) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
     const account = user.accounts[0];
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      account.password ?? ""
-    );
+    const isPasswordValid = await bcrypt.compare(password, account.password ?? "");
     if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    // 2) নতুন session তৈরি
+    // session তৈরি
     const sessionToken = randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const ipAddress =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      null;
+    const userAgent = req.headers.get("user-agent") ?? null;
 
     await prisma.session.create({
       data: {
@@ -50,26 +46,20 @@ export async function POST(req: NextRequest) {
         expiresAt,
         createdAt: new Date(),
         updatedAt: new Date(),
-        ipAddress:
-          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-          req.headers.get("x-real-ip") ||
-          null,
-        userAgent: req.headers.get("user-agent") ?? null,
+        ipAddress,
+        userAgent,
       },
     });
 
-    // 3) lastSeenAt আপডেট
     await prisma.user.update({
       where: { id: user.id },
       data: { lastSeenAt: new Date() },
     });
 
-    // 4) permissions list (name হিসেবে)
-    const permissions =
-      user.role?.rolePermissions.map((rp) => rp.permission.name) || [];
+    const permissions = user.role?.rolePermissions.map((rp) => rp.permission.name) || [];
+    const roleName = user.role?.name ?? null;
 
-    // 5) Response + cookie set
-    const isHttps = req.nextUrl.protocol === "https:"; // ✅ http হলে false
+    const isHttps = req.nextUrl.protocol === "https:";
     const res = NextResponse.json(
       {
         success: true,
@@ -78,7 +68,7 @@ export async function POST(req: NextRequest) {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role?.name ?? null,
+          role: roleName,
           permissions,
         },
       },
@@ -87,11 +77,34 @@ export async function POST(req: NextRequest) {
 
     res.cookies.set("session-token", sessionToken, {
       httpOnly: true,
-      secure: isHttps, // ✅ গুরুত্বপূর্ণ
+      secure: isHttps,
       sameSite: "lax",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 7 * 24 * 60 * 60,
     });
+
+    // ✅ মিনিমাল: এখানেই activityLog তৈরি করি (API কল ছাড়াই)
+    try {
+      const log = await prisma.activityLog.create({
+        data: {
+          id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "Auth",
+          entityId: user.id,
+          userId: user.id,
+          action: "sign_in",
+          details: {
+            email: user.email,
+            role: roleName,
+            permissions,
+            ipAddress,
+            userAgent,
+          },
+        },
+      });
+      console.log("🔍 Activity log created:", log.id);
+    } catch (e) {
+      console.error("❌ Failed to create activity log:", e);
+    }
 
     return res;
   } catch (error) {

@@ -25,6 +25,26 @@ export async function POST(req: NextRequest) {
 
     // যদি ইমপারসোনেটেড সেশন হয়, তাহলে stop করে origin এ ফেরত যান
     if (session?.impersonatedBy && originToken) {
+      // ✅ Activity Log (impersonation end) — delete করার আগেই লগ করি
+      try {
+        await prisma.activityLog.create({
+          data: {
+            id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "Auth",
+            entityId: session.userId || "anonymous",
+            userId: session.userId || undefined,
+            action: "sign_out",
+            details: {
+              impersonation: true,
+              endedBy: session.impersonatedBy,
+            },
+          },
+        });
+        console.log("🔍 Activity log created: sign_out (impersonation)");
+      } catch (e) {
+        console.error("❌ Failed to create activity log (impersonation):", e);
+      }
+
       const res = NextResponse.json(
         {
           success: true,
@@ -79,7 +99,27 @@ export async function POST(req: NextRequest) {
         where: { id: session.userId },
         data: { lastSeenAt: new Date() },
       });
+
+      // ✅ Activity Log (normal sign_out) — delete করার আগেই লগ করি
+      try {
+        await prisma.activityLog.create({
+          data: {
+            id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "Auth",
+            entityId: session.userId,
+            userId: session.userId,
+            action: "sign_out",
+            details: {
+              impersonation: false,
+            },
+          },
+        });
+        console.log("🔍 Activity log created: sign_out");
+      } catch (e) {
+        console.error("❌ Failed to create activity log:", e);
+      }
     }
+
     await prisma.session.deleteMany({ where: { token: sessionToken } });
 
     const res = NextResponse.json(
