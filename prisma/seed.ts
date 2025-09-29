@@ -260,6 +260,11 @@ const PERMS = [
     name: "delete_article_topic",
     description: "Delete article topics",
   },
+  {
+    id: "client_card_Upgrade_Package",
+    name: "client_card_Upgrade_Package",
+    description: "Client Card → Upgrade Package",
+  },
 ];
 
 async function seedPermissions() {
@@ -304,12 +309,22 @@ const ADMIN_PERMS: string[] = [
   "view_user_management",
   "generate_biography",
   "delete_article_topic",
+  "client_card_Upgrade_Package",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   admin: ADMIN_PERMS,
 
   manager: [
+    "package_create",
+    "package_edit",
+    "package_delete",
+    "template_edit",
+    "template_delete",
+    "user_delete",
+    "user_edit",
+    "user_view",
+    "user_impersonate",
     "view_dashboard",
     "view_clients_list",
     "view_clients_create",
@@ -319,13 +334,14 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_agents_list",
     "view_agents_create",
     "view_teams_manage",
-    "view_qc_dashboard",
-    "view_qc_review",
+
     "view_user_management",
     "view_activity_logs",
     "view_notifications",
     "chat_admin",
     "generate_biography",
+    "delete_article_topic",
+    "client_card_Upgrade_Package",
   ],
 
   agent: [

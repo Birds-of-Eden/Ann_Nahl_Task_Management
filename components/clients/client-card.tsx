@@ -11,7 +11,7 @@ import {
   ListChecks,
   Trash2,
   ArrowUpCircle,
-  UserRoundCheck 
+  UserRoundCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
@@ -33,9 +33,12 @@ import ImpersonateButton from "@/components/users/ImpersonateButton";
 import { handleDeleteClient } from "./handleDeleteClient";
 import DangerDeleteClientModal from "./DangerDeleteClientModal";
 import PackageUpgradeDialog from "@/components/clients/PackageUpgradeDialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ClientCardProps {
   clientId: string;
@@ -407,57 +410,64 @@ export function ClientCard({
       </CardContent>
 
       {/* Footer */}
-    <CardFooter className="border-t border-gray-100 bg-gray-50 p-6">
-  <div className="flex flex-wrap gap-3 w-full">
-    {hasPermissionClient(user?.permissions, "client_card_client_view") && (
-      <Button
-        variant="default"
-        className="flex-1 min-w-[150px] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-        onClick={handleViewDetails}
-      >
-        <Eye className="h-4 w-4 mr-2" />
-        View Details
-      </Button>
-    )}
+      <CardFooter className="border-t border-gray-100 bg-gray-50 p-6">
+        <div className="flex flex-wrap gap-3 w-full">
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_client_view"
+          ) && (
+            <Button
+              variant="default"
+              className="flex-1 min-w-[150px] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              onClick={handleViewDetails}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+          )}
 
-    <Button
-      onClick={handleUpgrade}
-      className="flex-1 min-w-[150px] bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-    >
-      <ArrowUpCircle className="h-4 w-4 mr-2" />
-      Upgrade Package
-    </Button>
+          {hasPermissionClient(
+            user?.permissions,
+            "client_card_Upgrade_Package"
+          ) && (
+            <Button
+              onClick={handleUpgrade}
+              className="flex-1 min-w-[150px] bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+            >
+              <ArrowUpCircle className="h-4 w-4 mr-2" />
+              Upgrade Package
+            </Button>
+          )}
 
-    <Button
-      onClick={() => setOpenDanger(true)}
-      disabled={isDeleting}
-      className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-    >
-      <Trash2 className="h-4 w-4 mr-2" />
-      Delete
-    </Button>
+          <Button
+            onClick={() => setOpenDanger(true)}
+            disabled={isDeleting}
+            className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
 
-    {hasPermissionClient(user?.permissions, "client_card_task_view") && (
-      <Button
-        variant="default"
-        className="flex-1 min-w-[150px] bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-        onClick={handleViewTasks}
-      >
-        <ListChecks className="h-4 w-4 mr-2" />
-        View Tasks
-      </Button>
-    )}
+          {hasPermissionClient(user?.permissions, "client_card_task_view") && (
+            <Button
+              variant="default"
+              className="flex-1 min-w-[150px] bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              onClick={handleViewTasks}
+            >
+              <ListChecks className="h-4 w-4 mr-2" />
+              View Tasks
+            </Button>
+          )}
 
-    {clientUserId && (
-      <ImpersonateButton
-        targetUserId={clientUserId}
-        targetName={client.name}
-        className="flex-1 min-w-[150px] bg-gradient-to-r from-gray-900 to-black hover:from-black hover:to-gray-800 text-white font-medium shadow-lg rounded-lg px-5 py-2.5 transition-all duration-300"
-      />
-    )}
-  </div>
-</CardFooter>
-
+          {clientUserId && (
+            <ImpersonateButton
+              targetUserId={clientUserId}
+              targetName={client.name}
+              className="flex-1 min-w-[150px] bg-gradient-to-r from-gray-900 to-black hover:from-black hover:to-gray-800 text-white font-medium shadow-lg rounded-lg px-5 py-2.5 transition-all duration-300"
+            />
+          )}
+        </div>
+      </CardFooter>
 
       <DangerDeleteClientModal
         open={openDanger}
