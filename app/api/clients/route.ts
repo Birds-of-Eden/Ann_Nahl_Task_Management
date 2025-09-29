@@ -1,7 +1,7 @@
 // app/api/clients/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
+import { getAuthUser } from "@/lib/getAuthUser";
 
 // Helper to normalize platform values
 const normalizePlatform = (input: unknown): string => {
