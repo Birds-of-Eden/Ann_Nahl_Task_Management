@@ -2,7 +2,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { GeneralInfo } from "@/components/onboarding/general-info";
 import { WebsiteInfo } from "@/components/onboarding/website-info";
 import { SocialMediaInfo } from "@/components/onboarding/social-media-info";
@@ -15,26 +16,39 @@ import { PackageInfo } from "@/components/onboarding/package-info";
 import { TemplateSelection } from "@/components/onboarding/template-selection";
 import { ArticlesSelection } from "@/components/onboarding/articles-selection";
 import type { OnboardingFormData } from "@/types/onboarding";
+import { AddClientAskPage } from "@/components/onboarding/AddClientAsk";
 
 const steps = [
-  { id: 1, title: "General Info", component: GeneralInfo },
-  { id: 2, title: "Website Info", component: WebsiteInfo },
-  { id: 3, title: "Biography", component: BiographyInfo },
-  { id: 4, title: "Image Gallery", component: ImageGallery },
-  { id: 5, title: "Social Media", component: SocialMediaInfo },
-  { id: 6, title: "Other Info", component: OtherInfo },
-  { id: 7, title: "Package", component: PackageInfo },
-  { id: 8, title: "Template", component: TemplateSelection },
-  { id: 9, title: "Articles", component: ArticlesSelection },
-  { id: 10, title: "Review", component: ReviewInfo },
+  { id: 1, title: "Add Client", component: AddClientAskPage },
+  { id: 2, title: "General Info", component: GeneralInfo },
+  { id: 3, title: "Website Info", component: WebsiteInfo },
+  { id: 4, title: "Biography", component: BiographyInfo },
+  { id: 5, title: "Image Gallery", component: ImageGallery },
+  { id: 6, title: "Social Media", component: SocialMediaInfo },
+  { id: 7, title: "Other Info", component: OtherInfo },
+  { id: 8, title: "Package", component: PackageInfo },
+  { id: 9, title: "Template", component: TemplateSelection },
+  { id: 10, title: "Articles", component: ArticlesSelection },
+  { id: 11, title: "Review", component: ReviewInfo },
 ];
 
 export default function OnboardingPage() {
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<OnboardingFormData>({
     name: "",
     progress: 0,
+    socialLinks: [],
+    selectedArticles: [],
   });
+
+  // Auto-advance to step 2 if user is starting new client
+  useEffect(() => {
+    const startNew = searchParams.get("new");
+    if (startNew === "true") {
+      setCurrentStep(2);
+    }
+  }, [searchParams]);
 
   const updateFormData = (data: Partial<OnboardingFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));

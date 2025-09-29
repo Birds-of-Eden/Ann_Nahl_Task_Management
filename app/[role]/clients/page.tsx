@@ -83,7 +83,7 @@ export default function ClientsPage() {
   };
 
   const handleAddNewClient = () => {
-    router.push("clients/add");
+    router.push("clients/onboarding");
   };
 
   const filteredClients = clients.filter((client) => {

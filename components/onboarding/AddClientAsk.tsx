@@ -1,4 +1,3 @@
-// app/[role]/clients/add/page.tsx
 "use client";
 
 import * as React from "react";
@@ -20,7 +19,7 @@ import type { Client } from "@/types/client";
 
 type Choice = "new" | "existing" | "";
 
-export default function AddClientAskPage() {
+export function AddClientAskPage() {
   const router = useRouter();
   const { role } = useParams() as { role: string };
   const base = `/${role}`;
@@ -31,7 +30,7 @@ export default function AddClientAskPage() {
   const [q, setQ] = React.useState("");
 
   const goNew = React.useCallback(
-    () => router.push(`${base}/clients/onboarding`),
+    () => router.push(`${base}/clients/onboarding?new=true`),
     [base, router]
   );
 
@@ -92,21 +91,6 @@ export default function AddClientAskPage() {
         transition={{ duration: 0.25 }}
         className="mx-auto w-full max-w-3xl"
       >
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-500 to-purple-600 shadow-lg">
-            <GalleryVerticalEnd className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900">
-              Add Client
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Answer a quick question so we can take you to the right flow.
-            </p>
-          </div>
-        </div>
-
         {/* Question */}
         <Card className="border-gray-200/70 shadow-lg">
           <CardContent className="p-8 md:p-10">

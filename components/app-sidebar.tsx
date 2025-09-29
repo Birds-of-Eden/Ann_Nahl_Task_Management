@@ -239,7 +239,7 @@ function buildNav(role: Role): NavItem[] {
         },
         {
           title: "Add Client",
-          url: p(r, "/clients/add"),
+          url: p(r, "/clients/onboarding"),
           permission: "view_clients_create",
         },
       ],
@@ -268,7 +268,7 @@ function buildNav(role: Role): NavItem[] {
         },
         {
           title: "Add Client",
-          url: p(r, "/clients/add"),
+          url: p(r, "/clients/onboarding"),
           permission: "view_am_clients_create",
         },
       ],
