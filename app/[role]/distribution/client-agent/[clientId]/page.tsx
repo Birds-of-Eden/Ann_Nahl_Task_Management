@@ -40,6 +40,7 @@ import type {
 } from "@/components/task-distribution/distribution-types";
 import { LoadingSpinner } from "@/components/task-distribution/LoadingSpinner";
 import { TaskTabs } from "@/components/task-distribution/TaskTabs";
+import { ReassignModal } from "@/components/task-distribution/ReassignModal";
 
 /* =========================
    Helpers (hoisted)
@@ -377,7 +378,39 @@ export default function TaskDistributionForClient() {
   const [categoryDueDate, setCategoryDueDate] = useState<Date>();
   const [duePickerOpen, setDuePickerOpen] = useState(false);
 
-  // -------- Data fetchers --------
+  // ✅ NEW: Reassign modal state at page level
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
+
+  // ✅ NEW: Get selected tasks as Task objects for modal
+  const selectedTaskObjects = useMemo(() => {
+    const allTasks = tasks;
+    return allTasks.filter((task) => selectedTasks.has(task.id));
+  }, [tasks, selectedTasks]);
+
+  // ✅ NEW: Handle reassign functionality at page level
+  const handleReassign = async (taskIds: string[], newAgentId: string, dueDate?: Date) => {
+    // Use the existing PUT endpoint for reassignments
+    const response = await fetch("/api/tasks/distribute", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reassignments: taskIds.map((taskId) => ({
+          taskId,
+          toAgentId: newAgentId,
+          reassignNotes: `Reassigned via modal - New due date: ${dueDate ? new Date(dueDate).toISOString() : 'No change'}`,
+        })),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to reassign tasks");
+    }
+
+    const result = await response.json();
+    return result;
+  };
 
   const fetchClient = async () => {
     try {
@@ -1065,6 +1098,11 @@ export default function TaskDistributionForClient() {
                     onTaskAssignment={handleTaskAssignment}
                     onNoteChange={handleNoteChange}
                     onViewModeChange={setViewMode}
+                    // ✅ NEW: Pass modal handlers from parent
+                    isReassignModalOpen={isReassignModalOpen}
+                    onReassignModalOpen={setIsReassignModalOpen}
+                    onReassign={handleReassign}
+                    selectedTaskObjects={selectedTaskObjects}
                   />
                 ) : (
                   // Single-tab view for posting/new/other categories
@@ -1093,6 +1131,11 @@ export default function TaskDistributionForClient() {
                     onTaskAssignment={handleTaskAssignment}
                     onNoteChange={handleNoteChange}
                     onViewModeChange={setViewMode}
+                    // ✅ NEW: Pass modal handlers from parent
+                    isReassignModalOpen={isReassignModalOpen}
+                    onReassignModalOpen={setIsReassignModalOpen}
+                    onReassign={handleReassign}
+                    selectedTaskObjects={selectedTaskObjects}
                   />
                 )}
               </section>
@@ -1114,6 +1157,15 @@ export default function TaskDistributionForClient() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ✅ NEW: Reassign Modal at page level */}
+      <ReassignModal
+        isOpen={isReassignModalOpen}
+        onClose={() => setIsReassignModalOpen(false)}
+        selectedTasks={selectedTaskObjects}
+        agents={allAgents}
+        onReassign={handleReassign}
+      />
     </div>
   );
 }

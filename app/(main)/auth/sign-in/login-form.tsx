@@ -88,12 +88,12 @@ export function LoginForm() {
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition-all duration-500 animate-pulse"></div>
 
             {/* Logo Background */}
-            <div className="relative bg-slate-800/90 p-6 rounded-xl border border-cyan-500/30 backdrop-blur-sm group-hover:border-cyan-400/50 transition-all duration-300 shadow-2xl">
+            <div className="relative bg-slate-50  rounded-xl border border-cyan-500/30 backdrop-blur-sm group-hover:border-cyan-400/50 transition-all duration-300 shadow-2xl">
               {/* Actual Logo - Adjust height as needed */}
               <img
-                src="/aan-logo.png"
+                src="/birds_of_eden.png"
                 alt="AAN Logo"
-                className="h-14 w-auto object-contain transition-all duration-300 group-hover:scale-110"
+                className=" h-52 w-58  transition-all duration-300 scale-110 hover:scale-120"
                 onError={(e) => {
                   // Fallback if logo doesn't load
                   const target = e.target as HTMLImageElement;

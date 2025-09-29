@@ -199,7 +199,6 @@ function buildNav(role: Role): NavItem[] {
     },
 
     // Chat (group, including role-specific chat links)
-
     {
       title: "Chat",
       url: p("admin", "/chat/chat_admin"),
@@ -245,7 +244,6 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // AM Clients
     // AM CEO Clients
     {
       title: "Clients",
@@ -257,6 +255,7 @@ function buildNav(role: Role): NavItem[] {
         },
       ],
     },
+
     // AM Clients
     {
       title: "Clients",
@@ -463,6 +462,54 @@ export function AppSidebar({ className }: { className?: string }) {
   );
   const chatUnread = unreadData?.count ?? 0;
 
+  /** ---------- Chat sound: refs, state, effects ---------- **/
+
+  // sound refs/state
+  const chatAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const prevChatCountRef = React.useRef<number | null>(null);
+  const [chatSoundEnabled, setChatSoundEnabled] = React.useState<boolean>(
+    () => {
+      if (typeof window === "undefined") return true;
+      return (localStorage.getItem("chatSound") ?? "on") === "on";
+    }
+  );
+
+  // init audio once
+  React.useEffect(() => {
+    if (!chatAudioRef.current) {
+      chatAudioRef.current = new Audio("/sounds/text-notify.wav");
+      chatAudioRef.current.preload = "auto";
+      chatAudioRef.current.volume = 1.0;
+    }
+  }, []);
+
+  // persist preference
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("chatSound", chatSoundEnabled ? "on" : "off");
+    }
+  }, [chatSoundEnabled]);
+
+  // play on unread count increase (skip first load)
+  React.useEffect(() => {
+    if (prevChatCountRef.current === null) {
+      prevChatCountRef.current = chatUnread; // baseline
+      return;
+    }
+    const prev = prevChatCountRef.current;
+    if (chatSoundEnabled && Number(chatUnread) > Number(prev)) {
+      chatAudioRef.current?.play().catch(() => {
+        // autoplay blocked: toggle via Settings will unlock
+      });
+      if (typeof navigator?.vibrate === "function" && document.hidden) {
+        navigator.vibrate(120);
+      }
+    }
+    prevChatCountRef.current = chatUnread;
+  }, [chatUnread, chatSoundEnabled]);
+
+  /** ------------------------------------------------------ **/
+
   type MeResponse = {
     user?: {
       id?: string;
@@ -580,6 +627,16 @@ export function AppSidebar({ className }: { className?: string }) {
                 role === "am" ? "/api/am/notifications" : "/api/notifications"
               }
             />
+
+            {/* Settings dropdown with Chat Sound toggle (mobile) */}
+            <SettingsMenu
+              chatSoundEnabled={chatSoundEnabled}
+              setChatSoundEnabled={setChatSoundEnabled}
+              onTryUnlockAudio={async () => {
+                await chatAudioRef.current?.play(); // unlock on user gesture
+              }}
+            />
+
             <Button
               variant="outline"
               size="icon"
@@ -676,14 +733,15 @@ export function AppSidebar({ className }: { className?: string }) {
                   role === "am" ? "/api/am/notifications" : "/api/notifications"
                 }
               />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-gray-400 hover:text-gray-600"
-                aria-label="Settings"
-              >
-                <Settings className="h-3 w-3" />
-              </Button>
+
+              {/* Settings dropdown with Chat Sound toggle (desktop) */}
+              <SettingsMenu
+                chatSoundEnabled={chatSoundEnabled}
+                setChatSoundEnabled={setChatSoundEnabled}
+                onTryUnlockAudio={async () => {
+                  await chatAudioRef.current?.play(); // unlock on user gesture
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1042,6 +1100,67 @@ function SidebarFooter({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+/* =========================
+   Settings Menu (Chat Sound toggle)
+========================= */
+
+function SettingsMenu({
+  chatSoundEnabled,
+  setChatSoundEnabled,
+  onTryUnlockAudio,
+}: {
+  chatSoundEnabled: boolean;
+  setChatSoundEnabled: (v: boolean) => void;
+  onTryUnlockAudio?: () => Promise<void> | void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-gray-400 hover:text-gray-600"
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Settings className="h-3 w-3" />
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Preferences</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onClick={async () => {
+            const next = !chatSoundEnabled;
+            setChatSoundEnabled(next);
+            if (next && onTryUnlockAudio) {
+              try {
+                await onTryUnlockAudio();
+              } catch {}
+            }
+          }}
+          className="flex items-center justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <BellRing className="h-4 w-4" />
+            Chat sound
+          </span>
+          <Badge
+            variant={chatSoundEnabled ? "default" : "secondary"}
+            className={chatSoundEnabled ? "bg-emerald-600 text-white" : ""}
+          >
+            {chatSoundEnabled ? "On" : "Off"}
+          </Badge>
+        </DropdownMenuItem>
+
+        {/* add more prefs here later */}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
