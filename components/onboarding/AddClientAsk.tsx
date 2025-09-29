@@ -10,11 +10,19 @@ import {
   ArrowRight,
   Search,
   GalleryVerticalEnd,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Client } from "@/types/client";
 
 type Choice = "new" | "existing" | "";
@@ -28,6 +36,7 @@ export function AddClientAskPage() {
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [q, setQ] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   const goNew = React.useCallback(
     () => router.push(`${base}/clients/onboarding?new=true`),
@@ -36,9 +45,32 @@ export function AddClientAskPage() {
 
   const handlePickClient = React.useCallback(
     (c: Client) => {
-      // keep consistent with existing details route in your app
-      router.push(`/admin/clients/${c.id}`);
-      // or: router.push(`${base}/clients/${c.id}`)
+      // Navigate to onboarding with existing client data
+      const clientData = encodeURIComponent(JSON.stringify({
+        id: c.id,
+        name: c.name,
+        company: c.company,
+        designation: c.designation,
+        location: c.location,
+        website: c.website,
+        website2: c.website2,
+        website3: c.website3,
+        biography: c.biography,
+        companywebsite: c.companywebsite,
+        companyaddress: c.companyaddress,
+        email: c.email,
+        phone: c.phone,
+        birthdate: c.birthdate,
+        status: c.status,
+        packageId: c.packageId,
+        socialLinks: c.socialLinks,
+        imageDrivelink: c.imageDrivelink,
+        amId: c.amId,
+        startDate: c.startDate,
+        dueDate: c.dueDate,
+      }));
+
+      router.push(`${base}/clients/onboarding?existing=true&clientData=${clientData}`);
     },
     [router, base]
   );
@@ -63,14 +95,23 @@ export function AddClientAskPage() {
   }, [choice]);
 
   const filtered = React.useMemo(() => {
+    let filteredClients = clients;
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filteredClients = filteredClients.filter((c) => c.status === statusFilter);
+    }
+
+    // Apply search filter
     const s = q.trim().toLowerCase();
-    if (!s) return clients;
-    return clients.filter((c) =>
+    if (!s) return filteredClients;
+
+    return filteredClients.filter((c) =>
       [c.name, c.company, c.designation, c.email, c.package?.name, c.status]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(s))
     );
-  }, [clients, q]);
+  }, [clients, q, statusFilter]);
 
   // Shortcuts: N = New, E = Existing
   React.useEffect(() => {
@@ -196,15 +237,29 @@ export function AddClientAskPage() {
                           </div>
                         </div>
 
-                        {/* Search */}
-                        <div className="relative mb-4">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                            placeholder="Search by name, company, email…"
-                            className="pl-9"
-                          />
+                        {/* Search and Filter */}
+                        <div className="flex gap-3 mb-4">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                              value={q}
+                              onChange={(e) => setQ(e.target.value)}
+                              placeholder="Search by name, company, email…"
+                              className="pl-9"
+                            />
+                          </div>
+                          <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-40">
+                              <Filter className="h-4 w-4 mr-2" />
+                              <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Status</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         {/* List */}
@@ -224,9 +279,20 @@ export function AddClientAskPage() {
                                 className="flex items-center justify-between gap-3 p-3 hover:bg-gray-50 transition"
                               >
                                 <div className="min-w-0">
-                                  <p className="font-medium text-gray-900 truncate">
-                                    {c.name}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-gray-900 truncate">
+                                      {c.name}
+                                    </p>
+                                    {c.status && (
+                                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                                        c.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        c.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' :
+                                        'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                      }`}>
+                                        {c.status}
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-gray-600 truncate">
                                     {c.company ?? "—"} • {c.email ?? "—"}
                                   </p>
@@ -241,7 +307,7 @@ export function AddClientAskPage() {
                                     size="sm"
                                     onClick={() => handlePickClient(c)}
                                   >
-                                    View Details
+                                    Select Client
                                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                   </Button>
                                 </div>

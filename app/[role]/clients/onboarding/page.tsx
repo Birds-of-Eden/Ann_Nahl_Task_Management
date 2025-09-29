@@ -45,8 +45,45 @@ export default function OnboardingPage() {
   // Auto-advance to step 2 if user is starting new client
   useEffect(() => {
     const startNew = searchParams.get("new");
+    const startExisting = searchParams.get("existing");
+    const clientDataParam = searchParams.get("clientData");
+
     if (startNew === "true") {
       setCurrentStep(2);
+    } else if (startExisting === "true" && clientDataParam) {
+      try {
+        const clientData = JSON.parse(decodeURIComponent(clientDataParam));
+        // Populate form with existing client data
+        setFormData({
+          name: clientData.name || "",
+          company: clientData.company || "",
+          designation: clientData.designation || "",
+          location: clientData.location || "",
+          website: clientData.website || "",
+          website2: clientData.website2 || "",
+          website3: clientData.website3 || "",
+          biography: clientData.biography || "",
+          companywebsite: clientData.companywebsite || "",
+          companyaddress: clientData.companyaddress || "",
+          email: clientData.email || "",
+          phone: clientData.phone || "",
+          birthdate: clientData.birthdate || "",
+          status: clientData.status || "",
+          packageId: clientData.packageId || "",
+          socialLinks: clientData.socialLinks || [],
+          imageDrivelink: clientData.imageDrivelink || "",
+          amId: clientData.amId || "",
+          startDate: clientData.startDate || "",
+          dueDate: clientData.dueDate || "",
+          progress: 0,
+          selectedArticles: [],
+          clientId: clientData.id,
+        });
+        setCurrentStep(2);
+      } catch (error) {
+        console.error("Error parsing client data:", error);
+        setCurrentStep(2); // Still advance to step 2 even if parsing fails
+      }
     }
   }, [searchParams]);
 
