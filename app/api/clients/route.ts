@@ -1,6 +1,7 @@
 // app/api/clients/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthUser } from "@/lib/getAuthUser";
 
 // Helper to normalize platform values
 const normalizePlatform = (input: unknown): string => {
@@ -162,7 +163,7 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/clients - Create new client
+// POST /api/clients - Create new client - activity log logic added by Faysal (29/09/2025)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -196,14 +197,11 @@ export async function POST(req: NextRequest) {
       dueDate,
       socialLinks = [],
       otherField = [],
-      // NEW: article topics
       articleTopics,
-
-      // NEW field
       amId,
     } = body;
 
-    // (Optional but recommended) enforce AM role server-side
+    // (Optional) enforce AM role server-side
     if (amId) {
       const am = await prisma.user.findUnique({
         where: { id: amId },
@@ -220,7 +218,10 @@ export async function POST(req: NextRequest) {
     // Basic validation
     const trimmedName = String(name ?? "").trim();
     if (!trimmedName) {
-      return NextResponse.json({ error: "Client name is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Client name is required" },
+        { status: 400 }
+      );
     }
 
     // Validate optional foreign keys
@@ -237,7 +238,10 @@ export async function POST(req: NextRequest) {
         ? undefined
         : Number(progress);
     if (progressNumber !== undefined && Number.isNaN(progressNumber)) {
-      return NextResponse.json({ error: "progress must be a number" }, { status: 400 });
+      return NextResponse.json(
+        { error: "progress must be a number" },
+        { status: 400 }
+      );
     }
 
     // Parse dates only if valid
@@ -247,6 +251,7 @@ export async function POST(req: NextRequest) {
       return isNaN(d.getTime()) ? undefined : d;
     };
 
+    // Create client
     let client;
     try {
       client = await prisma.client.create({
@@ -256,66 +261,151 @@ export async function POST(req: NextRequest) {
           company,
           gender,
           designation,
-        location,
+          location,
 
-        // NEW fields saved
-        email,
-        phone,
-        password,
-        recoveryEmail,
+          email,
+          phone,
+          password,
+          recoveryEmail,
 
-        website,
-        website2,
-        website3,
-        companywebsite,
-        companyaddress,
-        biography,
-        imageDrivelink,
-        avatar,
-        progress: progressNumber as any,
-        status,
-        packageId,
-        startDate: parseDate(startDate) as any,
-        dueDate: parseDate(dueDate) as any,
-        otherField: Array.isArray(otherField) ? otherField : [],
+          website,
+          website2,
+          website3,
+          companywebsite,
+          companyaddress,
+          biography,
+          imageDrivelink,
+          avatar,
+          progress: progressNumber as any,
+          status,
+          packageId,
+          startDate: parseDate(startDate) as any,
+          dueDate: parseDate(dueDate) as any,
+          otherField: Array.isArray(otherField) ? otherField : [],
 
-        // Persist social links into required JSON field
-        socialMedia: Array.isArray(socialLinks)
-          ? socialLinks
-              .filter((l: any) => l && (l.platform || l.url))
-              .map((l: any) => ({
-                platform: normalizePlatform(l.platform),
-                url: l.url ?? null,
-                username: l.username ?? null,
-                email: l.email ?? null,
-                phone: l.phone ?? null,
-                password: l.password ?? null,
-                notes: l.notes ?? null,
-              }))
-          : [],
+          socialMedia: Array.isArray(socialLinks)
+            ? socialLinks
+                .filter((l: any) => l && (l.platform || l.url))
+                .map((l: any) => ({
+                  platform: normalizePlatform(l.platform),
+                  url: l.url ?? null,
+                  username: l.username ?? null,
+                  email: l.email ?? null,
+                  phone: l.phone ?? null,
+                  password: l.password ?? null,
+                  notes: l.notes ?? null,
+                }))
+            : [],
 
-        // Save normalized article topics (default empty array if not provided)
-        articleTopics: normalizeArticleTopics(articleTopics),
-
-        // NEW: link AM
-        amId: amId || undefined,
-      } as any,
+          articleTopics: normalizeArticleTopics(articleTopics),
+          amId: amId || undefined,
+        } as any,
         include: {
           accountManager: { select: { id: true, name: true, email: true } },
         },
       });
     } catch (err: any) {
-      // Log Prisma error details for debugging
-      console.error("POST /api/clients prisma create error:", err?.code, err?.message, err?.meta);
-      // Map some known Prisma errors
+      console.error(
+        "POST /api/clients prisma create error:",
+        err?.code,
+        err?.message,
+        err?.meta
+      );
       if (err?.code === "P2003") {
-        return NextResponse.json({ error: "Foreign key constraint failed" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Foreign key constraint failed" },
+          { status: 400 }
+        );
       }
       if (err?.code === "P2002") {
-        return NextResponse.json({ error: "Unique constraint violation" }, { status: 409 });
+        return NextResponse.json(
+          { error: "Unique constraint violation" },
+          { status: 409 }
+        );
       }
       throw err;
     }
+
+    // === Activity via /api/activity with cookies forwarded ===
+    try {
+      const origin =
+        req.headers.get("origin") || (req as any).nextUrl?.origin || "";
+      const cookie = req.headers.get("cookie") ?? "";
+
+      const res = await fetch(`${origin}/api/activity`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // forward auth/session so getAuthUser() works
+          Cookie: cookie,
+        },
+        body: JSON.stringify({
+          entityType: "client",
+          entityId: String(client.id),
+          action: "onboarded", // or "created"
+          details: {
+            name: client.name,
+            email: client.email ?? null,
+            packageId: client.packageId ?? null,
+            amId: client.amId ?? null,
+            status: client.status ?? null,
+          },
+          // userId optional; /api/activity already tries getAuthUser()
+          // userId: amId,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        console.error("Activity POST failed:", res.status, text);
+
+        // Fallback: write directly so you never lose the log
+        try {
+          await prisma.activityLog.create({
+            data: {
+              id: `log_${Date.now()}_${Math.random()
+                .toString(36)
+                .slice(2, 9)}`,
+              entityType: "client",
+              entityId: String(client.id),
+              action: "onboarded",
+              details: {
+                name: client.name,
+                email: client.email ?? null,
+                packageId: client.packageId ?? null,
+                amId: client.amId ?? null,
+                status: client.status ?? null,
+              } as any,
+            },
+          });
+        } catch (e2) {
+          console.error("Activity fallback failed:", e2);
+        }
+      }
+    } catch (e) {
+      console.error("Activity POST error:", e);
+      // Fallback if network/origin resolution fails
+      try {
+        await prisma.activityLog.create({
+          data: {
+            id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "client",
+            entityId: String(client.id),
+            action: "onboarded",
+            details: {
+              name: client.name,
+              email: client.email ?? null,
+              packageId: client.packageId ?? null,
+              amId: client.amId ?? null,
+              status: client.status ?? null,
+            } as any,
+          },
+        });
+      } catch (e2) {
+        console.error("Activity fallback failed:", e2);
+      }
+    }
+
     return NextResponse.json(client, { status: 201 });
   } catch (error) {
     return NextResponse.json(
@@ -324,6 +414,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 // PUT /api/clients?id=CLIENT_ID - Update existing client (including otherField and socialMedias)
 export async function PUT(req: NextRequest) {
