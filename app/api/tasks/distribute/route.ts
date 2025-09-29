@@ -168,7 +168,7 @@ export async function PUT(request: Request) {
       // load the task to know fromAgent & clientId
       const task = await prisma.task.findUnique({
         where: { id: taskId },
-        select: { id: true, assignedToId: true, clientId: true, cycleId: true },
+        select: { id: true, assignedToId: true, clientId: true },
       });
       if (!task) {
         return NextResponse.json(
@@ -196,25 +196,6 @@ export async function PUT(request: Request) {
           },
         });
 
-        if (task.cycleId) {
-          const existingAssignment = await tx.assignment.findFirst({
-            where: {
-              taskId,
-              cycleId: task.cycleId,
-            },
-          });
-
-          if (existingAssignment) {
-            await tx.assignment.update({
-              where: { id: existingAssignment.id },
-              data: {
-                agentId: toAgentId,
-                assignedAt: new Date(),
-              },
-            });
-          }
-        }
-
         // activity log
         await tx.activityLog.create({
           data: {
@@ -225,7 +206,6 @@ export async function PUT(request: Request) {
             action: "task_reassigned",
             details: {
               clientId,
-              cycleId: task.cycleId, // Include cycle info
               reassignedAt: new Date().toISOString(),
               reassignedTo: toAgentId,
               reassignedFrom: fromAgentId ?? null,
@@ -323,10 +303,9 @@ export async function PUT(request: Request) {
       const taskIds = [...new Set(reassignments.map((r) => r.taskId))];
       const existingTasks = await prisma.task.findMany({
         where: { id: { in: taskIds } },
-        select: { id: true, assignedToId: true, cycleId: true },
+        select: { id: true, assignedToId: true },
       });
       const map = new Map(existingTasks.map((t) => [t.id, t.assignedToId]));
-      const cycleMap = new Map(existingTasks.map((t) => [t.id, t.cycleId]));
 
       await prisma.$transaction(async (tx) => {
         // update tasks
@@ -347,26 +326,6 @@ export async function PUT(request: Request) {
           )
         );
 
-        await Promise.all(
-          reassignments.map(async ({ taskId, toAgentId }) => {
-            const cycleId = cycleMap.get(taskId);
-            if (cycleId) {
-              const existingAssignment = await tx.assignment.findFirst({
-                where: { taskId, cycleId },
-              });
-              if (existingAssignment) {
-                await tx.assignment.update({
-                  where: { id: existingAssignment.id },
-                  data: {
-                    agentId: toAgentId,
-                    assignedAt: new Date(),
-                  },
-                });
-              }
-            }
-          })
-        );
-
         // logs
         await Promise.all(
           reassignments.map(({ taskId, toAgentId, reassignNotes }) =>
@@ -381,7 +340,6 @@ export async function PUT(request: Request) {
                 action: "task_reassigned",
                 details: {
                   clientId,
-                  cycleId: cycleMap.get(taskId) || null, // Include cycle info
                   reassignedAt: new Date().toISOString(),
                   reassignedTo: toAgentId,
                   reassignedFrom: map.get(taskId) ?? null,
