@@ -27,7 +27,6 @@ import {
   Search,
   Clock,
   ChevronRight,
-  ListTodo,
   ArrowLeft,
   CalendarDays,
   Timer,
@@ -40,11 +39,14 @@ import {
   Filter,
   BarChart3,
   Hash,
+  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
 import { toast } from "sonner";
 import { Building2, Package } from "lucide-react";
+import { BackgroundGradient } from "@/components/ui/background-gradient";
+import { CreateNewTaskModal } from "@/components/task-distribution/CreateNewTask";
 
 /* =========================
    Types (w/ richer fields)
@@ -241,6 +243,9 @@ export default function CreatedTasksPage() {
   const cyclesNavRef = useRef<HTMLDivElement | null>(null);
 
   const [client, setClient] = useState<ClientHeader | null>(null);
+
+  // Modal state for creating manual tasks
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
   // incoming client selection via query param
   const clientId = params.get("clientId") ?? "";
@@ -472,14 +477,25 @@ export default function CreatedTasksPage() {
                 </div>
               )}
 
-              {/* Title & subtitle */}
-              <div className="space-y-1">
-                <CardTitle className="text-3xl font-bold flex items-center gap-3 text-slate-800">
-                  <div className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center">
-                    <LayoutList className="h-6 w-6 text-slate-700" />
-                  </div>
-                  Created Tasks — Cycle View
-                </CardTitle>
+              <div className="flex items-center justify-between">
+                {/* Title & subtitle */}
+                <div className="space-y-1">
+                  <CardTitle className="text-3xl font-bold flex items-center gap-3 text-slate-800">
+                    <div className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center">
+                      <LayoutList className="h-6 w-6 text-slate-700" />
+                    </div>
+                    Created Tasks — Cycle View
+                  </CardTitle>
+                </div>
+                <div
+                  className="flex items-center gap-2 p-4 font-bold text-violet-50 cursor-pointer"
+                  onClick={() => setIsCreateTaskModalOpen(true)}
+                >
+                  <BackgroundGradient className="flex items-center gap-2 p-4">
+                    <ListTodo />
+                    Create Tasks Manually
+                  </BackgroundGradient>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -1068,6 +1084,18 @@ export default function CreatedTasksPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal for creating manual tasks */}
+      {clientId && (
+        <CreateNewTaskModal
+          isOpen={isCreateTaskModalOpen}
+          onClose={() => setIsCreateTaskModalOpen(false)}
+          onSuccess={() => {
+            fetchTasks(); // Refresh the tasks list
+          }}
+          clientId={clientId}
+        />
+      )}
     </div>
   );
 }

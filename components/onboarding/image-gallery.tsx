@@ -12,11 +12,13 @@ import {
   Download,
   Copy,
   Check,
+  Zap,
 } from "lucide-react";
 import type { StepProps } from "@/types/onboarding";
 import { toast } from "sonner";
-import Link from "next/link";
-import Image from "next/image";
+
+// 💡 FIX: Replaced "next/link" with standard <a> tag.
+// 💡 FIX: Replaced "next/image" with standard <img> tag for compatibility.
 
 type DriveImage = {
   id: string;
@@ -26,6 +28,20 @@ type DriveImage = {
   thumbnail: string;
   viewUrl: string;
 };
+
+// -------------------------------------------------------------------------------------
+// 💡 CONCEPTUAL HELPER: YOU MUST REPLACE THIS WITH YOUR ACTUAL GOOGLE AUTH LOGIC
+// This function must return the Access Token of the currently logged-in user.
+const getCurrentUserAccessToken = (): string | null => {
+  // Example for a simple dev environment: check local storage or a mock state
+  // If you use NextAuth.js, you would typically use:
+  // const { data: session } = useSession();
+  // return session?.accessToken || null;
+
+  // Returning a mock token for development purposes:
+  return localStorage.getItem("mock_google_access_token") || null;
+};
+// -------------------------------------------------------------------------------------
 
 export function ImageGallery({
   formData,
@@ -37,15 +53,25 @@ export function ImageGallery({
   const [images, setImages] = useState<DriveImage[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // NEW: copy UI state
+  // Copy UI state
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
 
+  // 💡 NEW: State for zip download
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+
   // -------- helpers --------
-  const mediaUrl = (id: string, filename?: string) =>
-    `/api/drive/media?id=${encodeURIComponent(id)}${
-      filename ? `&filename=${encodeURIComponent(filename)}` : ""
-    }`;
+
+  const accessToken = getCurrentUserAccessToken(); // Fetch token once per render
+
+  // 💡 MODIFIED: Points to the unified /api/drive endpoint and includes accessToken
+  const mediaUrl = (id: string, filename?: string) => {
+    const url = new URL(`/api/drive`, window.location.origin);
+    url.searchParams.set("id", id);
+    if (filename) url.searchParams.set("filename", filename);
+    if (accessToken) url.searchParams.set("accessToken", accessToken);
+    return url.pathname + url.search;
+  };
 
   const extractFolderId = (url: string) => {
     try {
@@ -82,15 +108,22 @@ export function ImageGallery({
       return;
     }
 
+    if (!accessToken) {
+      // Warn the user that private access might fail
+      toast.warning("Access Token missing. Only public folders may load.");
+    }
+
     setIsValidating(true);
     try {
-      const res = await fetch(
-        `/api/drive/list?folderId=${encodeURIComponent(folderId)}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      // 💡 MODIFIED: Include accessToken in the query params
+      const url = new URL(`/api/drive`, window.location.origin);
+      url.searchParams.set("folderId", folderId);
+      if (accessToken) url.searchParams.set("accessToken", accessToken);
+
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        cache: "no-store",
+      });
 
       const data = await res.json();
 
@@ -122,7 +155,7 @@ export function ImageGallery({
   const handleDownload = (img: DriveImage) => {
     try {
       const a = document.createElement("a");
-      // server forces filename + original extension
+      // server forces filename + original extension, includes token via mediaUrl
       a.href = mediaUrl(img.id, img.name);
       a.download = img.name || `image-${img.id}`;
       document.body.appendChild(a);
@@ -133,10 +166,39 @@ export function ImageGallery({
     }
   };
 
+  // 💡 NEW: Download All function
+  const handleDownloadAll = () => {
+    if (!folderId) return;
+
+    // The API route handles the actual zipping and streaming. We just initiate the download.
+    setIsDownloadingAll(true);
+    try {
+      const url = new URL(`/api/drive`, window.location.origin);
+      url.searchParams.set("zipFolderId", folderId);
+      if (accessToken) url.searchParams.set("accessToken", accessToken); // Include token for private access
+
+      const a = document.createElement("a");
+      a.href = url.toString();
+      a.download = `drive-images-${folderId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("Zip download started! The server will prepare the file.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to start zip download.");
+    } finally {
+      // Set to false immediately as the download starts in the browser,
+      // even if the server takes time to stream the data.
+      setTimeout(() => setIsDownloadingAll(false), 1000);
+    }
+  };
+  // ------------------------------------
+
   const handleCopy = async (img: DriveImage) => {
     setCopyingId(img.id);
     try {
-      const res = await fetch(mediaUrl(img.id), { cache: "no-store" });
+      const res = await fetch(mediaUrl(img.id), { cache: "no-store" }); // Includes token
       if (!res.ok) throw new Error("Failed to fetch image");
       const blob = await res.blob();
 
@@ -181,7 +243,7 @@ export function ImageGallery({
         setCopiedId(img.id);
         toast.success("Binary copy ব্যর্থ—লিংক কপি করা হলো।");
       } catch {
-        toast.error("Copy ব্যর্থ হয়েছে। Permission/HTTPS চেক করুন।");
+        toast.error("Copy ব্যর্থ হয়েছে। Permission/HTTPS চেক করুন।");
       }
     } finally {
       setCopyingId(null);
@@ -235,8 +297,18 @@ export function ImageGallery({
   ) : images.length === 0 ? (
     <Card className="border-dashed">
       <CardContent className="py-12 text-center text-gray-500">
-        No images yet. Paste a public Drive folder link and click{" "}
-        <b>Validate</b>.
+        No images yet. Paste a Drive folder link and click <b>Validate</b>.{" "}
+        {accessToken && (
+          <p className="mt-2 text-sm text-green-600">
+            You are authenticated and can access private, shared folders.
+          </p>
+        )}
+        {!accessToken && (
+          <p className="mt-2 text-sm text-red-600">
+            You are NOT authenticated. Please sign in to access private/shared
+            folders.
+          </p>
+        )}
       </CardContent>
     </Card>
   ) : (
@@ -247,12 +319,12 @@ export function ImageGallery({
         return (
           <Card key={img.id} className="overflow-hidden group">
             <div className="relative aspect-square">
-              <Image
+              {/* 💡 FIX: Using standard <img> tag instead of Next.js <Image> */}
+              <img
                 src={img.viewUrl}
                 alt={img.name}
-                fill
-                sizes="(max-width: 768px) 50vw, 25vw"
-                className="object-cover"
+                // Tailwind classes for fill/object-cover replacement
+                className="absolute inset-0 w-full h-full object-cover"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = img.thumbnail;
                 }}
@@ -296,13 +368,14 @@ export function ImageGallery({
                 {img.name}
               </div>
               <div className="mt-2">
-                <Link
+                {/* 💡 FIX: Using standard <a> tag instead of Next.js <Link> */}
+                <a
                   href={img.webViewLink}
                   target="_blank"
                   className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
                 >
                   View in Drive <ExternalLink className="h-3 w-3" />
-                </Link>
+                </a>
               </div>
             </CardContent>
           </Card>
@@ -357,17 +430,36 @@ export function ImageGallery({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Preview
+              Preview ({images.length} images)
             </h2>
-            {folderId && (
-              <Link
-                href={`https://drive.google.com/drive/folders/${folderId}`}
-                target="_blank"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-              >
-                Open folder <ExternalLink className="h-4 w-4" />
-              </Link>
-            )}
+            <div className="flex gap-2 items-center">
+              {images.length > 0 && (
+                <Button
+                  onClick={handleDownloadAll}
+                  disabled={isDownloadingAll}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {isDownloadingAll ? (
+                    "Preparing Zip..."
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Download All (Zip)
+                    </>
+                  )}
+                </Button>
+              )}
+              {folderId && (
+                <a // Removed extra `{...}` wrapping a comment which caused a syntax error
+                  href={`https://drive.google.com/drive/folders/${folderId}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                >
+                  Open folder <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+            </div>
           </div>
 
           {CurrentGrid}
@@ -383,9 +475,7 @@ export function ImageGallery({
             Skip this step
           </Button>
           {images.length > 0 && (
-            <Button onClick={onNext}>
-              Save & Continue
-            </Button>
+            <Button onClick={onNext}>Save & Continue</Button>
           )}
         </div>
       </div>

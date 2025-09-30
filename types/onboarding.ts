@@ -34,6 +34,8 @@ export interface OnboardingFormData {
   
   // Image Gallery
   imageDrivelink?: string;
+  imageFolderId?: string;
+  imageCount?: number;
   
   // Social Media
   socialLinks: Array<{
