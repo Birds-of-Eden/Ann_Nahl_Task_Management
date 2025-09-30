@@ -43,13 +43,14 @@ export default async function UnifiedLayout({
   const user = await getAuthUser();
   if (!user) redirect("/auth/sign-in");
 
+  // ✅ params আগে await করুন
   const { role } = await params;
   const segment = role as Role;
 
   if (!ALLOWED.includes(segment)) redirect("/");
 
-  // চাইলে cross-area guard দিন (উদাহরণ: অ্যাডমিন ছাড়া কেউ নিজের area ছাড়া ঢুকতে পারবে না)
-  const userRole = (user.role?.name || "client") as Role;
+  // আপনার session.user.role এখন string, তাই .name লাগবে না
+  const userRole = (user.role || "client") as Role;
   // if (segment !== userRole && userRole !== "admin") redirect(`/${userRole}`);
 
   return (

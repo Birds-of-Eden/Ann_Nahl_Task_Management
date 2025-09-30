@@ -222,7 +222,7 @@ export default function SocialCommunicationTasksPage() {
       setLoading(true);
       try {
         // who am I?
-        const sessRes = await fetch("/api/auth/get-session", {
+        const sessRes = await fetch("/api/auth/me", {
           cache: "no-store",
         });
         const sess = await sessRes.json();

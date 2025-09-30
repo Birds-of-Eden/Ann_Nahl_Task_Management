@@ -1,25 +1,9 @@
-//app/lib/getAuthUser.ts
+// lib/getAuthUser.ts
 
-import { cookies } from "next/headers";
-import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session-token")?.value;
-  if (!token) return null;
-
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: {
-      user: {
-        include: {
-          role: {
-            include: { rolePermissions: { include: { permission: true } } },
-          },
-        },
-      },
-    },
-  });
-  if (!session || new Date() > session.expiresAt) return null;
-  return session.user; // { id, name, email, role, ... }
+  const session = await getServerSession(authOptions);
+  return session?.user ?? null;
 }

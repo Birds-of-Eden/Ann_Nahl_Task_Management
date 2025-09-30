@@ -1,5 +1,4 @@
 // app/(main)/auth/sign-in/login-form.tsx
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,15 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader, Eye, EyeOff, Shield, LogIn } from "lucide-react";
+import { Loader, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,49 +25,47 @@ export function LoginForm() {
       .value;
 
     try {
-      const res = await fetch("/api/auth/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
+      // credentials provider কল
+      const res = await signIn("credentials", {
+        redirect: false, // নিজে রিডাইরেক্ট কন্ট্রোল করব
+        email,
+        password,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Invalid credentials");
+      if (res?.error) {
+        toast.error(res.error || "Invalid credentials");
         return;
       }
 
       toast.success("Signed in successfully!");
 
-      // Optional heartbeat
-      await fetch("/api/presence/heartbeat", {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => {});
+      // role-ভিত্তিক রিডাইরেক্ট (session callback এ role সেট হয়)
+      // ছোট ডিলে দিয়ে session hydrate হওয়ার সময় দিন
+      setTimeout(async () => {
+        // ক্লায়েন্ট থেকে session ফেচ
+        const me = await fetch("/api/auth/session"); // NextAuth built-in
+        const json = await me.json();
+        const role = (json?.user?.role || "").toLowerCase();
 
-      const role = (data?.user?.role || "").toLowerCase();
-      const target =
-        role === "admin"
-          ? "/admin"
-          : role === "agent"
-          ? "/agent"
-          : role === "manager"
-          ? "/manager"
-          : role === "qc"
-          ? "/qc"
-          : role === "am"
-          ? "/am"
-          : role === "am_ceo"
-          ? "/am_ceo"
-          : role === "client"
-          ? "/client"
-          : role === "data_entry"
-          ? "/data_entry"
-          : "/";
+        const target =
+          role === "admin"
+            ? "/admin"
+            : role === "agent"
+            ? "/agent"
+            : role === "manager"
+            ? "/manager"
+            : role === "qc"
+            ? "/qc"
+            : role === "am"
+            ? "/am"
+            : role === "am_ceo"
+            ? "/am_ceo"
+            : role === "data_entry"
+            ? "/data_entry"
+            : "/client";
 
-      window.location.href = target;
+        window.location.href = target;
+      }, 150);
     } catch (err) {
       console.error("Login error:", err);
       toast.error("Something went wrong. Please try again.");
@@ -133,7 +129,6 @@ export function LoginForm() {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="Enter your email address"
                 required
                 autoComplete="username"
                 className="bg-slate-700/60 border-slate-500 text-white placeholder:text-slate-400 focus:border-cyan-400 focus:ring-cyan-400 transition-all duration-300 focus:scale-[1.02] text-lg py-6 px-4 font-medium rounded-lg"
@@ -153,7 +148,6 @@ export function LoginForm() {
                   id="password"
                   type={showPass ? "text" : "password"}
                   name="password"
-                  placeholder="Enter your password"
                   required
                   autoComplete="current-password"
                   className="bg-slate-700/60 border-slate-500 text-white placeholder:text-slate-400 focus:border-cyan-400 focus:ring-cyan-400 pr-12 transition-all duration-300 focus:scale-[1.02] text-lg py-6 px-4 font-medium rounded-lg"
@@ -161,7 +155,6 @@ export function LoginForm() {
                 />
                 <button
                   type="button"
-                  aria-label={showPass ? "Hide password" : "Show password"}
                   onClick={() => setShowPass((s) => !s)}
                   className="absolute inset-y-0 right-4 flex items-center text-slate-300 hover:text-cyan-300 transition-all duration-300 hover:scale-125 disabled:opacity-50"
                   tabIndex={-1}

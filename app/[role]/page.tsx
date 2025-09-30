@@ -62,7 +62,7 @@ export default async function RoleBasedPage({
   const user = await getAuthUser();
   if (!user) redirect("/auth/sign-in");
 
-  const role = (user.role?.name || "client") as Role;
+  const role = ((user as any).role || "client") as Role;
 
   switch (role) {
     case "admin":

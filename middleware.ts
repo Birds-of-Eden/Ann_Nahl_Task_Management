@@ -43,6 +43,7 @@
 
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 /**
  * The app areas we consider "role-scoped" (must match the first path segment).
@@ -112,6 +113,7 @@ export const config = {
     "/client/:path*",
     "/data_entry/:path*",
     "/api/:path*",
+    "/auth/:path*", // auth pages allow করার জন্য
   ],
 };
 
