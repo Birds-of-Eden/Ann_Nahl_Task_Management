@@ -487,7 +487,10 @@ export default function CreatedTasksPage() {
                     Created Tasks — Cycle View
                   </CardTitle>
                 </div>
-                <div className="flex items-center gap-2 p-4 font-bold text-violet-50 cursor-pointer" onClick={() => setIsCreateTaskModalOpen(true)}>
+                <div
+                  className="flex items-center gap-2 p-4 font-bold text-violet-50 cursor-pointer"
+                  onClick={() => setIsCreateTaskModalOpen(true)}
+                >
                   <BackgroundGradient className="flex items-center gap-2 p-4">
                     <ListTodo />
                     Create Tasks Manually
