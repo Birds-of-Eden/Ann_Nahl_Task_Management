@@ -42,8 +42,10 @@ export function ImageGallery({
   const [copyingId, setCopyingId] = useState<string | null>(null);
 
   // -------- helpers --------
+
+  // MODIFIED: Points to the unified /api/drive endpoint
   const mediaUrl = (id: string, filename?: string) =>
-    `/api/drive/media?id=${encodeURIComponent(id)}${
+    `/api/drive?id=${encodeURIComponent(id)}${
       filename ? `&filename=${encodeURIComponent(filename)}` : ""
     }`;
 
@@ -84,8 +86,9 @@ export function ImageGallery({
 
     setIsValidating(true);
     try {
+      // MODIFIED: Points to the unified /api/drive endpoint
       const res = await fetch(
-        `/api/drive/list?folderId=${encodeURIComponent(folderId)}`,
+        `/api/drive?folderId=${encodeURIComponent(folderId)}`,
         {
           method: "GET",
           cache: "no-store",
@@ -181,7 +184,7 @@ export function ImageGallery({
         setCopiedId(img.id);
         toast.success("Binary copy ব্যর্থ—লিংক কপি করা হলো।");
       } catch {
-        toast.error("Copy ব্যর্থ হয়েছে। Permission/HTTPS চেক করুন।");
+        toast.error("Copy ব্যর্থ হয়েছে। Permission/HTTPS চেক করুন।");
       }
     } finally {
       setCopyingId(null);
