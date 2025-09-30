@@ -129,16 +129,16 @@ export async function middleware(req: NextRequest) {
   const firstSeg = "/" + (path.split("/")[1] || "");
   const isProtected = firstSeg in AREA_ROLE || path.startsWith("/api");
 
-  // 1) Auth check (same as before)
-  const token = req.cookies.get("session-token")?.value;
-  if (isProtected && !token) {
+  // 1) Auth check: use NextAuth JWT (works with `session: { strategy: "jwt" }`)
+  const sessionToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (isProtected && !sessionToken) {
     return isApi
       ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       : NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
 
   // If not protected or not authenticated, continue.
-  if (!isProtected || !token) return NextResponse.next();
+  if (!isProtected || !sessionToken) return NextResponse.next();
 
   // 2) Fetch user (role + permissions) from your existing endpoint.
   //    Pass cookies through so the endpoint can read the session.

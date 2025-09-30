@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { NotificationBell } from "@/components/notification-bell";
+import { signOut as nextSignOut } from "next-auth/react";
 
 /* =========================
    Types
@@ -580,20 +581,22 @@ export function AppSidebar({ className }: { className?: string }) {
   // Actions
   const handleSignOut = async () => {
     try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-    } catch {}
-    try {
-      localStorage.removeItem("chat:open");
-    } catch {}
+      // Clear any local UI state first
+      try {
+        localStorage.removeItem("chat:open");
+      } catch {}
+      try {
+        (cache as any)?.clear?.();
+      } catch {}
+      mutate(() => true, undefined, { revalidate: false });
 
-    // SWR cache flush to prevent stale flash
-    try {
-      (cache as any)?.clear?.();
-    } catch {}
-    mutate(() => true, undefined, { revalidate: false });
-
-    router.push("/auth/sign-in");
-    router.refresh();
+      // Use NextAuth to invalidate the session cookie and redirect
+      await nextSignOut({ callbackUrl: "/auth/sign-in" });
+    } catch {
+      // Fallback in case redirect didn't happen
+      router.push("/auth/sign-in");
+      router.refresh();
+    }
   };
 
   const handleExitImpersonation = async () => {
