@@ -14,6 +14,7 @@ import { signIn } from "next-auth/react";
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -42,7 +43,7 @@ export function LoginForm() {
       // ছোট ডিলে দিয়ে session hydrate হওয়ার সময় দিন
       setTimeout(async () => {
         // ক্লায়েন্ট থেকে session ফেচ
-        const me = await fetch("/api/auth/me"); // NextAuth built-in
+        const me = await fetch("/api/auth/session"); // NextAuth built-in
         const json = await me.json();
         const role = (json?.user?.role || "").toLowerCase();
 
