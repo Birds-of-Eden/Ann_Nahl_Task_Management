@@ -265,6 +265,12 @@ const PERMS = [
     name: "client_card_Upgrade_Package",
     description: "Client Card → Upgrade Package",
   },
+
+  {
+    id: "client_card_delete",
+    name: "client_card_delete",
+    description: "Client Card → Delete Client",
+  },
 ];
 
 async function seedPermissions() {
@@ -295,6 +301,8 @@ const ADMIN_PERMS: string[] = [
   "user_view",
   "user_impersonate",
   "view_activity_logs",
+  "client_card_client_view",
+  "client_card_task_view",
 
   "view_agents_create",
   "view_agents_list",
@@ -310,6 +318,7 @@ const ADMIN_PERMS: string[] = [
   "generate_biography",
   "delete_article_topic",
   "client_card_Upgrade_Package",
+  "client_card_delete",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
@@ -342,6 +351,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "generate_biography",
     "delete_article_topic",
     "client_card_Upgrade_Package",
+    "client_card_delete",
   ],
 
   agent: [
