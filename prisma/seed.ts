@@ -302,7 +302,6 @@ const ADMIN_PERMS: string[] = [
   "user_impersonate",
   "view_activity_logs",
   "client_card_client_view",
-  "client_card_task_view",
 
   "view_agents_create",
   "view_agents_list",
