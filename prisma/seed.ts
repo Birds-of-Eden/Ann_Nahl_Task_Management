@@ -78,6 +78,12 @@ const PERMS = [
   },
 
   {
+    id: "chat_manager",
+    name: "chat_manager",
+    description: "Access Manager chat link",
+  },
+
+  {
     id: "data_entry_clients_create",
     name: "data_entry_clients_create",
     description: "Access data_entry_clients_create",
@@ -346,11 +352,11 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_user_management",
     "view_activity_logs",
     "view_notifications",
-    "chat_admin",
     "generate_biography",
     "delete_article_topic",
     "client_card_Upgrade_Package",
     "client_card_delete",
+    "chat_manager",
   ],
 
   agent: [
