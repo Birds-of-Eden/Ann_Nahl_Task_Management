@@ -87,10 +87,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const actorRole = adminSession.user.role?.name?.toLowerCase() ?? "";
+    const targetRole = targetUser.role?.name?.toLowerCase() ?? "";
+
+    // HARD GUARD: only admins can impersonate admins (blocks manager => admin)
+    if (targetRole === "admin" && actorRole !== "admin") {
+      return NextResponse.json(
+        { error: "Only admins can impersonate admin users" },
+        { status: 403 }
+      );
+    }
+
     // AM scope guard: AM can only impersonate their own Client users
-    const actorRole = adminSession.user.role?.name?.toLowerCase();
     if (actorRole === "am") {
-      if (targetUser.role?.name?.toLowerCase() !== "client") {
+      if (targetRole !== "client") {
         return NextResponse.json(
           { error: "AM can only impersonate client users" },
           { status: 403 }

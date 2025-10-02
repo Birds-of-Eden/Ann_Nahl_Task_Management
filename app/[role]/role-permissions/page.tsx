@@ -59,28 +59,68 @@ const PERMISSION_CATEGORY_MAP: Record<string, string> = {
   // ---- Notifications ----
   view_notifications: "notifications",
 
-  // ---- Templates (NEW) ----
+  // ---- Templates ----
   template_edit: "templates",
   template_delete: "templates",
 
-  // ---- User Management (NEW) ----
+  // ---- User Management ----
   user_delete: "user_management",
   user_edit: "user_management",
   user_view: "user_management",
 
-  // ---- Impersonation (NEW) ----
+  // ---- Impersonation ----
   user_impersonate: "impersonate",
 
-  // ---- Clients specific (NEW) ----
+  // ---- Clients specific ----
   client_card_client_view: "clients",
   client_card_task_view: "clients",
   client_create: "clients",
-  // also map common client permissions to keep them grouped nicely
   view_clients_list: "clients",
   view_clients_create: "clients",
 
-  // ---- Sales (NEW) ----
+  // ⭐ Your requested 4 to Clients:
+  client_card_delete: "clients",
+  client_card_Upgrade_Package: "clients",
+  delete_article_topic: "clients",
+  generate_biography: "clients",
+
+  // 🧳 Packages
+  view_packages_list: "packages",
+  view_distribution_client_agent: "packages",
+  // ⭐ Your requested 1 to Packages:
+  package_create: "packages",
+  // (optionally keep these in packages too if you like)
+  package_edit: "packages",
+  package_delete: "packages",
+
+  // ---- Sales ----
   view_sales: "sales",
+
+  // ---- Chat (explicit examples; heuristic also covers) ----
+  chat_admin: "chat",
+  chat_agent: "chat",
+  chat_am: "chat",
+  chat_am_ceo: "chat",
+  chat_client: "chat",
+  chat_data_entry: "chat",
+  chat_qc: "chat",
+
+  // ---- Dashboards ----
+  view_dashboard: "dashboard",
+  data_entry_dashboard: "dashboard",
+
+  // ---- QC ----
+  view_qc_dashboard: "qc",
+  view_qc_review: "qc",
+
+  // ---- Agents ----
+  view_agents_list: "agents",
+  view_agents_create: "agents",
+
+  // ---- AM / AM CEO (will fall back to Clients/Sales heuristics too) ----
+  view_am_clients_list: "clients",
+  view_am_ceo_clients_list: "clients",
+  view_am_clients_create: "clients",
 };
 
 export default function RolePermissionPage() {
