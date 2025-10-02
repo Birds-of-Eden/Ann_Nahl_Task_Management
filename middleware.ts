@@ -79,7 +79,9 @@ export async function middleware(req: NextRequest) {
       if (meRes.ok) {
         const me = await meRes.json();
         const role = (me?.user?.role as Role) ?? "user";
-        return NextResponse.redirect(new URL(roleHome(role), req.url));
+        // Don't redirect away from auth pages when logged in - allow users to access sign-in/sign-up pages
+        // Users can manually navigate away or use the sign-out functionality if needed
+        return res;
       }
     }
     return res; // not logged-in → show auth pages (with no-store)
