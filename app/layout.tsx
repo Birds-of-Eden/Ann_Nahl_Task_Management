@@ -6,7 +6,6 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/auth-context";
 import PresencePinger from "@/components/presence/PresencePinger";
-import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 import SWRProvider from "@/components/providers/SWRProvider";
 import { SessionProvider } from "next-auth/react";
 import SessionProviderClient from "@/components/providers/SessionProviderClient";
@@ -35,7 +34,6 @@ export default function RootLayout({
         <SessionProviderClient>
           <SWRProvider>
             <AuthProvider>
-              {/* <ImpersonationBanner /> */}
               <PresencePinger />
               {children}
               <Toaster position="bottom-right" richColors />

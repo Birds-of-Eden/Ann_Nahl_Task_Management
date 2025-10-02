@@ -142,7 +142,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Projects: <FolderTree className="h-4 w-4" strokeWidth={1.75} />,
   Notifications: <BellRing className="h-4 w-4" strokeWidth={1.75} />,
 
-  // Chat (distinct icons for group vs. 1-to-1)
+  // Chat
   Chat: <MessagesSquare className="h-4 w-4" strokeWidth={1.75} />,
   "My Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
   "Admin Chat": <MessageSquareText className="h-4 w-4" strokeWidth={1.75} />,
@@ -199,7 +199,7 @@ function buildNav(role: Role): NavItem[] {
       permission: "data_entry_dashboard",
     },
 
-    // Chat (group, including role-specific chat links)
+    // Chat (group)
     {
       title: "Chat",
       url: p("admin", "/chat/chat_admin"),
@@ -279,12 +279,7 @@ function buildNav(role: Role): NavItem[] {
       url: p(r, "/packages"),
       permission: "view_packages_list",
     },
-
-    {
-      title: "sales",
-      url: p(r, "/sales"),
-      permission: "view_sales",
-    },
+    { title: "sales", url: p(r, "/sales"), permission: "view_sales" },
 
     // Distribution
     {
@@ -298,7 +293,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Tasks group
+    // Tasks
     {
       title: "Tasks",
       children: [
@@ -315,7 +310,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Agent tasks quick-links (cross-area deep-links)
+    // Agent quick links
     {
       title: "Tasks",
       url: p("agent", "/agent_tasks"),
@@ -332,7 +327,7 @@ function buildNav(role: Role): NavItem[] {
       permission: "view_agent_tasks_history",
     },
 
-    // QC review quick-link
+    // QC review
     {
       title: "QC Review",
       url: p(r, "/qc/qc-review"),
@@ -356,7 +351,7 @@ function buildNav(role: Role): NavItem[] {
       ],
     },
 
-    // Team / QC / Role-perms / Users / Activity
+    // Team / Role-perms / User / Activity
     {
       title: "Team Management",
       url: p(r, "/teams"),
@@ -395,39 +390,25 @@ function isGroup(item: NavItem): item is NavGroup {
   return (item as NavGroup).children !== undefined;
 }
 
-// helper: normalize path => ট্রেইলিং স্ল্যাশ/কুয়েরি/হ্যাশ বাদ
 function normalizePath(u: string) {
-  const noQ = u.replace(/[?#].*$/, ""); // strip query/hash
-  return noQ !== "/" ? noQ.replace(/\/+$/, "") : "/"; // strip trailing slash (except root)
+  const noQ = u.replace(/[?#].*$/, "");
+  return noQ !== "/" ? noQ.replace(/\/+$/, "") : "/";
 }
 
-/**
- * Exact-match active checker
- * -> শুধু সঠিক path মিললে active হবে
- * -> ফলে parent + child একসাথে active হবে না
- */
 function useActive(pathname: string) {
   const normPath = React.useMemo(() => normalizePath(pathname), [pathname]);
-
   return React.useCallback(
-    (url: string) => {
-      const normUrl = normalizePath(url);
-      return normPath === normUrl;
-    },
+    (url: string) => normalizePath(url) === normPath,
     [normPath]
   );
 }
 
-/** Permission-only filter — permissionSet null হলে deny (skeleton দেখাবো) */
 function filterNavByAccess(
   items: NavItem[],
   permissionSet: Set<string> | null
-): NavItem[] {
-  const hasPerm = (perm?: string) => {
-    if (!perm) return true;
-    return !!permissionSet && permissionSet.has(perm);
-  };
-
+) {
+  const hasPerm = (perm?: string) =>
+    !perm ? true : !!permissionSet?.has(perm);
   return items
     .map((it) => {
       if (isGroup(it)) {
@@ -450,73 +431,24 @@ export function AppSidebar({ className }: { className?: string }) {
   const [open, setOpen] = React.useState(!isMobile);
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
   const router = useRouter();
-
   const { cache, mutate } = useSWRConfig();
 
+  // NextAuth session (original user) — fallback only
   const { user } = useUserSession();
-  const role: Role = (user?.role as Role) ?? "user";
+  const sessionRole = (user?.role as Role) ?? "user";
+  const sessionUserId = user?.id ?? null;
+  const sessionName = user?.name || "User";
+  const sessionEmail = user?.email || "";
+  const sessionImage = user?.image || "";
 
-  const { data: unreadData } = useSWR<{ count: number }>(
-    "/api/chat/unread-count",
-    fetcher,
-    { refreshInterval: 15_000, revalidateOnFocus: true }
-  );
-  const chatUnread = unreadData?.count ?? 0;
-
-  /** ---------- Chat sound: refs, state, effects ---------- **/
-
-  // sound refs/state
-  const chatAudioRef = React.useRef<HTMLAudioElement | null>(null);
-  const prevChatCountRef = React.useRef<number | null>(null);
-  const [chatSoundEnabled, setChatSoundEnabled] = React.useState<boolean>(
-    () => {
-      if (typeof window === "undefined") return true;
-      return (localStorage.getItem("chatSound") ?? "on") === "on";
-    }
-  );
-
-  // init audio once
-  React.useEffect(() => {
-    if (!chatAudioRef.current) {
-      chatAudioRef.current = new Audio("/sounds/text-notify.wav");
-      chatAudioRef.current.preload = "auto";
-      chatAudioRef.current.volume = 1.0;
-    }
-  }, []);
-
-  // persist preference
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("chatSound", chatSoundEnabled ? "on" : "off");
-    }
-  }, [chatSoundEnabled]);
-
-  // play on unread count increase (skip first load)
-  React.useEffect(() => {
-    if (prevChatCountRef.current === null) {
-      prevChatCountRef.current = chatUnread; // baseline
-      return;
-    }
-    const prev = prevChatCountRef.current;
-    if (chatSoundEnabled && Number(chatUnread) > Number(prev)) {
-      chatAudioRef.current?.play().catch(() => {
-        // autoplay blocked: toggle via Settings will unlock
-      });
-      if (typeof navigator?.vibrate === "function" && document.hidden) {
-        navigator.vibrate(120);
-      }
-    }
-    prevChatCountRef.current = chatUnread;
-  }, [chatUnread, chatSoundEnabled]);
-
-  /** ------------------------------------------------------ **/
-
+  // Acting user (from /api/auth/me) — primary when impersonating/always preferred
   type MeResponse = {
     user?: {
       id?: string;
       role?: string | null;
       name?: string | null;
       email?: string;
+      image?: string | null;
       permissions?: string[];
     } | null;
     impersonation?: {
@@ -528,31 +460,96 @@ export function AppSidebar({ className }: { className?: string }) {
     refreshInterval: 30_000,
     revalidateOnFocus: true,
   });
+
+  // Primary role/user is from /api/auth/me; fallback to session
+  const actingRole: Role =
+    ((me?.user?.role as Role) || null) ?? sessionRole ?? "user";
+  const actingUserId: string | null =
+    (me?.user?.id as string | undefined) ?? sessionUserId;
+
+  const displayName = (me?.user?.name as string | null) ?? sessionName;
+  const displayEmail = (me?.user?.email as string | undefined) ?? sessionEmail;
+  const displayImage = (me?.user?.image as string | undefined) ?? sessionImage;
+
   const isImpersonating = !!me?.impersonation?.isImpersonating;
   const startedBy =
     me?.impersonation?.realAdmin?.name ||
     me?.impersonation?.realAdmin?.email ||
     null;
 
-  // Permissions (role + user.id to avoid stale)
-  const permKey = user?.id
-    ? `/api/role-permissions/${role}?uid=${user.id}`
-    : null;
+  // Notifications — role-aware base
+  const apiBaseForNotifications =
+    actingRole === "am" ? "/api/am/notifications" : "/api/notifications";
+
+  // Unread chat count
+  const { data: unreadData } = useSWR<{ count: number }>(
+    "/api/chat/unread-count",
+    fetcher,
+    { refreshInterval: 15_000, revalidateOnFocus: true }
+  );
+  const chatUnread = unreadData?.count ?? 0;
+
+  /** ---------- Chat sound ---------- **/
+  const chatAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const prevChatCountRef = React.useRef<number | null>(null);
+  const [chatSoundEnabled, setChatSoundEnabled] = React.useState<boolean>(
+    () => {
+      if (typeof window === "undefined") return true;
+      return (localStorage.getItem("chatSound") ?? "on") === "on";
+    }
+  );
+
+  React.useEffect(() => {
+    if (!chatAudioRef.current) {
+      chatAudioRef.current = new Audio("/sounds/text-notify.wav");
+      chatAudioRef.current.preload = "auto";
+      chatAudioRef.current.volume = 1.0;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("chatSound", chatSoundEnabled ? "on" : "off");
+    }
+  }, [chatSoundEnabled]);
+
+  React.useEffect(() => {
+    if (prevChatCountRef.current === null) {
+      prevChatCountRef.current = chatUnread;
+      return;
+    }
+    const prev = prevChatCountRef.current;
+    if (chatSoundEnabled && Number(chatUnread) > Number(prev)) {
+      chatAudioRef.current?.play().catch(() => {});
+      if (typeof navigator?.vibrate === "function" && document.hidden) {
+        navigator.vibrate(120);
+      }
+    }
+    prevChatCountRef.current = chatUnread;
+  }, [chatUnread, chatSoundEnabled]);
+
+  // Permissions (use acting role + acting user id)
+  const permKey =
+    actingUserId && actingRole
+      ? `/api/role-permissions/${actingRole}?uid=${actingUserId}`
+      : null;
+
   const { data: rolePermData } = useSWR<RolePermResponse>(permKey, fetcher, {
     revalidateOnMount: true,
     revalidateOnFocus: true,
     keepPreviousData: false,
     dedupingInterval: 0,
   });
+
   const permissionSet = React.useMemo<Set<string> | null>(() => {
     const list = rolePermData?.permissions ?? [];
     return rolePermData ? new Set(list.map((p) => p.id)) : null;
   }, [rolePermData]);
 
-  const isPermLoading = permissionSet === null && !!user?.id;
+  const isPermLoading = permissionSet === null && !!actingUserId;
 
   const active = useActive(pathname);
-  const nav = React.useMemo(() => buildNav(role), [role]);
+  const nav = React.useMemo(() => buildNav(actingRole), [actingRole]);
   const visibleNav = React.useMemo(
     () => filterNavByAccess(nav, permissionSet),
     [nav, permissionSet]
@@ -573,15 +570,13 @@ export function AppSidebar({ className }: { className?: string }) {
     setExpanded((prev) => ({ ...prev, ...next }));
   }, [visibleNav, active]);
 
-  // Reset expanded when user/role changes
   React.useEffect(() => {
     setExpanded({});
-  }, [user?.id, role]);
+  }, [actingUserId, actingRole]);
 
   // Actions
   const handleSignOut = async () => {
     try {
-      // Clear any local UI state first
       try {
         localStorage.removeItem("chat:open");
       } catch {}
@@ -589,11 +584,8 @@ export function AppSidebar({ className }: { className?: string }) {
         (cache as any)?.clear?.();
       } catch {}
       mutate(() => true, undefined, { revalidate: false });
-
-      // Use NextAuth to invalidate the session cookie and redirect
       await nextSignOut({ callbackUrl: "/auth/sign-in" });
     } catch {
-      // Fallback in case redirect didn't happen
       router.push("/auth/sign-in");
       router.refresh();
     }
@@ -603,7 +595,8 @@ export function AppSidebar({ className }: { className?: string }) {
     try {
       await fetch("/api/impersonate/stop", { method: "POST" });
     } catch {}
-    router.refresh();
+    // হার্ড ন্যাভ — অরিজিনাল সেশন রোল অনুযায়ী ল্যান্ডিং
+    window.location.replace("/");
   };
 
   return (
@@ -625,21 +618,14 @@ export function AppSidebar({ className }: { className?: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell
-              apiBase={
-                role === "am" ? "/api/am/notifications" : "/api/notifications"
-              }
-            />
-
-            {/* Settings dropdown with Chat Sound toggle (mobile) */}
+            <NotificationBell apiBase={apiBaseForNotifications} />
             <SettingsMenu
               chatSoundEnabled={chatSoundEnabled}
               setChatSoundEnabled={setChatSoundEnabled}
               onTryUnlockAudio={async () => {
-                await chatAudioRef.current?.play(); // unlock on user gesture
+                await chatAudioRef.current?.play();
               }}
             />
-
             <Button
               variant="outline"
               size="icon"
@@ -671,7 +657,7 @@ export function AppSidebar({ className }: { className?: string }) {
                         key={`group:${item.title}:${childKeys}:${idx}`}
                         item={item}
                         active={active}
-                        role={role}
+                        role={actingRole}
                         expanded={expanded}
                         setExpanded={setExpanded}
                       />
@@ -683,7 +669,7 @@ export function AppSidebar({ className }: { className?: string }) {
                       key={`leaf:${leaf.url}:${idx}`}
                       item={leaf}
                       active={active}
-                      role={role}
+                      role={actingRole}
                       expanded={expanded}
                       setExpanded={setExpanded}
                     />
@@ -727,22 +713,24 @@ export function AppSidebar({ className }: { className?: string }) {
             <div className="flex items-center gap-2">
               <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-md px-2 py-0.5">
                 <Shield className="h-3 w-3 mr-1" />
-                {role.charAt(0).toUpperCase() + role.slice(1)} Area
+                {actingRole.charAt(0).toUpperCase() + actingRole.slice(1)} Area
               </Badge>
+              {isImpersonating && (
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-100 text-amber-900 border-amber-200"
+                >
+                  Acting
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1">
-              <NotificationBell
-                apiBase={
-                  role === "am" ? "/api/am/notifications" : "/api/notifications"
-                }
-              />
-
-              {/* Settings dropdown with Chat Sound toggle (desktop) */}
+              <NotificationBell apiBase={apiBaseForNotifications} />
               <SettingsMenu
                 chatSoundEnabled={chatSoundEnabled}
                 setChatSoundEnabled={setChatSoundEnabled}
                 onTryUnlockAudio={async () => {
-                  await chatAudioRef.current?.play(); // unlock on user gesture
+                  await chatAudioRef.current?.play();
                 }}
               />
             </div>
@@ -785,10 +773,10 @@ export function AppSidebar({ className }: { className?: string }) {
 
         {/* Footer / Profile */}
         <SidebarFooter
-          userName={user?.name || "User"}
-          userEmail={user?.email || ""}
-          userImage={user?.image || ""}
-          role={role}
+          userName={displayName}
+          userEmail={displayEmail}
+          userImage={displayImage}
+          role={actingRole}
           isImpersonating={isImpersonating}
           startedBy={startedBy}
           onExitImpersonation={handleExitImpersonation}
@@ -906,7 +894,6 @@ function LeafItem({
   chatUnread?: number;
 }) {
   const isActive = active(item.url);
-
   const isChatLink =
     item.title.toLowerCase().includes("chat") || item.url.includes("/chat");
 
@@ -1010,6 +997,10 @@ function MobileItem({
   );
 }
 
+/* =========================
+   Sidebar Footer (Impersonation-aware)
+========================= */
+
 function SidebarFooter({
   userName,
   userEmail,
@@ -1029,6 +1020,16 @@ function SidebarFooter({
   onExitImpersonation: () => void;
   onSignOut: () => void;
 }) {
+  const initials =
+    (userName || "User")
+      .split(" ")
+      .map((s) => s?.[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "US";
+
+  const roleLabel = role?.toUpperCase?.() || "USER";
+
   return (
     <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-gray-50/50 to-white/50">
       <DropdownMenu>
@@ -1038,13 +1039,15 @@ function SidebarFooter({
               "w-full flex items-center gap-3 p-3 rounded-xl bg-white/60 backdrop-blur-sm",
               "border border-gray-200/50 shadow-sm hover:shadow transition"
             )}
+            aria-label="Account menu"
           >
             <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
               <AvatarImage src={userImage} alt={userName} />
               <AvatarFallback className="bg-gradient-to-tr from-cyan-500 to-blue-500 text-white font-semibold">
-                {userName.substring(0, 2).toUpperCase()}
+                {initials}
               </AvatarFallback>
             </Avatar>
+
             <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1.5">
                 {userName}
@@ -1052,8 +1055,19 @@ function SidebarFooter({
                   variant="secondary"
                   className="h-5 px-1.5 py-0 text-[10px]"
                 >
-                  {role.toUpperCase()}
+                  {roleLabel}
                 </Badge>
+                {isImpersonating && (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 px-1.5 py-0 text-[10px] bg-amber-100 text-amber-900 border-amber-200"
+                    title={
+                      startedBy ? `Started by ${startedBy}` : "Impersonating"
+                    }
+                  >
+                    Acting
+                  </Badge>
+                )}
               </p>
               <p className="text-xs text-gray-500 truncate">{userEmail}</p>
             </div>
@@ -1064,15 +1078,18 @@ function SidebarFooter({
           <DropdownMenuLabel className="text-xs text-muted-foreground">
             Signed in as{" "}
             <span className="ml-1 font-medium text-foreground">
-              {userEmail}
+              {userEmail || "User"}
             </span>
           </DropdownMenuLabel>
+
           <DropdownMenuSeparator />
+
           <DropdownMenuItem asChild>
             <Link href="/profile" className="w-full flex items-center gap-2">
               <BadgeCheck className="h-4 w-4" /> Profile
             </Link>
           </DropdownMenuItem>
+
           <DropdownMenuItem asChild>
             <Link href="/settings" className="w-full flex items-center gap-2">
               <Settings className="h-4 w-4" /> Settings
@@ -1085,14 +1102,19 @@ function SidebarFooter({
               <DropdownMenuItem
                 onClick={onExitImpersonation}
                 className="text-amber-700 focus:text-amber-800"
+                title={
+                  startedBy ? `Started by ${startedBy}` : "Exit impersonation"
+                }
               >
-                <ShieldOff className="h-4 w-4 mr-2" /> Exit impersonation
+                <ShieldOff className="h-4 w-4 mr-2" />
+                Exit impersonation
                 {startedBy ? ` (by ${startedBy})` : ""}
               </DropdownMenuItem>
             </>
           )}
 
           <DropdownMenuSeparator />
+
           <DropdownMenuItem
             className="text-red-600 focus:text-red-700"
             onClick={onSignOut}
@@ -1160,8 +1182,6 @@ function SettingsMenu({
             {chatSoundEnabled ? "On" : "Off"}
           </Badge>
         </DropdownMenuItem>
-
-        {/* add more prefs here later */}
       </DropdownMenuContent>
     </DropdownMenu>
   );
