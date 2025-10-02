@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher/server";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -89,7 +90,6 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user }: { token: any; user?: any }) {
-      // On initial sign-in, user is present
       if (user?.id) {
         token.sub = user.id;
         try {
@@ -98,20 +98,15 @@ export const authOptions: NextAuthOptions = {
             include: { role: true },
           });
           (token as any).role = dbUser?.role?.name ?? null;
-        } catch (e) {
-          // ignore role enrichment failure
-        }
+        } catch {}
       }
       return token;
     },
     async redirect({ url, baseUrl, token }: { url: string; baseUrl: string; token?: any }) {
-      // Normalize relative URLs
       if (url.startsWith("/")) url = baseUrl + url;
       try {
         const target = new URL(url);
-        if (target.origin !== baseUrl) return baseUrl; // disallow external
-        // If NextAuth tries to send us back to the sign-in page post-auth,
-        // push users to their role home instead.
+        if (target.origin !== baseUrl) return baseUrl;
         if (target.pathname === "/auth/sign-in") {
           const role = (token?.role || "").toLowerCase();
           const dest =
@@ -157,6 +152,65 @@ export const authOptions: NextAuthOptions = {
         dbUser?.role?.rolePermissions.map((rp) => rp.permission.id) ?? [];
 
       return session;
+    },
+  },
+  events: {
+    async signIn({ user, account }) {
+      try {
+        const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const log = await prisma.activityLog.create({
+          data: {
+            id,
+            entityType: "auth",
+            entityId: (user as any)?.id ?? user.email ?? "unknown",
+            userId: (user as any)?.id ?? undefined,
+            action: "sign_in",
+            details: {
+              provider: account?.provider ?? "unknown",
+              email: user.email ?? null,
+              name: user.name ?? null,
+            },
+          },
+        });
+        try {
+          await pusherServer.trigger("activity", "activity:new", {
+            id: log.id,
+            entityType: log.entityType,
+            entityId: log.entityId,
+            action: log.action,
+            details: log.details,
+            timestamp: (log as any).timestamp ?? new Date().toISOString(),
+          });
+        } catch {}
+      } catch (e) {}
+    },
+    async signOut({ token }) {
+      try {
+        const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const entityId = (token as any)?.sub ?? (token as any)?.email ?? "unknown";
+        const log = await prisma.activityLog.create({
+          data: {
+            id,
+            entityType: "auth",
+            entityId,
+            userId: (token as any)?.sub ?? undefined,
+            action: "sign_out",
+            details: {
+              email: (token as any)?.email ?? null,
+            },
+          },
+        });
+        try {
+          await pusherServer.trigger("activity", "activity:new", {
+            id: log.id,
+            entityType: log.entityType,
+            entityId: log.entityId,
+            action: log.action,
+            details: log.details,
+            timestamp: (log as any).timestamp ?? new Date().toISOString(),
+          });
+        } catch {}
+      } catch (e) {}
     },
   },
 };
