@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Images,
   Download,
@@ -14,183 +14,217 @@ import {
   AlertCircle,
   Check,
   RefreshCw,
-} from "lucide-react"
-import Image from "next/image"
-import Link from "next/link"
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 interface DriveFile {
-  id: string
-  name: string
-  mimeType: string
-  thumbnail: string
-  webViewLink: string
-  viewUrl: string
+  id: string;
+  name: string;
+  mimeType: string;
+  thumbnail: string;
+  webViewLink: string;
+  viewUrl: string;
 }
 
 interface DriveApiResponse {
   folder: {
-    id: string
-    name: string
-  }
-  count: number
-  images: DriveFile[]
+    id: string;
+    name: string;
+  };
+  count: number;
+  images: DriveFile[];
 }
 
 interface DriveImageGalleryProps {
-  driveLink: string
-  clientName: string
+  driveLink: string;
+  clientName: string;
 }
 
-export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryProps) {
-  const [images, setImages] = useState<DriveFile[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isExpanded, setIsExpanded] = useState(true)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [copyingId, setCopyingId] = useState<string | null>(null)
+export function DriveImageGallery({
+  driveLink,
+  clientName,
+}: DriveImageGalleryProps) {
+  const [images, setImages] = useState<DriveFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
 
+  // media → /api/drive?id=...
   const mediaUrl = (id: string, filename?: string) =>
-    `/api/drive/media?id=${encodeURIComponent(id)}${filename ? `&filename=${encodeURIComponent(filename)}` : ""}`
+    `/api/drive?id=${encodeURIComponent(id)}${
+      filename ? `&filename=${encodeURIComponent(filename)}` : ""
+    }`;
 
   // Extract folder ID from Google Drive link
   const extractFolderId = (url: string): string | null => {
     try {
-      const u = new URL(url)
-      const foldIdx = u.pathname.indexOf("/folders/")
+      const u = new URL(url);
+      const foldIdx = u.pathname.indexOf("/folders/");
       if (foldIdx !== -1) {
-        const id = u.pathname.slice(foldIdx + "/folders/".length).split("/")[0]
-        if (id) return id
+        const id = u.pathname.slice(foldIdx + "/folders/".length).split("/")[0];
+        if (id) return id;
       }
-      const viaQuery = u.searchParams.get("id")
-      if (viaQuery) return viaQuery
-      return null
+      const viaQuery = u.searchParams.get("id");
+      if (viaQuery) return viaQuery;
+      return null;
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   const fetchDriveFiles = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const folderId = extractFolderId(driveLink)
+      const folderId = extractFolderId(driveLink);
       if (!folderId) {
-        throw new Error("Invalid Google Drive link format")
+        throw new Error("Invalid Google Drive link format");
       }
 
-      const response = await fetch(`/api/drive/list?folderId=${folderId}`)
+      const response = await fetch(`/api/drive?folderId=${folderId}`);
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to fetch drive files: ${response.status} ${errorText}`)
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to fetch drive files: ${response.status} ${errorText}`
+        );
       }
 
-      const data: DriveApiResponse = await response.json()
-      setImages(data.images || [])
+      const data: DriveApiResponse = await response.json();
+      setImages(data.images || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load drive files")
-      console.error("Drive API error:", err)
+      setError(err.message || "Failed to load drive files");
+      console.error("Drive API error:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (driveLink) {
-      fetchDriveFiles()
+      fetchDriveFiles();
     }
-  }, [driveLink])
+  }, [driveLink]);
 
   const handleCopy = async (img: DriveFile) => {
-    setCopyingId(img.id)
+    setCopyingId(img.id);
     try {
-      const res = await fetch(mediaUrl(img.id), { cache: "no-store" })
-      if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
-      const blob = await res.blob()
+      const res = await fetch(mediaUrl(img.id), { cache: "no-store" });
+      if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+      const blob = await res.blob();
 
-      const mime = blob.type && blob.type.startsWith("image/") ? blob.type : "image/png"
+      const mime =
+        blob.type && blob.type.startsWith("image/") ? blob.type : "image/png";
 
       // Try native binary clipboard write
       // @ts-ignore
-      if (navigator.clipboard && "write" in navigator.clipboard && typeof ClipboardItem !== "undefined") {
+      if (
+        navigator.clipboard &&
+        "write" in navigator.clipboard &&
+        typeof ClipboardItem !== "undefined"
+      ) {
         try {
           // @ts-ignore
-          await navigator.clipboard.write([new ClipboardItem({ [mime]: blob })])
-          setCopiedId(img.id)
-          toast.success("Image copied successfully! You can now paste it anywhere (Ctrl/⌘+V).")
+          await navigator.clipboard.write([
+            new ClipboardItem({ [mime]: blob }),
+          ]);
+          setCopiedId(img.id);
+          toast.success(
+            "Image copied successfully! You can now paste it anywhere (Ctrl/⌘+V)."
+          );
         } catch {
           // Fallback: PNG convert then copy
-          const pngBlob = await toPngBlob(blob)
+          const pngBlob = await toPngBlob(blob);
           // @ts-ignore
-          await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })])
-          setCopiedId(img.id)
-          toast.success("Image copied as PNG! You can now paste it (Ctrl/⌘+V).")
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": pngBlob }),
+          ]);
+          setCopiedId(img.id);
+          toast.success(
+            "Image copied as PNG! You can now paste it (Ctrl/⌘+V)."
+          );
         }
       } else {
         // No binary clipboard → copy link as a last resort
-        await navigator.clipboard.writeText(img.webViewLink)
-        setCopiedId(img.id)
-        toast.success("Binary copy unavailable—Google Drive link copied instead.")
+        await navigator.clipboard.writeText(img.webViewLink);
+        setCopiedId(img.id);
+        toast.success(
+          "Binary copy unavailable—Google Drive link copied instead."
+        );
       }
     } catch (err) {
       try {
-        await navigator.clipboard.writeText(img.webViewLink)
-        setCopiedId(img.id)
-        toast.success("Image copy failed—Google Drive link copied instead.")
+        await navigator.clipboard.writeText(img.webViewLink);
+        setCopiedId(img.id);
+        toast.success("Image copy failed—Google Drive link copied instead.");
       } catch {
-        toast.error("Copy operation failed. Please check permissions and ensure you're using HTTPS.")
+        toast.error(
+          "Copy operation failed. Please check permissions and ensure you're using HTTPS."
+        );
       }
     } finally {
-      setCopyingId(null)
+      setCopyingId(null);
       // Reset button label after 2 seconds
-      setTimeout(() => setCopiedId((curr) => (curr === img.id ? null : curr)), 2000)
+      setTimeout(
+        () => setCopiedId((curr) => (curr === img.id ? null : curr)),
+        2000
+      );
     }
-  }
+  };
 
   async function toPngBlob(src: Blob): Promise<Blob> {
     try {
-      const bmp = await createImageBitmap(src)
+      const bmp = await createImageBitmap(src);
       // @ts-ignore
       if (typeof OffscreenCanvas !== "undefined") {
         // @ts-ignore
-        const canvas = new OffscreenCanvas(bmp.width, bmp.height)
-        const ctx = canvas.getContext("2d")!
-        ctx.drawImage(bmp, 0, 0)
+        const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(bmp, 0, 0);
         // @ts-ignore
-        return await canvas.convertToBlob({ type: "image/png" })
+        return await canvas.convertToBlob({ type: "image/png" });
       }
-      const canvas = document.createElement("canvas")
-      canvas.width = bmp.width
-      canvas.height = bmp.height
-      const ctx = canvas.getContext("2d")!
-      ctx.drawImage(bmp, 0, 0)
+      const canvas = document.createElement("canvas");
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bmp, 0, 0);
       const pngBlob: Blob = await new Promise((resolve, reject) =>
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas to blob conversion failed"))), "image/png"),
-      )
-      return pngBlob
+        canvas.toBlob(
+          (b) =>
+            b
+              ? resolve(b)
+              : reject(new Error("Canvas to blob conversion failed")),
+          "image/png"
+        )
+      );
+      return pngBlob;
     } catch {
-      return src // Ultimate fallback
+      return src; // Ultimate fallback
     }
   }
 
   const handleDownload = (img: DriveFile) => {
     try {
-      const a = document.createElement("a")
+      const a = document.createElement("a");
       // Server forces filename + original extension
-      a.href = mediaUrl(img.id, img.name)
-      a.download = img.name || `image-${img.id}`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      toast.success(`Downloading "${img.name}"`)
+      a.href = mediaUrl(img.id, img.name);
+      a.download = img.name || `image-${img.id}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success(`Downloading "${img.name}"`);
     } catch {
-      window.open(img.webViewLink, "_blank")
-      toast.info("Direct download failed—opened in Google Drive instead.")
+      window.open(img.webViewLink, "_blank");
+      toast.info("Direct download failed—opened in Google Drive instead.");
     }
-  }
+  };
 
-  if (!driveLink) return null
+  if (!driveLink) return null;
 
   return (
     <Card className="border-0 shadow-lg bg-white dark:bg-gray-900 overflow-hidden mb-6">
@@ -202,11 +236,15 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                 <Images className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Drive Assets - {clientName}</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50">
+                  Drive Assets - {clientName}
+                </h2>
                 <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
                   {loading
                     ? "Loading files..."
-                    : `${images.length} ${images.length === 1 ? "file" : "files"} available`}
+                    : `${images.length} ${
+                        images.length === 1 ? "file" : "files"
+                      } available`}
                 </p>
               </div>
             </div>
@@ -239,7 +277,11 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                 className="hover:bg-white/60 dark:hover:bg-gray-800/60"
                 title={isExpanded ? "Collapse" : "Expand"}
               >
-                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -251,7 +293,10 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                <div
+                  key={i}
+                  className="aspect-square rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse"
+                />
               ))}
             </div>
           ) : error ? (
@@ -261,8 +306,12 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                   <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Failed to Load Files</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+                  <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">
+                    Failed to Load Files
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {error}
+                  </p>
                 </div>
                 <Button
                   variant="outline"
@@ -279,9 +328,12 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
               <Card className="border-dashed border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                 <CardContent className="py-12 px-8 text-center">
                   <Images className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Files Found</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    No Files Found
+                  </h3>
                   <p className="text-gray-500 dark:text-gray-400">
-                    This Google Drive folder appears to be empty or contains no supported file types.
+                    This Google Drive folder appears to be empty or contains no
+                    supported file types.
                   </p>
                 </CardContent>
               </Card>
@@ -289,8 +341,8 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {images.map((img) => {
-                const isCopied = copiedId === img.id
-                const isBusy = copyingId === img.id
+                const isCopied = copiedId === img.id;
+                const isBusy = copyingId === img.id;
                 return (
                   <Card
                     key={img.id}
@@ -304,7 +356,8 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                         sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                         className="object-cover transition-transform duration-200 group-hover:scale-105"
                         onError={(e) => {
-                          ;(e.currentTarget as HTMLImageElement).src = img.thumbnail || "/placeholder.svg"
+                          (e.currentTarget as HTMLImageElement).src =
+                            img.thumbnail || "/placeholder.svg";
                         }}
                       />
 
@@ -354,7 +407,10 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                     </div>
 
                     <CardContent className="p-3">
-                      <div className="text-sm font-medium truncate mb-2" title={img.name}>
+                      <div
+                        className="text-sm font-medium truncate mb-2"
+                        title={img.name}
+                      >
                         {img.name}
                       </div>
                       <Link
@@ -366,12 +422,12 @@ export function DriveImageGallery({ driveLink, clientName }: DriveImageGalleryPr
                       </Link>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           )}
         </CardContent>
       )}
     </Card>
-  )
+  );
 }
