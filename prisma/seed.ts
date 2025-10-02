@@ -1,5 +1,5 @@
 // prisma/seed.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -347,7 +347,6 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_agents_list",
     "view_agents_create",
     "view_teams_manage",
-
     "view_user_management",
     "view_activity_logs",
     "view_notifications",
@@ -542,7 +541,7 @@ const USERS: SeedUser[] = [
 // id, accountId, providerId, userId, accessToken, refreshToken, password, createdAt, updatedAt
 // If your schema uses different names (e.g., provider, providerAccountId), rename below accordingly.
 async function upsertCredentialsAccount(
-  tx: PrismaClient,
+  tx: Prisma.TransactionClient, // ✅ correct type
   userId: string,
   roleName: string,
   hashedPassword: string
