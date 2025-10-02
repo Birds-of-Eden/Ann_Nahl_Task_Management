@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader, Eye, EyeOff, Shield, LogIn } from "lucide-react";
+import { Loader, Eye, EyeOff, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -43,7 +43,7 @@ export function LoginForm() {
 
       toast.success("Signed in successfully!");
 
-      // Optional heartbeat
+      // Optional heartbeat (ignore any failure)
       await fetch("/api/presence/heartbeat", {
         method: "POST",
         credentials: "include",
@@ -69,7 +69,9 @@ export function LoginForm() {
           ? "/data_entry"
           : "/";
 
-      window.location.href = target;
+      // ✅ history replace: back চাপলেও sign-in এ ফিরবে না
+      router.replace(target);
+      router.refresh(); // (optional) ensure server components revalidate
     } catch (err) {
       console.error("Login error:", err);
       toast.error("Something went wrong. Please try again.");
@@ -88,14 +90,13 @@ export function LoginForm() {
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition-all duration-500 animate-pulse"></div>
 
             {/* Logo Background */}
-            <div className="relative bg-slate-50  rounded-xl border border-cyan-500/30 backdrop-blur-sm group-hover:border-cyan-400/50 transition-all duration-300 shadow-2xl">
-              {/* Actual Logo - Adjust height as needed */}
+            <div className="relative bg-slate-50 rounded-xl border border-cyan-500/30 backdrop-blur-sm group-hover:border-cyan-400/50 transition-all duration-300 shadow-2xl">
+              {/* Actual Logo */}
               <img
                 src="/birds_of_eden.png"
                 alt="AAN Logo"
-                className=" h-52 w-58  transition-all duration-300 scale-110 hover:scale-120"
+                className="h-52 w-58 transition-all duration-300 scale-110 hover:scale-120"
                 onError={(e) => {
-                  // Fallback if logo doesn't load
                   const target = e.target as HTMLImageElement;
                   target.style.display = "none";
                 }}
@@ -140,6 +141,7 @@ export function LoginForm() {
                 disabled={loading}
               />
             </div>
+
             <div className="space-y-3">
               <Label
                 htmlFor="password"
