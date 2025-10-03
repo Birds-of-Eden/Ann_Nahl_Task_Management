@@ -32,7 +32,13 @@ function hasImpersonatePermission(
 ) {
   if (!session?.user) return false;
   const roleName = session.user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "am") return true; // allow AM
+
+  // ✅ admin, am, am_ceo—তিনজনই impersonate করতে পারে
+  if (roleName === "admin" || roleName === "am" || roleName === "am_ceo") {
+    return true;
+  }
+
+  // বিকল্প: rolePermissions-এ user_impersonate থাকলে allow
   const perms =
     session.user.role?.rolePermissions.map((rp) => rp.permission.name) || [];
   return perms.includes("user_impersonate");
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
     const actorRole = adminSession.user.role?.name?.toLowerCase() ?? "";
     const targetRole = targetUser.role?.name?.toLowerCase() ?? "";
 
-    // HARD GUARD: only admins can impersonate admins (blocks manager => admin)
+    // HARD GUARD: only admins can impersonate admins
     if (targetRole === "admin" && actorRole !== "admin") {
       return NextResponse.json(
         { error: "Only admins can impersonate admin users" },
@@ -98,8 +104,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // AM scope guard: AM can only impersonate their own Client users
+    // ✅ Scope guards
     if (actorRole === "am") {
+      // AM: শুধুমাত্র নিজের client impersonate করতে পারবে
       if (targetRole !== "client") {
         return NextResponse.json(
           { error: "AM can only impersonate client users" },
@@ -119,7 +126,24 @@ export async function POST(req: NextRequest) {
       if (!client || String(client.amId) !== String(adminSession.userId)) {
         return NextResponse.json({ error: "Not your client" }, { status: 403 });
       }
+    } else if (actorRole === "am_ceo") {
+      // AM CEO: যেকোনো client impersonate করতে পারবে (ownership check নেই)
+      if (targetRole !== "client") {
+        return NextResponse.json(
+          { error: "AM CEO can only impersonate client users" },
+          { status: 403 }
+        );
+      }
+      if (!targetUser.clientId) {
+        // চাইলে এটাও স্কিপ করা যায়; এখানে রেখেছি data integrity এর জন্য
+        return NextResponse.json(
+          { error: "Target client link missing" },
+          { status: 403 }
+        );
+      }
+      // ⛔ কোনো amId মালিকানা চেক নেই — AM CEO সব client impersonate করতে পারবে
     }
+    // admin: কোনো client scope সীমাবদ্ধতা নেই (উপরে admin=>admin guard ছাড়া)
 
     const impersonatedToken = randomUUID();
     const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
