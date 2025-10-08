@@ -6,24 +6,31 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { ClientOverviewHeader } from "@/components/clients/client-overview-header";
+// Import necessary components
 import { ClientStatusSummary } from "@/components/clients/client-status-summary";
-import { ClientGrid } from "@/components/clients/client-grid";
-import { ClientList } from "@/components/clients/client-list";
 import type { Client } from "@/types/client";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { AmCeoClientOverviewHeader } from "@/components/clients/am-ceo-client-overview-header";
+import { AmGroupedClientView } from "@/components/clients/am-grouped-client-view"; // ✅ The key component for the new UI
+
+// Type definition for a single AM Group
+type AmGroup = {
+  am: { id: string; name: string | null; email: string | null };
+  clients: Client[];
+};
 
 export default function ClientsPage() {
   const router = useRouter();
 
-  // ✅ হুক থেকে user / loading সঠিকভাবে নাও
+  // Session State
   const { user, loading: sessionLoading } = useUserSession();
 
+  // Data and UI State
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  // Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
@@ -32,10 +39,10 @@ export default function ClientsPage() {
   const [packages, setPackages] = useState<{ id: string; name: string }[]>([]);
 
   const currentUserId = user?.id ?? undefined;
-  const currentUserRole = user?.role ?? undefined; // hook এ role string আসে
+  const currentUserRole = user?.role ?? undefined;
   const isAM = (currentUserRole ?? "").toLowerCase() === "am";
 
-  // ✅ AM হলে UI ফিল্টারও জোর করে নিজের amId-তে সেট করো
+  // Enforce AM filtering to their own ID
   useEffect(() => {
     if (
       !sessionLoading &&
@@ -48,11 +55,12 @@ export default function ClientsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionLoading, isAM, currentUserId]);
 
-  // --- Clients ফেচ (AM হলে server-side স্কোপিং) ---
+  // --- Clients Fetch ---
   const fetchClients = useCallback(async () => {
-    if (sessionLoading) return; // session না আসা পর্যন্ত অপেক্ষা
+    if (sessionLoading) return;
     setLoading(true);
     try {
+      // Apply server-side scope for AM role
       const url =
         isAM && currentUserId
           ? `/api/clients?amId=${encodeURIComponent(currentUserId)}`
@@ -63,7 +71,6 @@ export default function ClientsPage() {
 
       const raw = await response.json();
 
-      // 🔒 shape-agnostic extract: [], {clients:[]}, {data:[]}, {data:{clients:[]}}
       const list =
         (Array.isArray(raw) && raw) ||
         (Array.isArray(raw?.clients) && raw.clients) ||
@@ -71,7 +78,7 @@ export default function ClientsPage() {
         (Array.isArray(raw?.data?.clients) && raw.data.clients) ||
         [];
 
-      // 🔧 id-গুলো string normalize করে নাও (amId, packageId, accountManager.id)
+      // Normalize IDs to strings
       const normalized: Client[] = (list as any[]).map((c) => ({
         ...c,
         id: String(c.id),
@@ -98,7 +105,7 @@ export default function ClientsPage() {
     }
   }, [sessionLoading, isAM, currentUserId]);
 
-  // --- Packages ফেচ (shape-agnostic) ---
+  // --- Packages Fetch ---
   const fetchPackages = useCallback(async () => {
     try {
       const resp = await fetch("/api/packages", { cache: "no-store" });
@@ -118,7 +125,7 @@ export default function ClientsPage() {
       );
       setPackages(mapped);
     } catch {
-      // fallback: বর্তমান clients থেকে derive করো
+      // Fallback: derive from existing clients
       const derived = Array.from(
         clients.reduce((map, c) => {
           if (c.packageId)
@@ -133,7 +140,7 @@ export default function ClientsPage() {
     }
   }, [clients]);
 
-  // session লোড হওয়ার পরেই ফেচ করো
+  // Effects for fetching data
   useEffect(() => {
     if (!sessionLoading) fetchClients();
   }, [sessionLoading, fetchClients]);
@@ -142,16 +149,12 @@ export default function ClientsPage() {
     if (!sessionLoading) fetchPackages();
   }, [sessionLoading, fetchPackages]);
 
-  // Navigate to details
+  // Navigation handler
   const handleViewClientDetails = (client: Client) => {
     router.push(`/am_ceo/clients/${client.id}`);
   };
 
-  // const handleAddNewClient = () => {
-  //   router.push("/am/clients/onboarding");
-  // };
-
-  // Account manager options build (AM হলে নিজেরটাই থাকবে)
+  // Build list of Account Managers for the filter dropdown
   const accountManagers = useMemo(
     () =>
       Array.from(
@@ -160,6 +163,7 @@ export default function ClientsPage() {
           if (!id) return map;
           const nm = c.accountManager?.name ?? null;
           const email = c.accountManager?.email ?? null;
+          // Format: "Name (email)" or "Name" or "ID"
           const label = nm ? (email ? `${nm} (${email})` : nm) : String(id);
           if (!map.has(String(id)))
             map.set(String(id), { id: String(id), label });
@@ -169,9 +173,9 @@ export default function ClientsPage() {
     [clients]
   );
 
-  // Client-side নিরাপত্তা ফিল্টার (server-side ছাড়াও)
+  // --- Client-side filtering logic ---
   const filteredClients = clients.filter((client) => {
-    // status filter
+    // Status filter
     if (
       statusFilter !== "all" &&
       (client.status ?? "").toLowerCase() !== statusFilter.toLowerCase()
@@ -179,14 +183,14 @@ export default function ClientsPage() {
       return false;
     }
 
-    // package filter (string compare)
+    // Package filter
     const clientPkgId =
       client.packageId != null ? String(client.packageId) : null;
     if (packageFilter !== "all" && clientPkgId !== String(packageFilter)) {
       return false;
     }
 
-    // AM scope (string compare)
+    // AM scope filter (enforces AM's own scope first)
     const effectiveAmFilter =
       isAM && currentUserId
         ? String(currentUserId)
@@ -201,7 +205,7 @@ export default function ClientsPage() {
       return false;
     }
 
-    // search filter
+    // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const hit =
@@ -214,7 +218,63 @@ export default function ClientsPage() {
     return true;
   });
 
-  // Loading UI: session বা data যেকোনওটা লোডিং হলে
+  // --- Core: Grouping filtered clients by AM ID ---
+  const groupedClients: AmGroup[] = useMemo(() => {
+    const groups = new Map<string, AmGroup>();
+
+    filteredClients.forEach((client) => {
+      // Use "unassigned" if no AM ID is present
+      const effectiveAmId =
+        client.amId ?? client.accountManager?.id ?? "unassigned";
+
+      if (!groups.has(effectiveAmId)) {
+        // Find the AM's label from the pre-built list
+        const amLabel = accountManagers.find(
+          (am) => am.id === effectiveAmId
+        )?.label;
+        let amName = null;
+        let amEmail = null;
+
+        if (amLabel) {
+          // Attempt to parse "Name (email)" format
+          const match = amLabel.match(/(.*)\s\((.*)\)/);
+          if (match) {
+            amName = match[1].trim();
+            amEmail = match[2].trim();
+          } else {
+            amName = amLabel;
+          }
+        }
+
+        groups.set(effectiveAmId, {
+          am: {
+            id: effectiveAmId,
+            // Prioritize data from the client object if available, otherwise use parsed label
+            name: client.accountManager?.name || amName || null,
+            email: client.accountManager?.email || amEmail || null,
+          },
+          clients: [],
+        });
+      }
+
+      groups.get(effectiveAmId)?.clients.push(client);
+    });
+
+    // Convert Map to Array
+    const groupsArray = Array.from(groups.values());
+
+    // Sort: Unassigned clients go to the bottom
+    groupsArray.sort((a, b) => {
+      if (a.am.id === "unassigned") return 1;
+      if (b.am.id === "unassigned") return -1;
+      // Sort by name alphabetically
+      return (a.am.name || a.am.id).localeCompare(b.am.name || b.am.id);
+    });
+
+    return groupsArray;
+  }, [filteredClients, accountManagers]);
+
+  // Loading UI
   if (sessionLoading || loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -223,9 +283,10 @@ export default function ClientsPage() {
     );
   }
 
+  // Final Render
   return (
     <div className="py-8 px-4 md:px-6">
-      {/* Header + Summary */}
+      {/* Header + Filters + Summary */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-100">
         <AmCeoClientOverviewHeader
           searchQuery={searchQuery}
@@ -234,35 +295,32 @@ export default function ClientsPage() {
           setStatusFilter={setStatusFilter}
           packageFilter={packageFilter}
           setPackageFilter={setPackageFilter}
-          packages={packages} // [{ id, name }]
+          packages={packages}
           amFilter={amFilter}
           setAmFilter={setAmFilter}
-          accountManagers={accountManagers} // [{ id, label }]
+          accountManagers={accountManagers}
           currentUserId={currentUserId}
-          currentUserRole={currentUserRole} // e.g. "am"
+          currentUserRole={currentUserRole}
           viewMode={viewMode}
           setViewMode={setViewMode}
         />
+        {/* Note: Summary uses ALL clients, not filtered ones, for overall stats */}
         <ClientStatusSummary clients={clients} />
       </div>
 
-      {/* Clients Grid or List */}
-      {filteredClients.length === 0 ? (
+      {/* Clients Grouped by AM (The new professional view) */}
+      {groupedClients.length === 0 ? (
         <div className="text-center py-12 text-gray-500 bg-white rounded-xl shadow-lg border border-gray-100">
           <p className="text-lg font-medium mb-2">
             No clients found matching your criteria.
           </p>
           <p className="text-sm">Try adjusting your search or filters.</p>
         </div>
-      ) : viewMode === "grid" ? (
-        <ClientGrid
-          clients={filteredClients}
-          onViewDetails={handleViewClientDetails}
-        />
       ) : (
-        <ClientList
-          clients={filteredClients}
+        <AmGroupedClientView
+          groupedClients={groupedClients}
           onViewDetails={handleViewClientDetails}
+          viewMode={viewMode}
         />
       )}
     </div>
