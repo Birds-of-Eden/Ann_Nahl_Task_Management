@@ -165,7 +165,7 @@ export function CreateTemplateModal({
       name: site.name,
       url: site.url ?? "",
       description: "",
-      isRequired: Boolean(site.isRequired),
+      isRequired: true,
       defaultPostingFrequency: 3,
       defaultIdealDurationMinutes: 30,
     });
@@ -225,7 +225,7 @@ export function CreateTemplateModal({
                   name: "Completed.com",
                   url: "https://Completed.com",
                   description: "",
-                  isRequired: false,
+                  isRequired: true,
                   defaultPostingFrequency: 1,
                   defaultIdealDurationMinutes: 30,
                 },
@@ -269,7 +269,7 @@ export function CreateTemplateModal({
   const initializeDefaultAssets = () => {
     setName("");
     setDescription("");
-    setStatus("draft");
+    setStatus("active");
 
     setSocialSites(DEFAULT_SOCIAL_SITES.map(mapDefaults("social_site")));
     setWeb2Sites(DEFAULT_WEB2_SITES.map(mapDefaults("web2_site")));
