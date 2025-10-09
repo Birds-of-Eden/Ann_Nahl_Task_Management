@@ -169,7 +169,7 @@ export function PackageCards() {
         : role === "manager"
         ? "manager"
         : "data_entry";
-    router.push(`/${basePath}/packages/id-${pkg.id}/templates`);
+    router.push(`/${basePath}/packages/${pkg.id}/templates`);
   };
 
   const handleViewDetails = (packageId: string) => {
