@@ -60,6 +60,7 @@ import {
   DEFAULT_MONITORING,
   DEFAULT_REVIEW_REMOVAL,
   DEFAULT_SUMMARY_REPORT,
+  DEFAULT_MONTHLY_REPORT,
 } from "@/Data/template_site";
 
 // === Types ===
@@ -75,7 +76,8 @@ type SiteAssetTypeTS =
   | "youtube_video_optimization"
   | "monitoring"
   | "review_removal"
-  | "summary_report";
+  | "summary_report"
+  | "monthly_report";
 
 interface SiteAsset {
   type: SiteAssetTypeTS;
@@ -136,6 +138,7 @@ export function CreateTemplateModal({
   const [monitoring, setMonitoring] = useState<SiteAsset[]>([]);
   const [reviewRemoval, setReviewRemoval] = useState<SiteAsset[]>([]);
   const [summaryReport, setSummaryReport] = useState<SiteAsset[]>([]);
+  const [monthlyReport, setMonthlyReport] = useState<SiteAsset[]>([]);
 
   const steps = [
     { id: 0, title: "Basic Info", description: "Template details", icon: FileText },
@@ -151,6 +154,7 @@ export function CreateTemplateModal({
     { id: 10, title: "Monitoring", description: "Performance tracking", icon: BarChart },
     { id: 11, title: "Review Removal", description: "Handle reviews", icon: ShieldAlert },
     { id: 12, title: "Summary Report", description: "Final reporting", icon: FileBarChart },
+    { id: 13, title: "Monthly Report", description: "Monthly reporting", icon: FileBarChart },
   ];
 
   // Helpers to create default SiteAsset from a simple default item
@@ -249,6 +253,11 @@ export function CreateTemplateModal({
             ? pick("summary_report")
             : DEFAULT_SUMMARY_REPORT.map(mapDefaults("summary_report"))
         );
+        setMonthlyReport(
+          pick("monthly_report").length
+            ? pick("monthly_report")
+            : DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report"))
+        );
       } else {
         initializeDefaultAssets();
       }
@@ -288,6 +297,7 @@ export function CreateTemplateModal({
     setMonitoring(DEFAULT_MONITORING.map(mapDefaults("monitoring")));
     setReviewRemoval(DEFAULT_REVIEW_REMOVAL.map(mapDefaults("review_removal")));
     setSummaryReport(DEFAULT_SUMMARY_REPORT.map(mapDefaults("summary_report")));
+    setMonthlyReport(DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report")));
   };
 
   const resetForm = () => {
@@ -324,6 +334,8 @@ export function CreateTemplateModal({
         return [reviewRemoval, setReviewRemoval];
       case "summary_report":
         return [summaryReport, setSummaryReport];
+      case "monthly_report":
+        return [monthlyReport, setMonthlyReport];
     }
   };
 
@@ -387,6 +399,7 @@ export function CreateTemplateModal({
         monitoring,
         reviewRemoval,
         summaryReport,
+        monthlyReport,
       ]
         .flat()
         .filter((site) => site.name.trim());
@@ -787,6 +800,15 @@ export function CreateTemplateModal({
           summaryReport,
           "summary_report",
           "Summary Report",
+          <FileBarChart className="w-5 h-5" />,
+          "bg-fuchsia-500"
+        );
+
+      case 13:
+        return renderSiteAssetFields(
+          monthlyReport,
+          "monthly_report",
+          "Monthly Report",
           <FileBarChart className="w-5 h-5" />,
           "bg-fuchsia-500"
         );

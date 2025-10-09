@@ -365,6 +365,7 @@ const CATEGORY_BY_ASSET_TYPE: Record<string, string> = {
   monitoring: "Monitoring",
   review_removal: "Review Removal",
   summary_report: "Summary Report",
+  monthly_report: "Monthly Report",
 };
 
 async function ensureCategoryByName(name: string) {
@@ -517,6 +518,9 @@ export async function POST(
           if (!targetAssignment && selectedTemplateId) {
             targetAssignment = await prisma.assignment.create({
               data: {
+                id: `assignment_${Date.now()}_${Math.random()
+                  .toString(36)
+                  .slice(2, 9)}`,
                 clientId,
                 templateId: selectedTemplateId,
                 status: "active",
