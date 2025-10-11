@@ -49,7 +49,8 @@ function hasImpersonatePermission(
 function getIsSecure(req: NextRequest) {
   const proto =
     req.headers.get("x-forwarded-proto") ??
-    (req as any).nextUrl?.protocol?.replace(":", "") ??
+    // @ts-ignore - nextUrl.protocol exists in Next runtime
+    req.nextUrl?.protocol?.replace(":", "") ??
     "http";
   return proto === "https";
 }
@@ -81,17 +82,24 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ AM-স্কোপ গার্ড (যদি actor AM হয়)
-    if (perm.roleName === "am") {
+    if ((perm.roleName ?? "").toLowerCase() === "am") {
       const scope = await amScopeCheck(actorUserId, targetUserId);
       if (!scope.ok) {
         return NextResponse.json({ error: scope.reason }, { status: 403 });
       }
     }
 
+    // 🎯 টার্গেট ইউজার + রোল
     const target = await prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { id: true, email: true, name: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: { select: { name: true } },
+      },
     });
+
     if (!target) {
       return NextResponse.json(
         { error: "Target user not found" },
@@ -99,10 +107,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const actorRole = adminSession.user.role?.name?.toLowerCase() ?? "";
-    const targetRole = targetUser.role?.name?.toLowerCase() ?? "";
+    // 🔐 রোল ডিটারমিনেশন
+    const actorRole = (
+      perm.roleName ??
+      session.user.role?.name ??
+      ""
+    ).toLowerCase();
+    const targetRole = target.role?.name?.toLowerCase() ?? "";
 
-    // HARD GUARD: only admins can impersonate admins
+    // 🧱 HARD GUARD: শুধুমাত্র অ্যাডমিনই অ্যাডমিনকে ইমপারসোনেট করতে পারবে
     if (targetRole === "admin" && actorRole !== "admin") {
       return NextResponse.json(
         { error: "Only admins can impersonate admin users" },
@@ -110,63 +123,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ Scope guards
-    if (actorRole === "am") {
-      // AM: শুধুমাত্র নিজের client impersonate করতে পারবে
-      if (targetRole !== "client") {
-        return NextResponse.json(
-          { error: "AM can only impersonate client users" },
-          { status: 403 }
-        );
-      }
-      if (!targetUser.clientId) {
-        return NextResponse.json(
-          { error: "Target client link missing" },
-          { status: 403 }
-        );
-      }
-      const client = await prisma.client.findUnique({
-        where: { id: targetUser.clientId },
-        select: { amId: true },
-      });
-      if (!client || String(client.amId) !== String(adminSession.userId)) {
-        return NextResponse.json({ error: "Not your client" }, { status: 403 });
-      }
-    } else if (actorRole === "am_ceo") {
-      // AM CEO: যেকোনো client impersonate করতে পারবে (ownership check নেই)
-      if (targetRole !== "client") {
-        return NextResponse.json(
-          { error: "AM CEO can only impersonate client users" },
-          { status: 403 }
-        );
-      }
-      if (!targetUser.clientId) {
-        // চাইলে এটাও স্কিপ করা যায়; এখানে রেখেছি data integrity এর জন্য
-        return NextResponse.json(
-          { error: "Target client link missing" },
-          { status: 403 }
-        );
-      }
-      // ⛔ কোনো amId মালিকানা চেক নেই — AM CEO সব client impersonate করতে পারবে
-    }
-    // admin: কোনো client scope সীমাবদ্ধতা নেই (উপরে admin=>admin guard ছাড়া)
-
-    const impersonatedToken = randomUUID();
-    const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
-
-    await prisma.session.create({
-      data: {
-        token: impersonatedToken,
-        userId: targetUser.id,
-        expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        ipAddress: ip(req),
-        userAgent: req.headers.get("user-agent") ?? null,
-        impersonatedBy: adminSession.userId,
-      },
-    });
-
+    // ✅ অডিট লগ
     await prisma.activityLog.create({
       data: {
         id: randomUUID(),
@@ -189,9 +146,9 @@ export async function POST(req: NextRequest) {
     );
 
     const secure = isSecure(req);
-    const maxAge = 3 * 60 * 60;
+    const maxAge = 3 * 60 * 60; // 3 hours
 
-    // অরিজিনাল ইউজার সংরক্ষণ (UI/স্টপের জন্য দরকার)
+    // 🧭 অরিজিনাল ইউজার সংরক্ষণ (UI/স্টপের জন্য দরকার)
     res.cookies.set("impersonation-origin", session.user.id, {
       httpOnly: true,
       secure,
@@ -200,7 +157,7 @@ export async function POST(req: NextRequest) {
       maxAge,
     });
 
-    // টার্গেট ইউজার সেট
+    // 🎭 টার্গেট ইউজার সেট
     res.cookies.set("impersonation-target", target.id, {
       httpOnly: true,
       secure,
