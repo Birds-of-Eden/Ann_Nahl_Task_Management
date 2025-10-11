@@ -8,6 +8,7 @@ import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher/server";
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true,
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -56,7 +57,15 @@ export const authOptions: NextAuthOptions = {
   ],
   pages: { signIn: "/auth/sign-in" },
   callbacks: {
-    async signIn({ user, account, profile }: { user: any; account: any; profile?: any }) {
+    async signIn({
+      user,
+      account,
+      profile,
+    }: {
+      user: any;
+      account: any;
+      profile?: any;
+    }) {
       if (account?.provider === "google" && user.email) {
         try {
           const existingUser = await prisma.user.findUnique({
@@ -102,7 +111,15 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async redirect({ url, baseUrl, token }: { url: string; baseUrl: string; token?: any }) {
+    async redirect({
+      url,
+      baseUrl,
+      token,
+    }: {
+      url: string;
+      baseUrl: string;
+      token?: any;
+    }) {
       if (url.startsWith("/")) url = baseUrl + url;
       try {
         const target = new URL(url);
@@ -157,7 +174,9 @@ export const authOptions: NextAuthOptions = {
   events: {
     async signIn({ user, account }) {
       try {
-        const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        const id = `log_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 9)}`;
         const log = await prisma.activityLog.create({
           data: {
             id,
@@ -186,8 +205,11 @@ export const authOptions: NextAuthOptions = {
     },
     async signOut({ token }) {
       try {
-        const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-        const entityId = (token as any)?.sub ?? (token as any)?.email ?? "unknown";
+        const id = `log_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 9)}`;
+        const entityId =
+          (token as any)?.sub ?? (token as any)?.email ?? "unknown";
         const log = await prisma.activityLog.create({
           data: {
             id,

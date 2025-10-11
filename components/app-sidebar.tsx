@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { NotificationBell } from "@/components/notification-bell";
-import { signOut as nextSignOut } from "next-auth/react";
+import AuthClient from "@/lib/auth-client"; // default export
 
 /* =========================
    Types
@@ -589,7 +589,7 @@ export function AppSidebar({ className }: { className?: string }) {
         (cache as any)?.clear?.();
       } catch {}
       mutate(() => true, undefined, { revalidate: false });
-      await nextSignOut({ callbackUrl: "/auth/sign-in" });
+      await AuthClient.signOut(); // ✅ beacon + NextAuth signOut
     } catch {
       router.push("/auth/sign-in");
       router.refresh();
