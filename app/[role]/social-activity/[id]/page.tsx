@@ -151,10 +151,22 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     TaskStatus,
     { bg: string; text: string; icon?: React.ReactNode }
   > = {
-    pending: { bg: "bg-gradient-to-r from-gray-100 to-gray-200", text: "text-gray-800" },
-    in_progress: { bg: "bg-gradient-to-r from-blue-100 to-blue-200", text: "text-blue-800" },
-    overdue: { bg: "bg-gradient-to-r from-red-100 to-red-200", text: "text-red-800" },
-    reassigned: { bg: "bg-gradient-to-r from-orange-100 to-orange-200", text: "text-orange-800" },
+    pending: {
+      bg: "bg-gradient-to-r from-gray-100 to-gray-200",
+      text: "text-gray-800",
+    },
+    in_progress: {
+      bg: "bg-gradient-to-r from-blue-100 to-blue-200",
+      text: "text-blue-800",
+    },
+    overdue: {
+      bg: "bg-gradient-to-r from-red-100 to-red-200",
+      text: "text-red-800",
+    },
+    reassigned: {
+      bg: "bg-gradient-to-r from-orange-100 to-orange-200",
+      text: "text-orange-800",
+    },
     completed: {
       bg: "bg-gradient-to-r from-emerald-100 to-emerald-200",
       text: "text-emerald-800",
@@ -165,7 +177,10 @@ function StatusBadge({ status }: { status: TaskStatus }) {
       text: "text-purple-800",
       icon: <Star className="w-4 h-4" />,
     },
-    cancelled: { bg: "bg-gradient-to-r from-gray-200 to-gray-300", text: "text-gray-700" },
+    cancelled: {
+      bg: "bg-gradient-to-r from-gray-200 to-gray-300",
+      text: "text-gray-700",
+    },
   };
 
   const config = map[status];
@@ -183,10 +198,22 @@ function StatusBadge({ status }: { status: TaskStatus }) {
 
 function PriorityBadge({ priority }: { priority: TaskPriority }) {
   const map: Record<TaskPriority, { bg: string; text: string }> = {
-    low: { bg: "bg-gradient-to-r from-green-100 to-green-200", text: "text-green-800" },
-    medium: { bg: "bg-gradient-to-r from-yellow-100 to-yellow-200", text: "text-yellow-800" },
-    high: { bg: "bg-gradient-to-r from-orange-100 to-orange-200", text: "text-orange-800" },
-    urgent: { bg: "bg-gradient-to-r from-red-100 to-red-200", text: "text-red-800" },
+    low: {
+      bg: "bg-gradient-to-r from-green-100 to-green-200",
+      text: "text-green-800",
+    },
+    medium: {
+      bg: "bg-gradient-to-r from-yellow-100 to-yellow-200",
+      text: "text-yellow-800",
+    },
+    high: {
+      bg: "bg-gradient-to-r from-orange-100 to-orange-200",
+      text: "text-orange-800",
+    },
+    urgent: {
+      bg: "bg-gradient-to-r from-red-100 to-red-200",
+      text: "text-red-800",
+    },
   };
 
   const config = map[priority];
@@ -251,7 +278,7 @@ export default function TaskDetailsPage() {
     setLoading(true);
     try {
       // session
-      const sessRes = await fetch("/api/auth/get-session", {
+      const sessRes = await fetch("/api/auth/me", {
         cache: "no-store",
       });
       const sess = await sessRes.json();
@@ -611,7 +638,11 @@ export default function TaskDetailsPage() {
                 </p>
                 {task.templateSiteAsset?.url && (
                   <Link href={task.templateSiteAsset.url} target="_blank">
-                    <Button size="sm" variant="outline" className="shrink-0 shadow-md hover:shadow-lg transition-shadow">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 shadow-md hover:shadow-lg transition-shadow"
+                    >
                       <Link2 className="w-4 h-4 mr-1" />
                       Open
                     </Button>
@@ -698,14 +729,18 @@ export default function TaskDetailsPage() {
                 <div className="text-base font-semibold text-slate-700">
                   Created
                 </div>
-                <p className="text-base text-slate-800">{fmt(task.createdAt)}</p>
+                <p className="text-base text-slate-800">
+                  {fmt(task.createdAt)}
+                </p>
               </div>
 
               <div className="space-y-3">
                 <div className="text-base font-semibold text-slate-700">
                   Last Updated
                 </div>
-                <p className="text-base text-slate-800">{fmt(task.updatedAt)}</p>
+                <p className="text-base text-slate-800">
+                  {fmt(task.updatedAt)}
+                </p>
               </div>
 
               <div className="space-y-3">
@@ -1062,7 +1097,9 @@ export default function TaskDetailsPage() {
                   {stepNum < 3 && (
                     <div
                       className={`w-16 h-1 mx-3 rounded-full transition-colors duration-300 ${
-                        step > stepNum ? "bg-gradient-to-r from-green-200 to-green-300" : "bg-gradient-to-r from-slate-200 to-slate-300"
+                        step > stepNum
+                          ? "bg-gradient-to-r from-green-200 to-green-300"
+                          : "bg-gradient-to-r from-slate-200 to-slate-300"
                       }`}
                     />
                   )}
@@ -1096,7 +1133,9 @@ export default function TaskDetailsPage() {
 
                   <Card className="shadow-lg">
                     <CardHeader>
-                      <CardTitle className="text-xl font-bold">Task Overview</CardTitle>
+                      <CardTitle className="text-xl font-bold">
+                        Task Overview
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-8">
                       <div className="space-y-2">
@@ -1152,7 +1191,11 @@ export default function TaskDetailsPage() {
                             </SelectTrigger>
                             <SelectContent>
                               {SC_TYPES.map((t) => (
-                                <SelectItem key={t} value={t} className="text-base">
+                                <SelectItem
+                                  key={t}
+                                  value={t}
+                                  className="text-base"
+                                >
                                   <span className="capitalize font-semibold">
                                     {t}
                                   </span>

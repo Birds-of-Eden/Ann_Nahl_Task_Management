@@ -1,11 +1,14 @@
+// app/layout.tsx
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/auth-context";
 import PresencePinger from "@/components/presence/PresencePinger";
-import ImpersonationBanner from "@/components/auth/ImpersonationBanner";
 import SWRProvider from "@/components/providers/SWRProvider";
+import { SessionProvider } from "next-auth/react";
+import SessionProviderClient from "@/components/providers/SessionProviderClient";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -28,14 +31,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SWRProvider>
-          <AuthProvider>
-            {/* <ImpersonationBanner /> */}
-            <PresencePinger />
-            {children}
-            <Toaster position="bottom-right" richColors />
-          </AuthProvider>
-        </SWRProvider>
+        <SessionProviderClient>
+          <SWRProvider>
+            <AuthProvider>
+              <PresencePinger />
+              {children}
+              <Toaster position="bottom-right" richColors />
+            </AuthProvider>
+          </SWRProvider>
+        </SessionProviderClient>
       </body>
     </html>
   );

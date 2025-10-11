@@ -1,79 +1,45 @@
-// Minimal client helpers for auth used by client components
-// signUp.email(payload, hooks) -> creates user via /api/users
-// signOut() -> POST /api/auth/sign-out and returns boolean
+// lib/auth-client.ts
+import { signOut as nextSignOut } from "next-auth/react";
 
-type SignUpPayload = {
-  name?: string;
-  email: string;
-  password: string;
-  role?: string | { id: string; name?: string } | null;
-  roleId?: string | null;
-  clientId?: string | null;
-  [k: string]: any;
-};
-
-export const signUp = {
-  email: async (
-    payload: SignUpPayload,
-    hooks?: {
-      onRequest?: () => void;
-      onSuccess?: (res?: any) => void;
-      onError?: (err: any) => void;
-    }
-  ) => {
-    try {
-      hooks?.onRequest?.();
-
-      const body: any = { ...payload };
-
-      // If caller passed role as name, resolve to roleId
-      if (body.role && typeof body.role === "string") {
-        try {
-          const rolesRes = await fetch("/api/roles");
-          if (rolesRes.ok) {
-            const rolesJson = await rolesRes.json();
-            const roles = rolesJson?.data || [];
-            const found = roles.find(
-              (r: any) => r.name?.toLowerCase() === body.role.toLowerCase()
-            );
-            if (found) body.roleId = found.id;
-          }
-        } catch (e) {
-          // ignore and let server validate
-        }
-      }
-
-      // If roleId missing, server will return 400; forward as-is
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        hooks?.onError?.(json);
-        return json;
-      }
-
-      hooks?.onSuccess?.(json);
-      return json;
-    } catch (err) {
-      hooks?.onError?.(err);
-      return { error: err };
-    }
-  },
-};
-
-export async function signOut() {
+async function logActivity(payload: {
+  entityType: string;
+  entityId: string;
+  action: "sign_in" | "sign_out";
+  details?: unknown;
+}) {
   try {
-    const res = await fetch("/api/auth/sign-out", { method: "POST" });
-    if (!res.ok) return false;
-    return true;
+    console.log("🔄 Sending activity log:", payload);
+
+    const res = await fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    console.log("✅ Activity log response:", data);
+
+    return data;
   } catch (e) {
-    console.error("signOut error:", e);
-    return false;
+    console.error("❌ Failed to log activity:", e);
   }
 }
 
-export default { signUp, signOut };
+export async function signOut() {
+  console.log("🚪 Signing out...");
+
+  // আগে activity log এ লেখো
+  await logActivity({
+    entityType: "auth",
+    entityId: "self",
+    action: "sign_out",
+  });
+
+  // তারপর NextAuth signOut
+  await nextSignOut({ callbackUrl: "/auth/sign-in" });
+
+  console.log("👋 Signed out done.");
+  return true;
+}
+
+export default { signOut };
