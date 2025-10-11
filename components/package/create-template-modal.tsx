@@ -42,6 +42,8 @@ import {
   ShieldAlert,
   FileBarChart,
   X,
+  Info,
+  Trash,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -64,20 +66,7 @@ import {
 } from "@/Data/template_site";
 
 // === Types ===
-type SiteAssetTypeTS =
-  | "social_site"
-  | "web2_site"
-  | "additional_site"
-  | "graphics_design"
-  | "content_studio"
-  | "content_writing"
-  | "backlinks"
-  | "completed_com"
-  | "youtube_video_optimization"
-  | "monitoring"
-  | "review_removal"
-  | "summary_report"
-  | "monthly_report";
+type SiteAssetTypeTS = string; // allow predefined and custom types
 
 interface SiteAsset {
   type: SiteAssetTypeTS;
@@ -89,7 +78,7 @@ interface SiteAsset {
   defaultIdealDurationMinutes: number;
 }
 
-interface TemplateSiteAssetLike extends SiteAsset {}
+interface TemplateSiteAssetLike extends SiteAsset { }
 
 interface Template {
   id: string;
@@ -139,36 +128,82 @@ export function CreateTemplateModal({
   const [reviewRemoval, setReviewRemoval] = useState<SiteAsset[]>([]);
   const [summaryReport, setSummaryReport] = useState<SiteAsset[]>([]);
   const [monthlyReport, setMonthlyReport] = useState<SiteAsset[]>([]);
+  // store dynamic custom type lists
+  const [customTypes, setCustomTypes] = useState<Record<string, SiteAsset[]>>({});
+  // Add this state near your other state declarations
+  const [showAddTypeModal, setShowAddTypeModal] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeError, setNewTypeError] = useState("");
+
+  // Dynamic enabled types for steps (after Basic Info)
+  const ALL_TYPES: SiteAssetTypeTS[] = [
+    "social_site",
+    "web2_site",
+    "additional_site",
+    "graphics_design",
+    "content_studio",
+    "content_writing",
+    "backlinks",
+    "completed_com",
+    "youtube_video_optimization",
+    "monitoring",
+    "review_removal",
+    "summary_report",
+    "monthly_report",
+  ];
+
+  const TYPE_CONFIG: Record<SiteAssetTypeTS, { title: string; colorClass: string; icon: React.ReactNode }> = {
+    social_site: { title: "Social Sites", colorClass: "bg-blue-500", icon: <Share2 className="w-5 h-5" /> },
+    web2_site: { title: "Web 2.0 Sites", colorClass: "bg-purple-500", icon: <Globe className="w-5 h-5" /> },
+    additional_site: { title: "Additional Sites", colorClass: "bg-green-500", icon: <Sparkles className="w-5 h-5" /> },
+    graphics_design: { title: "Graphics Design", colorClass: "bg-rose-500", icon: <Palette className="w-5 h-5" /> },
+    content_studio: { title: "Content Studio", colorClass: "bg-emerald-500", icon: <PenTool className="w-5 h-5" /> },
+    content_writing: { title: "Content Writing", colorClass: "bg-indigo-500", icon: <FileEdit className="w-5 h-5" /> },
+    backlinks: { title: "Backlinks", colorClass: "bg-sky-500", icon: <LinkIcon className="w-5 h-5" /> },
+    completed_com: { title: "Completed.com", colorClass: "bg-green-500", icon: <CheckCircle className="w-5 h-5" /> },
+    youtube_video_optimization: { title: "YouTube Optimization", colorClass: "bg-red-500", icon: <Youtube className="w-5 h-5" /> },
+    monitoring: { title: "Monitoring", colorClass: "bg-slate-500", icon: <BarChart className="w-5 h-5" /> },
+    review_removal: { title: "Review Removal", colorClass: "bg-amber-500", icon: <ShieldAlert className="w-5 h-5" /> },
+    summary_report: { title: "Summary Report", colorClass: "bg-fuchsia-500", icon: <FileBarChart className="w-5 h-5" /> },
+    monthly_report: { title: "Monthly Report", colorClass: "bg-fuchsia-500", icon: <FileBarChart className="w-5 h-5" /> },
+  };
+
+  const [enabledTypes, setEnabledTypes] = useState<SiteAssetTypeTS[]>(ALL_TYPES);
+
+  const slugify = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
 
   const steps = [
-    { id: 0, title: "Basic Info", description: "Template details", icon: FileText },
-    { id: 1, title: "Social Sites", description: "Social media", icon: Share2 },
-    { id: 2, title: "Web 2.0 Sites", description: "Blogging platforms", icon: Globe },
-    { id: 3, title: "Additional Sites", description: "Other platforms", icon: Sparkles },
-    { id: 4, title: "Graphics Design", description: "Design tasks", icon: Palette },
-    { id: 5, title: "Content Studio", description: "Content production", icon: PenTool },
-    { id: 6, title: "Content Writing", description: "Articles and posts", icon: FileEdit },
-    { id: 7, title: "Backlinks", description: "Link-building", icon: LinkIcon },
-    { id: 8, title: "Completed.com", description: "Profile tasks", icon: CheckCircle },
-    { id: 9, title: "YouTube Optimization", description: "Video content", icon: Youtube },
-    { id: 10, title: "Monitoring", description: "Performance tracking", icon: BarChart },
-    { id: 11, title: "Review Removal", description: "Handle reviews", icon: ShieldAlert },
-    { id: 12, title: "Summary Report", description: "Final reporting", icon: FileBarChart },
-    { id: 13, title: "Monthly Report", description: "Monthly reporting", icon: FileBarChart },
+    { id: "basic", title: "Basic Info", description: "Template details", icon: FileText },
+    ...enabledTypes.map((t) => {
+      const cfg = TYPE_CONFIG[t];
+      const title = cfg
+        ? cfg.title
+        : t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return {
+        id: t,
+        title,
+        description: "",
+        icon: () => null,
+      };
+    }),
   ];
 
   // Helpers to create default SiteAsset from a simple default item
   const mapDefaults =
     (type: SiteAssetTypeTS) =>
-    (site: { name: string; url?: string; isRequired?: boolean }) => ({
-      type,
-      name: site.name,
-      url: site.url ?? "",
-      description: "",
-      isRequired: true,
-      defaultPostingFrequency: 3,
-      defaultIdealDurationMinutes: 30,
-    });
+      (site: { name: string; url?: string; isRequired?: boolean }) => ({
+        type,
+        name: site.name,
+        url: site.url ?? "",
+        description: "",
+        isRequired: true,
+        defaultPostingFrequency: 3,
+        defaultIdealDurationMinutes: 30,
+      });
 
   useEffect(() => {
     if (isOpen) {
@@ -220,23 +255,23 @@ export function CreateTemplateModal({
           pick("completed_com").length
             ? pick("completed_com")
             : [
-                {
-                  type: "completed_com",
-                  name: "Completed.com",
-                  url: "https://Completed.com",
-                  description: "",
-                  isRequired: true,
-                  defaultPostingFrequency: 1,
-                  defaultIdealDurationMinutes: 30,
-                },
-              ]
+              {
+                type: "completed_com",
+                name: "Completed.com",
+                url: "https://Completed.com",
+                description: "",
+                isRequired: true,
+                defaultPostingFrequency: 1,
+                defaultIdealDurationMinutes: 30,
+              },
+            ]
         );
         setYoutubeOptimization(
           pick("youtube_video_optimization").length
             ? pick("youtube_video_optimization")
             : DEFAULT_YOUTUBE_VIDEO_OPTIMIZATION.map(
-                mapDefaults("youtube_video_optimization")
-              )
+              mapDefaults("youtube_video_optimization")
+            )
         );
         setMonitoring(
           pick("monitoring").length
@@ -258,11 +293,29 @@ export function CreateTemplateModal({
             ? pick("monthly_report")
             : DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report"))
         );
+        // Enable types which have assets in initial data
+        const presentTypes = Array.from(
+          new Set((assets as SiteAsset[]).map((a) => a.type as SiteAssetTypeTS))
+        );
+        setEnabledTypes(presentTypes.length ? presentTypes : ALL_TYPES);
+
+        // Populate custom type lists for unknown types
+        const unknownTypes = presentTypes.filter((t) => !ALL_TYPES.includes(t));
+        if (unknownTypes.length) {
+          const map: Record<string, SiteAsset[]> = {};
+          for (const t of unknownTypes) {
+            map[t] = (assets as SiteAsset[]).filter((a) => a.type === t) as SiteAsset[];
+          }
+          setCustomTypes(map);
+        } else {
+          setCustomTypes({});
+        }
       } else {
         initializeDefaultAssets();
       }
       setCurrentStep(0);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isEditMode, initialData]);
 
@@ -298,6 +351,8 @@ export function CreateTemplateModal({
     setReviewRemoval(DEFAULT_REVIEW_REMOVAL.map(mapDefaults("review_removal")));
     setSummaryReport(DEFAULT_SUMMARY_REPORT.map(mapDefaults("summary_report")));
     setMonthlyReport(DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report")));
+    setEnabledTypes(ALL_TYPES);
+    setCustomTypes({});
   };
 
   const resetForm = () => {
@@ -336,6 +391,17 @@ export function CreateTemplateModal({
         return [summaryReport, setSummaryReport];
       case "monthly_report":
         return [monthlyReport, setMonthlyReport];
+      default: {
+        const list = customTypes[type] || [];
+        const setter: React.Dispatch<React.SetStateAction<SiteAsset[]>> = (updater) => {
+          setCustomTypes((prev) => {
+            const current = prev[type] || [];
+            const next = typeof updater === "function" ? (updater as any)(current) : updater;
+            return { ...prev, [type]: next };
+          });
+        };
+        return [list, setter];
+      }
     }
   };
 
@@ -402,7 +468,8 @@ export function CreateTemplateModal({
         monthlyReport,
       ]
         .flat()
-        .filter((site) => site.name.trim());
+        .filter((site) => site.name.trim())
+        .filter((site) => enabledTypes.includes(site.type));
 
       const templateData = {
         name: name.trim(),
@@ -477,6 +544,27 @@ export function CreateTemplateModal({
         <Badge variant="outline" className="bg-gray-100">
           {sites.filter((site) => site.name.trim()).length} Sites
         </Badge>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setEnabledTypes((prev) => {
+              const next = prev.filter((t) => t !== type);
+              // If current step points to a removed type, cap within new bounds (0..next.length)
+              setCurrentStep((s) => Math.min(s, next.length));
+              return next;
+            });
+            setCustomTypes((prev) => {
+              const { [type]: _, ...rest } = prev;
+              return rest;
+            });
+          }}
+          className="ml-2 bg-red-600 hover:bg-red-700 text-white hover:text-white"
+        >
+          <Trash className="w-4 h-4 mr-1" />
+          Remove Type
+        </Button>
       </div>
 
       <div className="space-y-3">
@@ -599,16 +687,16 @@ export function CreateTemplateModal({
           type="button"
           variant="outline"
           onClick={() => addSiteAsset(type)}
-          className="flex-1 border-dashed"
+          className="flex-1 border-dashed bg-purple-500 hover:bg-purple-600 text-white hover:text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add {title.slice(0, -1)}
+          Add {title}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={initializeDefaultAssets}
-          className="flex-1"
+          className="flex-1 border-dashed bg-red-600 hover:bg-red-700 text-white hover:text-white"
         >
           <RotateCw className="w-4 h-4 mr-2" />
           Reset Defaults
@@ -618,204 +706,94 @@ export function CreateTemplateModal({
   );
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-md bg-blue-100 text-blue-600">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Basic Information</h2>
-                <p className="text-sm text-gray-500">Set up your template details</p>
-              </div>
+    // Step 0: Basic info
+    if (currentStep === 0) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-md bg-blue-100 text-blue-600">
+              <FileText className="w-5 h-5" />
             </div>
+            <div>
+              <h2 className="text-lg font-semibold">Basic Information</h2>
+              <p className="text-sm text-gray-500">Set up your template details</p>
+            </div>
+          </div>
 
-            <Card className="border shadow-sm">
-              <CardContent className="p-4 space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">
-                      Template Name *
-                    </Label>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter template name"
-                      className="bg-white"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-gray-600">
-                      Status
-                    </Label>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-yellow-500" />
-                            Draft
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="active">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            Active
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="inactive">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-gray-500" />
-                            Inactive
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
+          <Card className="border shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-gray-600">
-                    Description
+                    Template Name *
                   </Label>
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe this template..."
-                    rows={3}
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter template name"
                     className="bg-white"
+                    required
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-gray-600">
+                    Status
+                  </Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-yellow-500" />
+                          Draft
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="active">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          Active
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="inactive">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-gray-500" />
+                          Inactive
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-      case 1:
-        return renderSiteAssetFields(
-          socialSites,
-          "social_site",
-          "Social Sites",
-          <Share2 className="w-5 h-5" />,
-          "bg-blue-500"
-        );
-
-      case 2:
-        return renderSiteAssetFields(
-          web2Sites,
-          "web2_site",
-          "Web 2.0 Sites",
-          <Globe className="w-5 h-5" />,
-          "bg-purple-500"
-        );
-
-      case 3:
-        return renderSiteAssetFields(
-          additionalSites,
-          "additional_site",
-          "Additional Sites",
-          <Sparkles className="w-5 h-5" />,
-          "bg-green-500"
-        );
-
-      case 4:
-        return renderSiteAssetFields(
-          graphicsDesign,
-          "graphics_design",
-          "Graphics Design",
-          <Palette className="w-5 h-5" />,
-          "bg-rose-500"
-        );
-
-      case 5:
-        return renderSiteAssetFields(
-          contentStudio,
-          "content_studio",
-          "Content Studio",
-          <PenTool className="w-5 h-5" />,
-          "bg-emerald-500"
-        );
-
-      case 6:
-        return renderSiteAssetFields(
-          contentWriting,
-          "content_writing",
-          "Content Writing",
-          <FileEdit className="w-5 h-5" />,
-          "bg-indigo-500"
-        );
-
-      case 7:
-        return renderSiteAssetFields(
-          backlinks,
-          "backlinks",
-          "Backlinks",
-          <LinkIcon className="w-5 h-5" />,
-          "bg-sky-500"
-        );
-
-      case 8:
-        return renderSiteAssetFields(
-          completedCom,
-          "completed_com",
-          "Completed.com",
-          <CheckCircle className="w-5 h-5" />,
-          "bg-green-500"
-        );
-
-      case 9:
-        return renderSiteAssetFields(
-          youtubeOptimization,
-          "youtube_video_optimization",
-          "YouTube Optimization",
-          <Youtube className="w-5 h-5" />,
-          "bg-red-500"
-        );
-
-      case 10:
-        return renderSiteAssetFields(
-          monitoring,
-          "monitoring",
-          "Monitoring",
-          <BarChart className="w-5 h-5" />,
-          "bg-slate-500"
-        );
-
-      case 11:
-        return renderSiteAssetFields(
-          reviewRemoval,
-          "review_removal",
-          "Review Removal",
-          <ShieldAlert className="w-5 h-5" />,
-          "bg-amber-500"
-        );
-
-      case 12:
-        return renderSiteAssetFields(
-          summaryReport,
-          "summary_report",
-          "Summary Report",
-          <FileBarChart className="w-5 h-5" />,
-          "bg-fuchsia-500"
-        );
-
-      case 13:
-        return renderSiteAssetFields(
-          monthlyReport,
-          "monthly_report",
-          "Monthly Report",
-          <FileBarChart className="w-5 h-5" />,
-          "bg-fuchsia-500"
-        );
-
-      default:
-        return null;
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-gray-600">
+                  Description
+                </Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe this template..."
+                  rows={3}
+                  className="bg-white"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
     }
+
+    // Subsequent steps map to enabled types
+    const type = steps[currentStep].id as SiteAssetTypeTS;
+    const [list] = getListAndSetter(type);
+    const cfg = TYPE_CONFIG[type] || {
+      title: type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      colorClass: "bg-gray-500",
+      icon: <FileBarChart className="w-5 h-5" />,
+    };
+    return renderSiteAssetFields(list, type, cfg.title, cfg.icon, cfg.colorClass);
   };
 
   return (
@@ -840,21 +818,19 @@ export function CreateTemplateModal({
                 <div key={step.id} className="flex items-center flex-1">
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                        isActive
-                          ? "bg-blue-500 text-white shadow"
-                          : isCompleted
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${isActive
+                        ? "bg-blue-500 text-white shadow"
+                        : isCompleted
                           ? "bg-green-500 text-white"
                           : "bg-gray-200 text-gray-500"
-                      }`}
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="mt-1 text-center">
                       <p
-                        className={`text-xs font-medium ${
-                          isActive ? "text-blue-600" : "text-gray-600"
-                        }`}
+                        className={`text-xs font-medium ${isActive ? "text-blue-600" : "text-gray-600"
+                          }`}
                       >
                         {step.title}
                       </p>
@@ -862,14 +838,30 @@ export function CreateTemplateModal({
                   </div>
                   {index < steps.length - 1 && (
                     <div
-                      className={`flex-1 h-1 mx-2 rounded-full ${
-                        isCompleted ? "bg-green-400" : "bg-gray-200"
-                      }`}
+                      className={`flex-1 h-1 mx-2 rounded-full ${isCompleted ? "bg-green-400" : "bg-gray-200"
+                        }`}
                     />
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* Add custom type */}
+          <div className="flex justify-end items-center gap-2 mb-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-purple-500 hover:bg-purple-600 text-white hover:text-white"
+              onClick={() => {
+                setNewTypeName("");
+                setNewTypeError("");
+                setShowAddTypeModal(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1 " />
+              Add Type
+            </Button>
           </div>
 
           <Progress
@@ -890,7 +882,7 @@ export function CreateTemplateModal({
             variant="outline"
             onClick={prevStep}
             disabled={currentStep === 0}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white hover:text-white"
           >
             <ChevronLeft className="w-4 h-4" />
             Previous
@@ -910,7 +902,7 @@ export function CreateTemplateModal({
                 type="button"
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
+                className="bg-blue-500 hover:bg-blue-600 text-white hover:text-white"
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -956,6 +948,102 @@ export function CreateTemplateModal({
           </div>
         </div>
       </DialogContent>
+
+      <Dialog open={showAddTypeModal} onOpenChange={setShowAddTypeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              Add Custom Type
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="type-name" className="text-sm font-medium">
+                Type Name *
+              </Label>
+              <Input
+                id="type-name"
+                value={newTypeName}
+                onChange={(e) => {
+                  setNewTypeName(e.target.value);
+                  setNewTypeError("");
+                }}
+                placeholder="e.g., Local SEO, Video Production, etc."
+                className="w-full"
+              />
+              {newTypeError && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {newTypeError}
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                This will create a new category for your template assets
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddTypeModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const trimmedName = newTypeName.trim();
+                if (!trimmedName) {
+                  setNewTypeError("Type name is required");
+                  return;
+                }
+
+                if (trimmedName.length < 2) {
+                  setNewTypeError("Type name must be at least 2 characters");
+                  return;
+                }
+
+                const key = slugify(trimmedName);
+                if (!key) {
+                  setNewTypeError("Please enter a valid type name");
+                  return;
+                }
+
+                // Check if type already exists
+                if (ALL_TYPES.includes(key as SiteAssetTypeTS) || enabledTypes.includes(key as SiteAssetTypeTS)) {
+                  setNewTypeError(`Type "${trimmedName}" already exists`);
+                  return;
+                }
+
+                // Add the new type
+                setEnabledTypes((prev) => [...prev, key as SiteAssetTypeTS]);
+                setCustomTypes((prev) => ({
+                  ...prev,
+                  [key]: prev[key] || []
+                }));
+
+                // Auto-navigate to the new type if we're on basic info step
+                if (currentStep === 0) {
+                  setCurrentStep(1);
+                }
+
+                setShowAddTypeModal(false);
+                toast.success(`"${trimmedName}" type added successfully`);
+              }}
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Type
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
+
+
   );
 }
