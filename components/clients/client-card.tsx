@@ -439,14 +439,16 @@ export function ClientCard({
             </Button>
           )}
 
-          <Button
-            onClick={() => setOpenDanger(true)}
-            disabled={isDeleting}
-            className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          {hasPermissionClient(user?.permissions, "client_card_delete") && (
+            <Button
+              onClick={() => setOpenDanger(true)}
+              disabled={isDeleting}
+              className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
 
           {hasPermissionClient(user?.permissions, "client_card_task_view") && (
             <Button

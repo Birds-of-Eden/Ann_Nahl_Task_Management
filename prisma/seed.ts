@@ -1,5 +1,5 @@
 // prisma/seed.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -75,6 +75,12 @@ const PERMS = [
     id: "chat_data_entry",
     name: "chat_data_entry",
     description: "Access Data Entry chat link",
+  },
+
+  {
+    id: "chat_manager",
+    name: "chat_manager",
+    description: "Access Manager chat link",
   },
 
   {
@@ -265,6 +271,12 @@ const PERMS = [
     name: "client_card_Upgrade_Package",
     description: "Client Card → Upgrade Package",
   },
+
+  {
+    id: "client_card_delete",
+    name: "client_card_delete",
+    description: "Client Card → Delete Client",
+  },
 ];
 
 async function seedPermissions() {
@@ -295,6 +307,7 @@ const ADMIN_PERMS: string[] = [
   "user_view",
   "user_impersonate",
   "view_activity_logs",
+  "client_card_client_view",
 
   "view_agents_create",
   "view_agents_list",
@@ -310,6 +323,7 @@ const ADMIN_PERMS: string[] = [
   "generate_biography",
   "delete_article_topic",
   "client_card_Upgrade_Package",
+  "client_card_delete",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
@@ -330,18 +344,18 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_clients_create",
     "view_packages_list",
     "view_distribution_client_agent",
-    "view_tasks_list",
     "view_agents_list",
     "view_agents_create",
     "view_teams_manage",
-
     "view_user_management",
     "view_activity_logs",
     "view_notifications",
-    "chat_admin",
     "generate_biography",
     "delete_article_topic",
     "client_card_Upgrade_Package",
+    "client_card_client_view",
+    "client_card_delete",
+    "chat_manager",
   ],
 
   agent: [
@@ -527,7 +541,7 @@ const USERS: SeedUser[] = [
 // id, accountId, providerId, userId, accessToken, refreshToken, password, createdAt, updatedAt
 // If your schema uses different names (e.g., provider, providerAccountId), rename below accordingly.
 async function upsertCredentialsAccount(
-  tx: PrismaClient,
+  tx: Prisma.TransactionClient, // ✅ correct type
   userId: string,
   roleName: string,
   hashedPassword: string

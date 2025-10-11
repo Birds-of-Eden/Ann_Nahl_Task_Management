@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AssignmentPreview } from "./assignment-preview";
+import { useAuth } from "@/context/auth-context";
 
 type AMUser = { id: string; name: string | null; email: string | null };
 
@@ -41,6 +42,7 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
     amName: "",
   });
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     let mounted = true;
@@ -285,11 +287,10 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
       if (formData.templateId && createdClientId) {
         try {
           const assignment = {
-            id: `assignment-${Date.now()}`,
-            templateId: formData.templateId,
             clientId: createdClientId,
-            assignedAt: new Date().toISOString(),
+            templateId: formData.templateId,
             status: "active",
+            agentIds: user?.id ? [user.id] : [],
           };
 
           const assignmentRes = await fetch("/api/assignments", {
@@ -312,54 +313,34 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
                 createdAssignment?.data?.tasks ||
                 [];
               if (Array.isArray(createdTasks) && createdTasks.length > 0) {
-                const usersRes = await fetch(
-                  `/api/users?role=data_entry&limit=50`,
-                  { cache: "no-store" }
-                );
-                const usersJson = await usersRes.json().catch(() => ({}));
-                const dataEntryUsers: any[] = (
-                  usersJson?.users ??
-                  usersJson?.data ??
-                  []
-                ).filter(
-                  (u: any) => u?.role?.name?.toLowerCase() === "data_entry"
-                );
+                const now = new Date();
+                const due = new Date(now);
+                due.setDate(due.getDate() + 7);
 
-                if (dataEntryUsers.length === 0) {
-                  toast.warning(
-                    "No data_entry users found. You can manually distribute tasks later."
-                  );
+                const distributeBody = {
+                  clientId: createdClientId,
+                  assignments: createdTasks.map((t: any) => ({
+                    taskId: t.id,
+                    agentId: user?.id,
+                    note: "Auto-assigned to creator after onboarding",
+                    dueDate: due.toISOString(),
+                  })),
+                };
+
+                const distRes = await fetch("/api/tasks/distribute", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(distributeBody),
+                });
+
+                if (distRes.ok) {
+                  toast.success(`Tasks assigned to ${user?.name} successfully.`);
                 } else {
-                  const dataEntryAssignee = dataEntryUsers[0];
-                  const now = new Date();
-                  const due = new Date(now);
-                  due.setDate(due.getDate() + 7);
-
-                  const distributeBody = {
-                    clientId: createdClientId,
-                    assignments: createdTasks.map((t: any) => ({
-                      taskId: t.id,
-                      agentId: dataEntryAssignee.id,
-                      note: "Auto-assigned to data_entry after onboarding",
-                      dueDate: due.toISOString(),
-                    })),
-                  };
-
-                  const distRes = await fetch("/api/tasks/distribute", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(distributeBody),
-                  });
-
-                  if (distRes.ok) {
-                    toast.success("Tasks routed to data_entry successfully.");
-                  } else {
-                    const j = await distRes.json().catch(() => ({}));
-                    console.error("Distribute failed", j);
-                    toast.warning(
-                      "Template assigned but auto-distribution to data_entry failed."
-                    );
-                  }
+                  const j = await distRes.json().catch(() => ({}));
+                  console.error("Distribute failed", j);
+                  toast.warning(
+                    "Template assigned but auto-assignment to your user failed."
+                  );
                 }
               }
             } catch (e) {

@@ -61,6 +61,7 @@ enum SiteAssetType {
   monitoring
   review_removal
   summary_report
+  monthly_report
 }
 
 enum PeriodType {

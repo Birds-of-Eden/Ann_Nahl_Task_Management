@@ -207,6 +207,11 @@ function buildNav(role: Role): NavItem[] {
     },
     {
       title: "Chat",
+      url: p("manager", "/chat/chat_manager"),
+      permission: "chat_manager",
+    },
+    {
+      title: "Chat",
       url: p("agent", "/chat/chat_agent"),
       permission: "chat_agent",
     },

@@ -33,6 +33,7 @@ import {
   Zap,
   LayoutGrid,
   Settings,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +51,9 @@ interface TemplateSiteAsset {
     | "youtube_video_optimization"
     | "monitoring"
     | "review_removal"
-    | "summary_report";
+    | "summary_report"
+    | "monthly_report";
+
   name: string;
   url?: string;
   description?: string;
@@ -164,7 +167,8 @@ export function TemplateViewModal({
         color: "amber",
         label: "Review Removal",
       },
-      summary_report: { icon: BarChart3, color: "gray", label: "Reports" },
+      summary_report: { icon: BarChart3, color: "gray", label: "Summary Reports" },
+      monthly_report: { icon: BarChart2, color: "gray", label: "Monthly Reports" },
     };
 
     return (
@@ -213,6 +217,7 @@ export function TemplateViewModal({
     ...(groupedSites.monitoring || []),
     ...(groupedSites.review_removal || []),
     ...(groupedSites.summary_report || []),
+    ...(groupedSites.monthly_report || []),
   ];
 
   const totalSites = template.sitesAssets?.length || 0;
@@ -564,6 +569,7 @@ export function TemplateViewModal({
                   "monitoring",
                   "review_removal",
                   "summary_report",
+                  "monthly_report",
                 ].map((type) => {
                   const config = getSiteTypeConfig(type);
                   const sites = groupedSites[type] || [];

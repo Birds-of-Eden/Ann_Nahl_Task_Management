@@ -1,3 +1,5 @@
+// app/api/drive/route.ts
+
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic"; // Ensure it runs dynamically
@@ -35,53 +37,56 @@ export async function GET(req: Request) {
     const filename = searchParams.get("filename") || "";
 
     // Access Token takes precedence for private access
-    const accessToken = searchParams.get("accessToken"); 
+    const accessToken = searchParams.get("accessToken");
 
     const key = process.env.GOOGLE_DRIVE_API_KEY;
     if (!key && !accessToken) {
       return NextResponse.json(
-        { error: "Server misconfigured: missing GOOGLE_DRIVE_API_KEY or Access Token" },
+        {
+          error:
+            "Server misconfigured: missing GOOGLE_DRIVE_API_KEY or Access Token",
+        },
         { status: 500 }
       );
     }
-    
+
     // Auth configuration: Use Bearer token header if provided, otherwise append &key=...
     const authHeader = accessToken
       ? { Authorization: `Bearer ${accessToken}` }
       : undefined;
-    const authParam = accessToken ? "" : `&key=${key}`; 
+    const authParam = accessToken ? "" : `&key=${key}`;
 
     // --- LOGIC 3: Download Folder as Zip ---
     if (zipFolderId) {
       // ⚠️ WARNING: Full implementation of zipping remote files requires complex streaming logic
       // (e.g., using 'archiver' or 'jszip' on a Node.js stream) which is prone to failure
       // in serverless environments for large files.
-      
+
       // --- Placeholder Structure for Zip Download Headers ---
       // In a real implementation, all files would be fetched and piped into a zip stream here.
 
-      // Return a 501 Not Implemented response with a message, 
+      // Return a 501 Not Implemented response with a message,
       // as the full zipping logic is skipped per your previous request's structure.
       return new Response(
         JSON.stringify({
-            error: "Zip functionality requires a dedicated server implementation for optimal performance and is currently not implemented."
-        }), 
+          error:
+            "Zip functionality requires a dedicated server implementation for optimal performance and is currently not implemented.",
+        }),
         {
-          status: 501, 
+          status: 501,
           headers: {
-              "Content-Type": "application/json",
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
     }
-
 
     // --- LOGIC 1: List files in a folder ---
     if (folderId) {
       // 1a) Validate folder metadata
       const metaRes = await fetch(
         `${GOOGLE_API}/files/${folderId}?fields=id,name,mimeType&supportsAllDrives=true${authParam}`,
-        { 
+        {
           cache: "no-store",
           headers: authHeader, // Use the header for token auth
         }
@@ -90,7 +95,8 @@ export async function GET(req: Request) {
       if (!metaRes.ok) {
         let errorMsg = "Folder is not public or not found.";
         if (accessToken) {
-            errorMsg = "User is not authorized for this private folder or folder not found.";
+          errorMsg =
+            "User is not authorized for this private folder or folder not found.";
         }
         return NextResponse.json(
           { error: errorMsg },
@@ -120,7 +126,7 @@ export async function GET(req: Request) {
           supportsAllDrives: "true",
         });
         // Add key only if no access token
-        if (!accessToken) params.set("key", key || ""); 
+        if (!accessToken) params.set("key", key || "");
         if (pageToken) params.set("pageToken", String(pageToken));
 
         const listRes = await fetch(`${GOOGLE_API}/files?${params}`, {
@@ -140,8 +146,11 @@ export async function GET(req: Request) {
         id: f.id as string,
         name: f.name as string,
         mimeType: f.mimeType as string,
-        webViewLink: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
-        thumbnail: f.thumbnailLink ?? `https://drive.google.com/thumbnail?sz=w400&id=${f.id}`,
+        webViewLink:
+          f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
+        thumbnail:
+          f.thumbnailLink ??
+          `https://drive.google.com/thumbnail?sz=w400&id=${f.id}`,
         viewUrl: viewUrl(f.id),
       }));
 
@@ -156,7 +165,7 @@ export async function GET(req: Request) {
     if (mediaId) {
       const upstream = await fetch(
         `${GOOGLE_API}/files/${mediaId}?alt=media&supportsAllDrives=true${authParam}`,
-        { 
+        {
           cache: "no-store",
           headers: authHeader, // Use the header for token auth
         }
@@ -177,7 +186,10 @@ export async function GET(req: Request) {
       const headers = new Headers({
         "Content-Type": contentType,
         "Cache-Control": "no-store",
-        "Content-Disposition": contentDisposition(filename || mediaId || "download", mediaId),
+        "Content-Disposition": contentDisposition(
+          filename || mediaId || "download",
+          mediaId
+        ),
       });
 
       if (contentLength) {
@@ -190,14 +202,18 @@ export async function GET(req: Request) {
 
     // --- Fallback Error: Missing required parameter ---
     return NextResponse.json(
-      { error: "Missing required parameter: 'folderId', 'id', or 'zipFolderId'" },
+      {
+        error: "Missing required parameter: 'folderId', 'id', or 'zipFolderId'",
+      },
       { status: 400 }
     );
-
   } catch (err: any) {
     console.error("DRIVE API ERROR:", err);
     return NextResponse.json(
-      { error: "Unexpected server error", details: err?.message ?? String(err) },
+      {
+        error: "Unexpected server error",
+        details: err?.message ?? String(err),
+      },
       { status: 500 }
     );
   }

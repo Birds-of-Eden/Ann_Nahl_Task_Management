@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       monitoring: "Monitoring",
       review_removal: "Review Removal",
       summary_report: "Summary Report",
+      monthly_report: "Monthly Report",
     };
 
     const ensureCategory = async (name: string) => {
@@ -182,6 +183,7 @@ export async function POST(req: NextRequest) {
       monitoring: "Monitoring",
       review_removal: "Review Removal",
       summary_report: "Summary Report",
+      monthly_report: "Monthly Report",
     };
 
     for (const type of siteAssetTypes) {

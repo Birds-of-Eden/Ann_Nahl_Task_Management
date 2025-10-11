@@ -26,6 +26,7 @@ const mapSiteAssetType = (frontendType: string): SiteAssetType => {
     monitoring: SiteAssetType.monitoring,
     review_removal: SiteAssetType.review_removal,
     summary_report: SiteAssetType.summary_report,
+    monthly_report: SiteAssetType.monthly_report,
   };
 
   return m[frontendType as keyof typeof m] ?? SiteAssetType.other_asset;

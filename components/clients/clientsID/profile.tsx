@@ -126,7 +126,7 @@ function asSocialArray(json: unknown): SocialRow[] {
   try {
     const arr = Array.isArray(json) ? json : [];
     return arr.map((r: any) => ({
-      id: typeof r?.id === "string" ? r.id : crypto.randomUUID(),
+      id: typeof r?.id === "string" ? r.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9)),
       platform: r?.platform ?? null,
       url: r?.url ?? null,
       username: r?.username ?? null,
@@ -141,7 +141,11 @@ function asSocialArray(json: unknown): SocialRow[] {
 }
 
 export function Profile({ clientData, currentUserRole }: ProfileProps) {
-  // --- password reveal (display mode) for social rows
+  // --- client main password reveal
+  const [showClientPassword, setShowClientPassword] = useState(false);
+  const toggleClientPasswordVisibility = () => {
+    setShowClientPassword((prev) => !prev);
+  };
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>(
     {}
   );
@@ -156,16 +160,12 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
     return "•".repeat(Math.min(plain.length, 10));
   };
 
-  // --- client main password reveal
-  const [showClientPassword, setShowClientPassword] = useState(false);
-
   // Accept either API shape: prefer array socialMedias, else JSON socialMedia
   const socialRows = asSocialArray(
     (clientData as any).socialMedias ?? (clientData as any).socialMedia
   );
   const hasSocial = socialRows.length > 0;
 
-  // --- inline Social row edit state
   type SocialDraft = {
     platform?: string | null;
     url?: string | null;

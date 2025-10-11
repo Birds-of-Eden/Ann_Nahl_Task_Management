@@ -21,8 +21,7 @@ function roleToLanding(role?: string | null) {
   if (r === "manager") return "/manager";
   if (r === "qc") return "/qc";
   if (r === "am") return "/am";
-  if (r === "am_ceo") return "/am_ceo";
-  if (r === "data_entry") return "/data_entry";
+  if (r === "am_ceo") return "/am"; // চাইলে "/am-ceo" করো যদি আলাদা রুট থাকে
   if (r === "client") return "/client";
   return "/";
 }
@@ -78,10 +77,10 @@ export default function ImpersonateButton({
       // ⬇️ 2) নতুন acting role নিয়ে হার্ড ন্যাভ — সাথে সাথেই নতুন লেআউট লোড
       const meRes = await fetch("/api/auth/me", { cache: "no-store" });
       const me = await meRes.json();
-      const dest = roleToLanding(me?.user?.role);
-
-      // router.replace + refresh এর চেয়ে হার্ড নেভিগেশন বেশি নির্ভরযোগ্য এখানে
-      window.location.replace(dest);
+      const dest = roleToLanding(
+        me?.user?.role?.name ?? me?.user?.role ?? me?.role
+      );
+      router.replace(dest);
     } catch {
       toast.error("Something went wrong");
     } finally {

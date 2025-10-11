@@ -25,8 +25,8 @@ interface AddPackageModalProps {
   isEdit?: boolean;
   initialData?: {
     id: string;
-    name: string;
-    description?: string;
+    name: string | null;
+    description?: string | null;
     totalMonths?: number;
   };
   onUpdate?: (

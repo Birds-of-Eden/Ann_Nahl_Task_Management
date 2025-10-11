@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FormEvent, useEffect, useState } from "react";
-import { Loader, Eye, EyeOff } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader, Eye, EyeOff, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
@@ -73,33 +74,35 @@ export function LoginForm() {
 
       toast.success("Signed in successfully!");
 
-      // role-ভিত্তিক রিডাইরেক্ট (session callback এ role সেট হয়)
-      // ছোট ডিলে দিয়ে session hydrate হওয়ার সময় দিন
-      setTimeout(async () => {
-        // ক্লায়েন্ট থেকে session ফেচ
-        const me = await fetch("/api/auth/session"); // NextAuth built-in
-        const json = await me.json();
-        const role = (json?.user?.role || "").toLowerCase();
+      // Optional heartbeat (ignore any failure)
+      await fetch("/api/presence/heartbeat", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
 
-        const target =
-          role === "admin"
-            ? "/admin"
-            : role === "agent"
-            ? "/agent"
-            : role === "manager"
-            ? "/manager"
-            : role === "qc"
-            ? "/qc"
-            : role === "am"
-            ? "/am"
-            : role === "am_ceo"
-            ? "/am_ceo"
-            : role === "data_entry"
-            ? "/data_entry"
-            : "/client";
+      const role = (data?.user?.role || "").toLowerCase();
+      const target =
+        role === "admin"
+          ? "/admin"
+          : role === "agent"
+          ? "/agent"
+          : role === "manager"
+          ? "/manager"
+          : role === "qc"
+          ? "/qc"
+          : role === "am"
+          ? "/am"
+          : role === "am_ceo"
+          ? "/am_ceo"
+          : role === "client"
+          ? "/client"
+          : role === "data_entry"
+          ? "/data_entry"
+          : "/";
 
-        window.location.href = target;
-      }, 150);
+      // ✅ history replace: back চাপলেও sign-in এ ফিরবে না
+      router.replace(target);
+      router.refresh(); // (optional) ensure server components revalidate
     } catch (err) {
       console.error("Login error:", err);
       toast.error("Something went wrong. Please try again.");
@@ -109,10 +112,32 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="bg-transparent border-none">
-      <CardHeader>
-        <div className="flex items-center text-slate-500 justify-center mb-3">
-          <img src="/aan-logo.png" alt="aan-logo" />
+    <Card className="bg-transparent border-none shadow-none font-sans">
+      <CardHeader className="space-y-6">
+        <div className="flex flex-col items-center space-y-6">
+          {/* Enhanced Logo Container */}
+          <div className="relative group">
+            {/* Glow Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur-lg opacity-60 group-hover:opacity-80 transition-all duration-500 animate-pulse"></div>
+
+            {/* Logo Background */}
+            <div className="relative bg-slate-50 rounded-xl border border-cyan-500/30 backdrop-blur-sm group-hover:border-cyan-400/50 transition-all duration-300 shadow-2xl">
+              {/* Actual Logo */}
+              <img
+                src="/birds_of_eden.png"
+                alt="AAN Logo"
+                className="h-52 w-58 transition-all duration-300 scale-110 hover:scale-120"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = "none";
+                }}
+              />
+            </div>
+
+            {/* Floating particles effect */}
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full opacity-0 group-hover:opacity-100 animate-ping"></div>
+            <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 animate-ping delay-300"></div>
+          </div>
         </div>
         <CardTitle className="text-2xl text-white flex items-center justify-center">
           Task Management
@@ -134,9 +159,14 @@ export function LoginForm() {
                 className="placeholder:text-white/80 text-white"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password" className="text-white">
-                Password
+
+            <div className="space-y-3">
+              <Label
+                htmlFor="password"
+                className="text-slate-200 font-semibold text-base flex items-center space-x-2"
+              >
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span>Password</span>
               </Label>
               <div className="relative">
                 <Input
