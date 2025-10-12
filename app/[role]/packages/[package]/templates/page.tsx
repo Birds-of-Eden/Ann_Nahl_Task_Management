@@ -38,7 +38,7 @@ import {
   Target,
   Copy,
 } from "lucide-react";
-import { useAuth } from "@/context/auth-context";
+import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { CreateTemplateModal } from "@/components/package/create-template-modal";
 import { cn } from "@/lib/utils";
@@ -115,7 +115,29 @@ export default function TemplateListPage() {
   const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPackageId, setCurrentPackageId] = useState<string>("");
-  const { user } = useAuth();
+  const { user: currentUser, loading: sessionLoading } = useUserSession();
+
+  const canViewTemplate =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "template_view");
+  const canCreateTemplate =
+    !sessionLoading &&
+    (hasPermissionClient(currentUser?.permissions, "template_create") ||
+      hasPermissionClient(currentUser?.permissions, "template_edit"));
+  const canEditTemplate =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "template_edit");
+  const canDeleteTemplate =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "template_delete");
+  const canAssignTemplate =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "template_assign");
+  const canDuplicateTemplate =
+    !sessionLoading &&
+    (hasPermissionClient(currentUser?.permissions, "template_duplicate") ||
+      hasPermissionClient(currentUser?.permissions, "template_create") ||
+      hasPermissionClient(currentUser?.permissions, "template_edit"));
 
   // Search and Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -228,10 +250,10 @@ export default function TemplateListPage() {
     setIsDeleting(true);
     try {
       const res = await fetch(
-        `/api/templates/${targetTemplate.id}?actorId=${user?.id ?? ""}`,
+        `/api/templates/${targetTemplate.id}?actorId=${currentUser?.id ?? ""}`,
         {
           method: "DELETE",
-          headers: { "x-actor-id": user?.id ?? "" },
+          headers: { "x-actor-id": currentUser?.id ?? "" },
         }
       );
       if (!res.ok) {
@@ -258,11 +280,13 @@ export default function TemplateListPage() {
     setDuplicatingId(templateId);
     try {
       const res = await fetch(
-        `/api/templates/${templateId}/duplicate?actorId=${user?.id ?? ""}`,
+        `/api/templates/${templateId}/duplicate?actorId=${
+          currentUser?.id ?? ""
+        }`,
         {
           method: "POST",
           headers: {
-            "x-actor-id": user?.id ?? "",
+            "x-actor-id": currentUser?.id?.id ?? "",
           },
         }
       );
@@ -543,13 +567,15 @@ export default function TemplateListPage() {
                   )}
                 </div>
 
-                <Button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Template
-                </Button>
+                {canCreateTemplate && (
+                  <Button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl px-6"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Template
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -585,7 +611,7 @@ export default function TemplateListPage() {
                   Clear Filters
                 </Button>
               ) : (
-                hasPermissionClient(user?.permissions, "template_edit") && (
+                canCreateTemplate && (
                   <Button
                     onClick={() => setIsCreateModalOpen(true)}
                     size="lg"
@@ -758,20 +784,20 @@ export default function TemplateListPage() {
                   <CardFooter className="p-4 pt-0">
                     <div className="flex gap-2 w-full ">
                       {/* View Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-blue-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 bg-transparent rounded-lg"
-                        onClick={() => setViewingTemplate(template)}
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
 
-                      {hasPermissionClient(
-                        user?.permissions,
-                        "template_edit"
-                      ) && (
+                      {canViewTemplate && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 bg-transparent rounded-lg"
+                          onClick={() => setViewingTemplate(template)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      )}
+
+                      {canEditTemplate && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -783,10 +809,7 @@ export default function TemplateListPage() {
                         </Button>
                       )}
 
-                      {hasPermissionClient(
-                        user?.permissions,
-                        "template_delete"
-                      ) && (
+                      {canDeleteTemplate && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -800,32 +823,35 @@ export default function TemplateListPage() {
                         </Button>
                       )}
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 bg-transparent rounded-lg px-3"
-                        onClick={() => setAssigningTemplate(template)}
-                      >
-                        <Users className="w-4 h-4 mr-1" />
-                        Assign
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-teal-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600 transition-all duration-200 bg-transparent rounded-lg px-3"
-                        onClick={() => duplicateTemplate(template.id)}
-                        disabled={duplicatingId === template.id}
-                      >
-                        {duplicatingId === template.id ? (
-                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />
-                        ) : (
-                          <Copy className="w-4 h-4 mr-1" />
-                        )}
-                        {duplicatingId === template.id
-                          ? "Duplicating..."
-                          : "Duplicate"}
-                      </Button>
+                      {canAssignTemplate && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200 bg-transparent rounded-lg px-3"
+                          onClick={() => setAssigningTemplate(template)}
+                        >
+                          <Users className="w-4 h-4 mr-1" />
+                          Assign
+                        </Button>
+                      )}
+                      {canDuplicateTemplate && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-teal-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600 transition-all duration-200 bg-transparent rounded-lg px-3"
+                          onClick={() => duplicateTemplate(template.id)}
+                          disabled={duplicatingId === template.id}
+                        >
+                          {duplicatingId === template.id ? (
+                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-teal-300 border-t-teal-600" />
+                          ) : (
+                            <Copy className="w-4 h-4 mr-1" />
+                          )}
+                          {duplicatingId === template.id
+                            ? "Duplicating..."
+                            : "Duplicate"}
+                        </Button>
+                      )}
                     </div>
                   </CardFooter>
                 </Card>
