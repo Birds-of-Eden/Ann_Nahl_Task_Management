@@ -135,9 +135,7 @@ export default function TemplateListPage() {
     hasPermissionClient(currentUser?.permissions, "template_assign");
   const canDuplicateTemplate =
     !sessionLoading &&
-    (hasPermissionClient(currentUser?.permissions, "template_duplicate") ||
-      hasPermissionClient(currentUser?.permissions, "template_create") ||
-      hasPermissionClient(currentUser?.permissions, "template_edit"));
+    hasPermissionClient(currentUser?.permissions, "template_duplicate");
 
   // Search and Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -286,7 +284,7 @@ export default function TemplateListPage() {
         {
           method: "POST",
           headers: {
-            "x-actor-id": currentUser?.id?.id ?? "",
+            "x-actor-id": currentUser?.id ?? "",
           },
         }
       );
