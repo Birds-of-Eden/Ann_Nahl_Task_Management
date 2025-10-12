@@ -31,7 +31,7 @@ import {
   Trash2, // ⬅️ NEW
 } from "lucide-react";
 
-import { useAuth } from "@/context/auth-context";
+import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +63,7 @@ export function PackageCards() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, loading } = useUserSession();
 
   const fetchPackages = useCallback(async () => {
     try {
@@ -235,9 +235,12 @@ export function PackageCards() {
     return "from-red-50 to-red-100 border-red-200";
   };
 
-  const canCreate = hasPermissionClient(user?.permissions, "package_create");
-  const canDelete = hasPermissionClient(user?.permissions, "package_delete"); // ⬅️ NEW
-  const canEdit = hasPermissionClient(user?.permissions, "package_edit"); // ⬅️ NEW
+  const canCreate =
+    !loading && hasPermissionClient(user?.permissions, "package_create");
+  const canDelete =
+    !loading && hasPermissionClient(user?.permissions, "package_delete");
+  const canEdit =
+    !loading && hasPermissionClient(user?.permissions, "package_edit");
 
   return (
     <div className="space-y-8">

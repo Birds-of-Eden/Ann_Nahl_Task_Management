@@ -1,10 +1,10 @@
 // lib/permissions-client.ts
 
-// এইটা শুধুই UI control এর জন্য (API তে তো server-side check আছেই)
 export function hasPermissionClient(
-  userPermissions: string[] | undefined,
+  userPermissions: Array<string | number> | undefined,
   permission: string
 ) {
   if (!userPermissions) return false;
-  return userPermissions.includes(permission);
+  const set = new Set(userPermissions.map(String));
+  return set.has(permission);
 }
