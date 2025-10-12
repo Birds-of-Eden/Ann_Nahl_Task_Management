@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard";
 import type { Client } from "@/types/client";
 
+// Force dynamic rendering for this page (required for production)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const UNCATEGORIZED = { id: "uncategorized", name: "Uncategorized", description: "" };
 
 function normalizeClientData(apiData: any): Client {
@@ -31,7 +35,7 @@ function normalizeClientData(apiData: any): Client {
 }
 
 async function fetchClient(clientId: string): Promise<Client | null> {
-  const h = headers(); // sync
+  const h = await headers(); // await headers
   const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
   const proto =
     h.get("x-forwarded-proto") ||
@@ -58,9 +62,10 @@ async function fetchClient(clientId: string): Promise<Client | null> {
 export default async function ClientPage({
   params,
 }: {
-  params: { clientId: string }; // <-- Promise নয়
+  params: Promise<{ clientId: string }>; // <-- Promise type
 }) {
-  const clientData = await fetchClient(params.clientId);
+  const { clientId } = await params; // await params
+  const clientData = await fetchClient(clientId);
 
   if (!clientData) {
     notFound();

@@ -5,6 +5,10 @@ import { notFound } from "next/navigation";
 import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard";
 import type { Client } from "@/types/client";
 
+// Force dynamic rendering for this page (required for production)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const UNCATEGORIZED = {
   id: "uncategorized",
   name: "Uncategorized",
