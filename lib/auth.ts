@@ -8,7 +8,6 @@ import prisma from "@/lib/prisma";
 import { pusherServer } from "@/lib/pusher/server";
 
 export const authOptions: NextAuthOptions = {
-  trustHost: true,
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -98,7 +97,8 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user, trigger }: { token: any; user?: any; trigger?: string }) {
+      // ✅ On sign-in, enrich token with user role
       if (user?.id) {
         token.sub = user.id;
         try {
@@ -106,9 +106,29 @@ export const authOptions: NextAuthOptions = {
             where: { id: user.id },
             include: { role: true },
           });
-          (token as any).role = dbUser?.role?.name ?? null;
-        } catch {}
+          token.role = dbUser?.role?.name ?? null;
+          token.roleId = dbUser?.roleId ?? null;
+        } catch (error) {
+          console.error("[JWT Callback] Error fetching user role:", error);
+          token.role = null;
+        }
       }
+
+      // ✅ On subsequent requests, refresh role if needed
+      // This handles role changes without requiring re-login
+      if (trigger === "update" && token.sub) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub as string },
+            include: { role: true },
+          });
+          token.role = dbUser?.role?.name ?? null;
+          token.roleId = dbUser?.roleId ?? null;
+        } catch (error) {
+          console.error("[JWT Callback] Error refreshing role:", error);
+        }
+      }
+
       return token;
     },
     async redirect({
