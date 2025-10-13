@@ -1,9 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { PrismaClient, TaskStatus, TaskPriority, SiteAssetType, PeriodType } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
+import { TaskStatus, TaskPriority, SiteAssetType, PeriodType } from "@prisma/client";
 import { randomUUID } from "crypto";
+import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
