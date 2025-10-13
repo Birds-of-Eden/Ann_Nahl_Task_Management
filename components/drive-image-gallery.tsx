@@ -1,3 +1,5 @@
+// app/components/drive-image-gallery.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";

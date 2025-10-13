@@ -1,3 +1,5 @@
+// components/onboarding/image-gallery.tsx
+
 "use client";
 
 import { useMemo, useState } from "react";
