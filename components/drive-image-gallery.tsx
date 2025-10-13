@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface DriveFile {
   id: string;
@@ -52,11 +53,18 @@ export function DriveImageGallery({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyingId, setCopyingId] = useState<string | null>(null);
 
+  // ✅ Get Google access token from NextAuth session
+  const { data: session } = useSession();
+  const accessToken = (session?.user as any)?.googleAccessToken ?? null;
+
   // media → /api/drive?id=...
-  const mediaUrl = (id: string, filename?: string) =>
-    `/api/drive?id=${encodeURIComponent(id)}${
-      filename ? `&filename=${encodeURIComponent(filename)}` : ""
-    }`;
+  const mediaUrl = (id: string, filename?: string) => {
+    const params = new URLSearchParams();
+    params.set("id", id);
+    if (filename) params.set("filename", filename);
+    if (accessToken) params.set("accessToken", accessToken);
+    return `/api/drive?${params.toString()}`;
+  };
 
   // Extract folder ID from Google Drive link
   const extractFolderId = (url: string): string | null => {
@@ -85,7 +93,12 @@ export function DriveImageGallery({
         throw new Error("Invalid Google Drive link format");
       }
 
-      const response = await fetch(`/api/drive?folderId=${folderId}`);
+      // ✅ Include access token in the request
+      const params = new URLSearchParams();
+      params.set("folderId", folderId);
+      if (accessToken) params.set("accessToken", accessToken);
+
+      const response = await fetch(`/api/drive?${params.toString()}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -108,7 +121,8 @@ export function DriveImageGallery({
     if (driveLink) {
       fetchDriveFiles();
     }
-  }, [driveLink]);
+    // Re-fetch when access token becomes available (e.g., after login)
+  }, [driveLink, accessToken]);
 
   const handleCopy = async (img: DriveFile) => {
     setCopyingId(img.id);

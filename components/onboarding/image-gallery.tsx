@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { StepProps } from "@/types/onboarding";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 // 💡 FIX: Replaced "next/link" with standard <a> tag.
 // 💡 FIX: Replaced "next/image" with standard <img> tag for compatibility.
@@ -28,20 +29,6 @@ type DriveImage = {
   thumbnail: string;
   viewUrl: string;
 };
-
-// -------------------------------------------------------------------------------------
-// 💡 CONCEPTUAL HELPER: YOU MUST REPLACE THIS WITH YOUR ACTUAL GOOGLE AUTH LOGIC
-// This function must return the Access Token of the currently logged-in user.
-const getCurrentUserAccessToken = (): string | null => {
-  // Example for a simple dev environment: check local storage or a mock state
-  // If you use NextAuth.js, you would typically use:
-  // const { data: session } = useSession();
-  // return session?.accessToken || null;
-
-  // Returning a mock token for development purposes:
-  return localStorage.getItem("mock_google_access_token") || null;
-};
-// -------------------------------------------------------------------------------------
 
 export function ImageGallery({
   formData,
@@ -62,7 +49,9 @@ export function ImageGallery({
 
   // -------- helpers --------
 
-  const accessToken = getCurrentUserAccessToken(); // Fetch token once per render
+  // ✅ Get Google access token from NextAuth session
+  const { data: session } = useSession();
+  const accessToken = (session?.user as any)?.googleAccessToken ?? null;
 
   // 💡 MODIFIED: Points to the unified /api/drive endpoint and includes accessToken
   const mediaUrl = (id: string, filename?: string) => {

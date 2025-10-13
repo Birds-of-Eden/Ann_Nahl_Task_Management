@@ -14,6 +14,15 @@ export const authOptions: NextAuthOptions = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          // Add Google Drive read-only scope
+          scope: "openid email profile https://www.googleapis.com/auth/drive.readonly",
+          // Enable access type offline to get refresh token
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
     }),
     Credentials({
       name: "Credentials",
@@ -97,8 +106,8 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, trigger }: { token: any; user?: any; trigger?: string }) {
-      // ✅ On sign-in, enrich token with user role
+    async jwt({ token, user, account, trigger }: { token: any; user?: any; account?: any; trigger?: string }) {
+      // ✅ On sign-in, enrich token with user role and Google access token
       if (user?.id) {
         token.sub = user.id;
         try {
@@ -112,6 +121,13 @@ export const authOptions: NextAuthOptions = {
           console.error("[JWT Callback] Error fetching user role:", error);
           token.role = null;
         }
+      }
+
+      // ✅ Store Google Drive access token for private folder access
+      if (account?.provider === "google" && account?.access_token) {
+        token.googleAccessToken = account.access_token;
+        token.googleRefreshToken = account.refresh_token;
+        token.googleTokenExpires = account.expires_at;
       }
 
       // ✅ On subsequent requests, refresh role if needed
@@ -187,6 +203,9 @@ export const authOptions: NextAuthOptions = {
       (session.user as any).clientId = dbUser?.clientId ?? null;
       (session.user as any).permissions =
         dbUser?.role?.rolePermissions.map((rp) => rp.permission.id) ?? [];
+
+      // ✅ Pass Google access token to session for Drive API access
+      (session.user as any).googleAccessToken = token.googleAccessToken ?? null;
 
       return session;
     },
