@@ -847,7 +847,7 @@ export function CreateTemplateModal({
             })}
           </div>
 
-          {/* Add custom type */}
+          {/* Add custom type
           <div className="flex justify-end items-center gap-2 mb-2">
             <Button
               type="button"
@@ -862,7 +862,7 @@ export function CreateTemplateModal({
               <Plus className="w-4 h-4 mr-1 " />
               Add Type
             </Button>
-          </div>
+          </div> */}
 
           <Progress
             value={((currentStep + 1) / steps.length) * 100}
@@ -993,7 +993,7 @@ export function CreateTemplateModal({
             >
               Cancel
             </Button>
-            <Button
+            {/* <Button
               type="button"
               onClick={() => {
                 const trimmedName = newTypeName.trim();
@@ -1038,7 +1038,7 @@ export function CreateTemplateModal({
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Type
-            </Button>
+            </Button> */}
           </div>
         </DialogContent>
       </Dialog>
