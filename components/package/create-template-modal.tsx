@@ -544,7 +544,7 @@ export function CreateTemplateModal({
         <Badge variant="outline" className="bg-gray-100">
           {sites.filter((site) => site.name.trim()).length} Sites
         </Badge>
-        <Button
+        {/* <Button
           type="button"
           variant="ghost"
           size="sm"
@@ -564,7 +564,7 @@ export function CreateTemplateModal({
         >
           <Trash className="w-4 h-4 mr-1" />
           Remove Type
-        </Button>
+        </Button> */}
       </div>
 
       <div className="space-y-3">
