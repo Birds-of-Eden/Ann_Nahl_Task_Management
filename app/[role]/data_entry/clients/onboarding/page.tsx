@@ -34,6 +34,8 @@ export default function OnboardingPage() {
   const [formData, setFormData] = useState<OnboardingFormData>({
     name: "",
     progress: 0,
+    socialLinks: [],
+    selectedArticles: [],
   });
 
   const updateFormData = (data: Partial<OnboardingFormData>) => {

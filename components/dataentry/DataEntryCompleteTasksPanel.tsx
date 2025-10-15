@@ -640,7 +640,7 @@ export default function DataEntryCompleteTasksPanel({
               taskId: selected.id,
               agentId: doneBy,
               note: "Reassigned to actual performer by data_entry",
-              dueDate: undefined,
+              dueDate: selected.dueDate,
             },
           ],
         } as any;
