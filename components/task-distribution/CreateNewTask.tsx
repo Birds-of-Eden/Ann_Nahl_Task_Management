@@ -184,17 +184,17 @@ export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: Cre
                   {/* Cycle Count Field */}
                   <div className="grid gap-2">
                     <Label htmlFor="cycleCount">Number of Cycles *</Label>
+                    {/* Always 1 cycle: keep input visible but fixed to 1 and disabled */}
                     <Input
                       id="cycleCount"
-                      name="cycleCount"
+                      name="cycleCount_display"
                       type="number"
-                      min="1"
-                      max="100"
-                      placeholder="5"
+                      value={1}
+                      disabled
                       className={validationErrors.cycleCount ? "border-red-500" : ""}
-                      onChange={() => handleInputChange("cycleCount")}
-                      required
                     />
+                    {/* Submit value through hidden input to satisfy server-side validation */}
+                    <input type="hidden" name="cycleCount" value="1" />
                     {validationErrors.cycleCount && <ErrorText text={validationErrors.cycleCount} />}
                   </div>
 
@@ -212,7 +212,7 @@ export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: Cre
                     {validationErrors.dueDate && <ErrorText text={validationErrors.dueDate} />}
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <CalendarDays className="h-4 w-4" />
-                      <span>First cycle uses this date exactly, subsequent cycles are 5 working days apart</span>
+                      <span>Selected due date will be used for the created tasks</span>
                     </div>
                   </div>
 

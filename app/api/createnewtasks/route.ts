@@ -5,7 +5,6 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import type { TaskPriority, TaskStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { calculateTaskDueDate } from "@/utils/working-days";
 
 // Node 18+ has global crypto.randomUUID()
 const makeId = () =>
@@ -37,9 +36,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const clientId: string | undefined = body?.clientId;
-    const cycleCountRaw: number | undefined = body?.cycleCount;
     const dueDateRaw: string | undefined = body?.dueDate;
     const siteAssetTypesRaw: string[] | undefined = body?.siteAssetTypes;
+    console.log("[create-manual-tasks] Incoming:", {
+      clientId,
+      dueDateRaw,
+      siteAssetTypesRaw,
+    });
 
     // Validation
     if (!clientId) {
@@ -49,12 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!cycleCountRaw || cycleCountRaw < 1 || cycleCountRaw > 100) {
-      return NextResponse.json(
-        { message: "cycleCount must be between 1 and 100" },
-        { status: 400 }
-      );
-    }
+    // We always create a single cycle; ignore provided cycleCount
 
     if (!dueDateRaw) {
       return NextResponse.json(
@@ -70,7 +68,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cycleCount = Math.floor(cycleCountRaw);
+    const cycleCount = 1;
+
     const baseDueDate = new Date(dueDateRaw);
     const siteAssetTypes = siteAssetTypesRaw;
 
@@ -104,11 +103,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find assignment for this client
+    // Find assignment for this client (need templateId to load template assets)
     const assignment = await prisma.assignment.findFirst({
       where: { clientId },
       orderBy: { assignedAt: "desc" },
-      select: { id: true },
+      select: { id: true, templateId: true },
     });
 
     if (!assignment) {
@@ -168,8 +167,6 @@ export async function POST(req: NextRequest) {
       siteAssetTypes.map((type, index) => [type, categories[index].id])
     );
 
-    // Generate task names to check for duplicates
-    const taskNames: string[] = [];
     const typeLabels: Record<string, string> = {
       social_site: "Social Site",
       web2_site: "Web2 Site",
@@ -185,81 +182,77 @@ export async function POST(req: NextRequest) {
       summary_report: "Summary Report",
       monthly_report: "Monthly Report",
     };
-
-    for (const type of siteAssetTypes) {
-      const label = typeLabels[type] || type;
-      for (let i = 1; i <= cycleCount; i++) {
-        taskNames.push(`${label} -${i}`);
-      }
-    }
-
-    // Check for existing tasks with these names
-    const existingTasks = await prisma.task.findMany({
-      where: {
-        assignmentId: assignment.id,
-        name: { in: taskNames },
-      },
-      select: { name: true },
-    });
-
-    const skipNameSet = new Set(existingTasks.map((t) => t.name));
-    const tasksToCreate: Array<{
-      name: string;
-      siteAssetType: string;
-      cycleNumber: number;
-    }> = [];
-
-    for (const type of siteAssetTypes) {
-      const label = typeLabels[type] || type;
-      for (let i = 1; i <= cycleCount; i++) {
-        const taskName = `${label} -${i}`;
-        if (!skipNameSet.has(taskName)) {
-          tasksToCreate.push({
-            name: taskName,
-            siteAssetType: type,
-            cycleNumber: i,
-          });
-        }
-      }
-    }
-
-    if (tasksToCreate.length === 0) {
+    // Load all template site assets for this assignment's template filtered by selected types
+    if (!assignment.templateId) {
       return NextResponse.json(
-        {
-          message: "All manual tasks already exist",
-          created: 0,
-          skipped: taskNames.length,
-          assignmentId: assignment.id,
-          tasks: [],
-        },
-        { status: 200 }
+        { message: "Assignment has no templateId; cannot resolve template assets" },
+        { status: 400 }
       );
     }
+    const templateAssets = await prisma.templateSiteAsset.findMany({
+      where: {
+        templateId: assignment.templateId,
+        type: { in: siteAssetTypes as any },
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        defaultIdealDurationMinutes: true,
+      },
+    });
+    console.log("[create-manual-tasks] Template assets fetched:", templateAssets.length);
 
-    // Create the tasks
-    const payloads = tasksToCreate.map(({ name, siteAssetType, cycleNumber }) => {
-      // Calculate due date for each cycle
-      let dueDate: Date;
+    // Build payloads ensuring unique names per asset by incrementing numeric suffix
+    const payloads: Array<{
+      id: string;
+      name: string;
+      status: TaskStatus;
+      priority: TaskPriority;
+      dueDate: string;
+      assignment: { connect: { id: string } };
+      client: { connect: { id: string } };
+      category: { connect: { id: string } };
+      templateSiteAsset: { connect: { id: number } };
+      idealDurationMinutes?: number | null;
+    }> = [];
 
-      if (cycleNumber === 1) {
-        // First cycle uses the selected due date exactly
-        dueDate = baseDueDate;
-      } else {
-        // Subsequent cycles are 5 working days apart from the first cycle
-        dueDate = calculateTaskDueDate(baseDueDate, cycleNumber);
-      }
+    for (const asset of templateAssets) {
+      const label = asset.name || typeLabels[asset.type as any] || String(asset.type);
+      const prefix = `${label} -`;
+      const existingForAsset = await prisma.task.findMany({
+        where: {
+          assignmentId: assignment.id,
+          templateSiteAssetId: asset.id,
+          name: { startsWith: prefix },
+        },
+        select: { name: true },
+      });
+      const nums = existingForAsset
+        .map((t) => {
+          const m = t.name.match(/-(\d+)\s*$/);
+          return m ? Number(m[1]) : null;
+        })
+        .filter((n): n is number => typeof n === "number" && !Number.isNaN(n));
+      const next = nums.length ? Math.max(...nums) + 1 : 1;
+      const name = `${label} -${next}`;
+      console.log("[create-manual-tasks] Naming decision (asset):", { assetId: asset.id, label, next, name });
 
-      return {
+      const categoryId = categoryIdByType.get(asset.type as any)!;
+      payloads.push({
         id: makeId(),
         name,
         status: "pending" as TaskStatus,
         priority: "medium" as TaskPriority,
-        dueDate: dueDate.toISOString(),
+        dueDate: baseDueDate.toISOString(),
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
-        category: { connect: { id: categoryIdByType.get(siteAssetType)! } },
-      };
-    });
+        category: { connect: { id: categoryId } },
+        templateSiteAsset: { connect: { id: asset.id } },
+        idealDurationMinutes: asset.defaultIdealDurationMinutes ?? undefined,
+      });
+    }
+    console.log("[create-manual-tasks] Payload count:", payloads.length);
 
     // Create tasks in a transaction
     const created = await prisma.$transaction((tx) =>
@@ -281,12 +274,15 @@ export async function POST(req: NextRequest) {
         )
       )
     );
+    console.log("[create-manual-tasks] Created:", created.length);
+
+    console.log("[create-manual-tasks] Debug logging: created tasks", created);
 
     return NextResponse.json(
       {
         message: `Created ${created.length} manual task(s)`,
         created: created.length,
-        skipped: skipNameSet.size,
+        skipped: 0,
         assignmentId: assignment.id,
         tasks: created,
         runtime: "nodejs",
@@ -294,6 +290,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
+    console.log("[create-manual-tasks] Debug logging: error", err);
     return fail("POST.catch", err);
   }
 }
