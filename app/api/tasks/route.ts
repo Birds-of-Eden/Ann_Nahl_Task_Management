@@ -1,10 +1,8 @@
 // app/api/tasks/route.ts
 
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { startOfDay, endOfDay } from "date-fns";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 // ========== READ TASKS WITH DATE RANGE & FILTERS ==========
 export async function GET(req: Request) {

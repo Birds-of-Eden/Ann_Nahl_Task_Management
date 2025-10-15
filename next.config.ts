@@ -10,6 +10,23 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  
+  // ✅ Performance Optimizations
+  experimental: {
+    optimizePackageImports: ['@prisma/client', 'lucide-react'],
+  },
+  
+  // ✅ Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? {
+      exclude: ['error', 'warn']
+    } : false,
+  },
+  
+  // ✅ Static page generation
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
 };
 
 export default nextConfig;

@@ -1,8 +1,8 @@
 // app/api/tasks/[id]/reassign/route.ts
 
 import { NextResponse } from "next/server";
-import { PrismaClient, PerformanceRating } from "@prisma/client"; // ✅ enum import
-const prisma = new PrismaClient();
+import { PerformanceRating } from "@prisma/client"; // ✅ enum import
+import prisma from "@/lib/prisma";
 
 export async function PUT(
   req: Request,

@@ -1,3 +1,5 @@
+// app/api/roles/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
@@ -12,7 +14,10 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ success: true, data: roles });
   } catch (error) {
     console.error("Error listing roles:", error);
-    return NextResponse.json({ success: false, error: "Failed to list roles" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to list roles" },
+      { status: 500 }
+    );
   }
 }
 
@@ -22,11 +27,18 @@ export async function POST(req: NextRequest) {
     const { name, description } = await req.json();
 
     if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json({ success: false, error: "name is required" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "name is required" },
+        { status: 400 }
+      );
     }
 
     const created = await prisma.role.create({
-      data: { id: randomUUID(), name: name.trim(), description: description ?? null },
+      data: {
+        id: randomUUID(),
+        name: name.trim(),
+        description: description ?? null,
+      },
     });
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });

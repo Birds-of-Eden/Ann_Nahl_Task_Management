@@ -1,10 +1,9 @@
 // File: app/api/templates/[id]/assign/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, TaskPriority, TaskStatus } from "@prisma/client";
+import { TaskPriority, TaskStatus } from "@prisma/client";
 import { randomUUID } from "crypto";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

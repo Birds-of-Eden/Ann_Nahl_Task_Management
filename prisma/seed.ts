@@ -232,6 +232,31 @@ const PERMS = [
     name: "template_delete",
     description: "Can delete templates",
   },
+  {
+    id: "template_assign",
+    name: "template_assign",
+    description: "Can assign templates",
+  },
+  {
+    id: "template_view",
+    name: "template_view",
+    description: "Can view templates",
+  },
+  {
+    id: "template_duplicate",
+    name: "template_duplicate",
+    description: "Can duplicate templates",
+  },
+  {
+    id: "template_edit",
+    name: "template_edit",
+    description: "Can edit templates",
+  },
+  {
+    id: "template_create",
+    name: "template_create",
+    description: "Can create templates",
+  },
 
   // Clients (card views)
   {
@@ -324,6 +349,10 @@ const ADMIN_PERMS: string[] = [
   "delete_article_topic",
   "client_card_Upgrade_Package",
   "client_card_delete",
+  "template_assign",
+  "template_create",
+  "template_duplicate",
+  "template_view",
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
@@ -356,6 +385,10 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "client_card_client_view",
     "client_card_delete",
     "chat_manager",
+    "template_assign",
+    "template_create",
+    "template_duplicate",
+    "template_view",
   ],
 
   agent: [

@@ -1,8 +1,7 @@
 // app/api/tasks/agents/load/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient, TaskStatus, TaskPriority } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { TaskStatus, TaskPriority } from "@prisma/client";
+import prisma from "@/lib/prisma";
 
 // কোন status গুলোকে "active workload" ধরা হবে
 const ACTIVE: TaskStatus[] = [

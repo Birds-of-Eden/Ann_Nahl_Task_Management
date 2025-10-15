@@ -60,7 +60,6 @@ import ImpersonateButton from "@/components/users/ImpersonateButton";
 import UserFormDialog from "./UserFormDialog";
 import type { UserInterface, UserStats, Role, UserStatus } from "@/types/user";
 import { hasPermissionClient } from "@/lib/permissions-client";
-import { useAuth } from "@/context/auth-context";
 
 export default function UsersPage() {
   const { user: currentUser, loading: sessionLoading } = useUserSession();
@@ -94,16 +93,20 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserInterface | null>(null);
   const [editUser, setEditUser] = useState<UserInterface | null>(null);
-  const { user } = useAuth();
 
   // Permissions
-  const canViewUser = hasPermissionClient(user?.permissions, "user_view");
-  const canEditUser = hasPermissionClient(user?.permissions, "user_edit");
-  const canDeleteUser = hasPermissionClient(user?.permissions, "user_delete");
-  const canImpersonate = hasPermissionClient(
-    user?.permissions,
-    "user_impersonate"
-  );
+  const canViewUser =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "user_view");
+  const canEditUser =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "user_edit");
+  const canDeleteUser =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "user_delete");
+  const canImpersonate =
+    !sessionLoading &&
+    hasPermissionClient(currentUser?.permissions, "user_impersonate");
   const showActions =
     canViewUser || canEditUser || canDeleteUser || canImpersonate;
 

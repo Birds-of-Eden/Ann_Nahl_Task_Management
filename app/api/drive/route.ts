@@ -1,46 +1,43 @@
 // app/api/drive/route.ts
-
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export const dynamic = "force-dynamic"; // Ensure it runs dynamically
+export const dynamic = "force-dynamic";
 
 const GOOGLE_API = "https://www.googleapis.com/drive/v3";
 
-// -------- Helper Functions --------
-
-/**
- * Generates a Content-Disposition header value for file downloads.
- */
+/** Build Content-Disposition for downloads */
 function contentDisposition(filename: string, fallbackId: string) {
   const ascii = filename.replace(/[^\x20-\x7E]+/g, "_");
   const safe = ascii.length ? ascii : `file-${fallbackId}`;
   const encoded = encodeURIComponent(filename);
-  // Provides a simple ASCII filename for old browsers and a UTF-8 encoded one for modern browsers
   return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
 }
 
-/**
- * Generates a direct-view URL for a Google Drive image file ID.
- */
+/** Direct-view URL for Drive image by id */
 function viewUrl(fileId: string) {
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
 }
 
-// -------- Main GET Handler --------
-
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const folderId = searchParams.get("folderId"); // For listing files
-    const mediaId = searchParams.get("id"); // For single file stream/download
-    const zipFolderId = searchParams.get("zipFolderId"); // For zip download
+    const folderId = searchParams.get("folderId"); // list files
+    const mediaId = searchParams.get("id"); // single file stream
+    const zipFolderId = searchParams.get("zipFolderId"); // (placeholder)
     const filename = searchParams.get("filename") || "";
 
-    // Access Token takes precedence for private access
-    const accessToken = searchParams.get("accessToken");
+    // ---- Take token from session (preferred). We keep query support only as a fallback for legacy. ----
+    const session = await getServerSession(authOptions as any);
+    const sessionToken =
+      (session?.user as any)?.googleAccessToken?.toString() || null;
+    const queryToken = searchParams.get("accessToken"); // optional legacy
+    const accessToken = sessionToken || queryToken || null;
 
-    const key = process.env.GOOGLE_DRIVE_API_KEY;
-    if (!key && !accessToken) {
+    const apiKey = process.env.GOOGLE_DRIVE_API_KEY;
+
+    if (!apiKey && !accessToken) {
       return NextResponse.json(
         {
           error:
@@ -50,59 +47,43 @@ export async function GET(req: Request) {
       );
     }
 
-    // Auth configuration: Use Bearer token header if provided, otherwise append &key=...
+    // Build auth header & query param
     const authHeader = accessToken
       ? { Authorization: `Bearer ${accessToken}` }
       : undefined;
-    const authParam = accessToken ? "" : `&key=${key}`;
+    const authParam = accessToken ? "" : `&key=${apiKey}`;
 
-    // --- LOGIC 3: Download Folder as Zip ---
+    // ---- Zip (not implemented here) ----
     if (zipFolderId) {
-      // ⚠️ WARNING: Full implementation of zipping remote files requires complex streaming logic
-      // (e.g., using 'archiver' or 'jszip' on a Node.js stream) which is prone to failure
-      // in serverless environments for large files.
-
-      // --- Placeholder Structure for Zip Download Headers ---
-      // In a real implementation, all files would be fetched and piped into a zip stream here.
-
-      // Return a 501 Not Implemented response with a message,
-      // as the full zipping logic is skipped per your previous request's structure.
-      return new Response(
-        JSON.stringify({
-          error:
-            "Zip functionality requires a dedicated server implementation for optimal performance and is currently not implemented.",
-        }),
-        {
-          status: 501,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+      return NextResponse.json(
+        { error: "Zip streaming is not implemented on this server." },
+        { status: 501 }
       );
     }
 
-    // --- LOGIC 1: List files in a folder ---
+    // ---- LIST: files in a folder ----
     if (folderId) {
-      // 1a) Validate folder metadata
-      const metaRes = await fetch(
-        `${GOOGLE_API}/files/${folderId}?fields=id,name,mimeType&supportsAllDrives=true${authParam}`,
-        {
-          cache: "no-store",
-          headers: authHeader, // Use the header for token auth
-        }
-      );
+      // 1) Folder metadata (also checks permission)
+      const metaUrl =
+        `${GOOGLE_API}/files/${folderId}?fields=id,name,mimeType` +
+        `&supportsAllDrives=true${authParam}`;
+
+      const metaRes = await fetch(metaUrl, {
+        cache: "no-store",
+        headers: authHeader,
+      });
 
       if (!metaRes.ok) {
-        let errorMsg = "Folder is not public or not found.";
-        if (accessToken) {
-          errorMsg =
-            "User is not authorized for this private folder or folder not found.";
-        }
+        const googleErr = await metaRes.text().catch(() => "");
+        const msg = accessToken
+          ? "User is not authorized for this private folder or folder not found."
+          : "Folder is not public or not found.";
         return NextResponse.json(
-          { error: errorMsg },
+          { error: msg, googleError: googleErr },
           { status: metaRes.status }
         );
       }
+
       const metadata = await metaRes.json();
       if (metadata.mimeType !== "application/vnd.google-apps.folder") {
         return NextResponse.json(
@@ -111,9 +92,9 @@ export async function GET(req: Request) {
         );
       }
 
-      // 1b) Fetch all image files from the folder with pagination
+      // 2) List image files with pagination
       const files: any[] = [];
-      let pageToken: string | undefined = undefined;
+      let pageToken: string | undefined;
       const fields =
         "nextPageToken,files(id,name,mimeType,webViewLink,thumbnailLink)";
 
@@ -125,23 +106,34 @@ export async function GET(req: Request) {
           includeItemsFromAllDrives: "true",
           supportsAllDrives: "true",
         });
-        // Add key only if no access token
-        if (!accessToken) params.set("key", key || "");
-        if (pageToken) params.set("pageToken", String(pageToken));
 
-        const listRes = await fetch(`${GOOGLE_API}/files?${params}`, {
-          cache: "no-store",
-          headers: authHeader, // Use the header for token auth
-        });
+        if (!accessToken && apiKey) params.set("key", apiKey);
+        if (pageToken) params.set("pageToken", pageToken);
+
+        const listRes = await fetch(
+          `${GOOGLE_API}/files?${params.toString()}`,
+          {
+            cache: "no-store",
+            headers: authHeader,
+          }
+        );
+
         if (!listRes.ok) {
-          throw new Error("Failed to list files from Google Drive.");
+          const googleErr = await listRes.text().catch(() => "");
+          return NextResponse.json(
+            {
+              error: "Failed to list files from Google Drive.",
+              googleError: googleErr,
+            },
+            { status: listRes.status }
+          );
         }
+
         const data = await listRes.json();
         files.push(...(data.files || []));
         pageToken = data.nextPageToken;
       } while (pageToken);
 
-      // 1c) Format the response
       const images = files.map((f) => ({
         id: f.id as string,
         name: f.name as string,
@@ -161,20 +153,22 @@ export async function GET(req: Request) {
       });
     }
 
-    // --- LOGIC 2: Fetch and stream a single media file ---
+    // ---- MEDIA: stream a single file ----
     if (mediaId) {
-      const upstream = await fetch(
-        `${GOOGLE_API}/files/${mediaId}?alt=media&supportsAllDrives=true${authParam}`,
-        {
-          cache: "no-store",
-          headers: authHeader, // Use the header for token auth
-        }
-      );
+      const mediaUrl = `${GOOGLE_API}/files/${mediaId}?alt=media&supportsAllDrives=true${authParam}`;
+
+      const upstream = await fetch(mediaUrl, {
+        cache: "no-store",
+        headers: authHeader,
+      });
 
       if (!upstream.ok) {
-        const text = await upstream.text();
+        const googleErr = await upstream.text().catch(() => "");
         return NextResponse.json(
-          { error: "Failed to fetch media. Check permissions.", details: text },
+          {
+            error: "Failed to fetch media. Check permissions.",
+            googleError: googleErr,
+          },
           { status: upstream.status }
         );
       }
@@ -191,16 +185,12 @@ export async function GET(req: Request) {
           mediaId
         ),
       });
+      if (contentLength) headers.set("Content-Length", contentLength);
 
-      if (contentLength) {
-        headers.set("Content-Length", contentLength);
-      }
-
-      // Stream the Google Drive file content back to the client
       return new Response(upstream.body, { headers });
     }
 
-    // --- Fallback Error: Missing required parameter ---
+    // ---- Missing params ----
     return NextResponse.json(
       {
         error: "Missing required parameter: 'folderId', 'id', or 'zipFolderId'",
@@ -218,167 +208,3 @@ export async function GET(req: Request) {
     );
   }
 }
-
-// // app/api/drive/route.ts
-
-// import { NextResponse } from "next/server";
-
-// export const dynamic = "force-dynamic";
-
-// const GOOGLE_API = "https://www.googleapis.com/drive/v3";
-
-// // -------- Helper Functions (from both original files) --------
-
-// /**
-//  * Generates a Content-Disposition header value for file downloads,
-//  * ensuring cross-browser compatibility with non-ASCII filenames.
-//  */
-// function contentDisposition(filename: string, fallbackId: string) {
-//   const ascii = filename.replace(/[^\x20-\x7E]+/g, "_");
-//   const safe = ascii.length ? ascii : `file-${fallbackId}`;
-//   const encoded = encodeURIComponent(filename);
-//   // Provides a simple ASCII filename for old browsers and a UTF-8 encoded one for modern browsers
-//   return `attachment; filename="${safe}"; filename*=UTF-8''${encoded}`;
-// }
-
-// /**
-//  * Generates a direct-view URL for a Google Drive image file ID.
-//  * This URL can be used directly in an <img src="..."> tag.
-//  */
-// function viewUrl(fileId: string) {
-//   return `https://drive.google.com/uc?export=view&id=${fileId}`;
-// }
-
-// // -------- Main GET Handler --------
-
-// export async function GET(req: Request) {
-//   try {
-//     const { searchParams } = new URL(req.url);
-//     const folderId = searchParams.get("folderId");
-//     const mediaId = searchParams.get("id");
-//     const filename = searchParams.get("filename") || "";
-
-//     const key = process.env.GOOGLE_DRIVE_API_KEY;
-//     if (!key) {
-//       return NextResponse.json(
-//         { error: "Server misconfigured: missing GOOGLE_DRIVE_API_KEY" },
-//         { status: 500 }
-//       );
-//     }
-
-//     // --- LOGIC 1: List files in a folder ---
-//     if (folderId) {
-//       // 1a) Validate folder metadata
-//       const metaRes = await fetch(
-//         `${GOOGLE_API}/files/${folderId}?fields=id,name,mimeType&supportsAllDrives=true&key=${key}`,
-//         { cache: "no-store" }
-//       );
-
-//       if (!metaRes.ok) {
-//         return NextResponse.json(
-//           {
-//             error:
-//               "Folder is not public or not found. Make sure link-sharing is 'Anyone with the link: Viewer'.",
-//           },
-//           { status: metaRes.status }
-//         );
-//       }
-//       const metadata = await metaRes.json();
-//       if (metadata.mimeType !== "application/vnd.google-apps.folder") {
-//         return NextResponse.json(
-//           { error: "The provided ID is not a Google Drive folder." },
-//           { status: 400 }
-//         );
-//       }
-
-//       // 1b) Fetch all image files from the folder with pagination
-//       const files: any[] = [];
-//       let pageToken: string | undefined = undefined;
-//       const fields =
-//         "nextPageToken,files(id,name,mimeType,webViewLink,thumbnailLink)";
-
-//       do {
-//         const params = new URLSearchParams({
-//           q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-//           fields,
-//           pageSize: "1000",
-//           includeItemsFromAllDrives: "true",
-//           supportsAllDrives: "true",
-//           key,
-//         });
-//         if (pageToken) params.set("pageToken", String(pageToken));
-
-//         const listRes = await fetch(`${GOOGLE_API}/files?${params}`, {
-//           cache: "no-store",
-//         });
-//         if (!listRes.ok) {
-//           throw new Error("Failed to list files from Google Drive.");
-//         }
-//         const data = await listRes.json();
-//         files.push(...(data.files || []));
-//         pageToken = data.nextPageToken;
-//       } while (pageToken);
-
-//       // 1c) Format the response
-//       const images = files.map((f) => ({
-//         id: f.id as string,
-//         name: f.name as string,
-//         mimeType: f.mimeType as string,
-//         webViewLink: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
-//         thumbnail: f.thumbnailLink ?? `https://drive.google.com/thumbnail?sz=w400&id=${f.id}`,
-//         viewUrl: viewUrl(f.id),
-//       }));
-
-//       return NextResponse.json({
-//         folder: { id: metadata.id, name: metadata.name },
-//         count: images.length,
-//         images,
-//       });
-//     }
-
-//     // --- LOGIC 2: Fetch and stream a single media file ---
-//     if (mediaId) {
-//       const upstream = await fetch(
-//         `${GOOGLE_API}/files/${mediaId}?alt=media&supportsAllDrives=true&key=${key}`,
-//         { cache: "no-store" }
-//       );
-
-//       if (!upstream.ok) {
-//         const text = await upstream.text();
-//         return NextResponse.json(
-//           { error: "Failed to fetch media", details: text },
-//           { status: upstream.status }
-//         );
-//       }
-
-//       const contentType =
-//         upstream.headers.get("content-type") ?? "application/octet-stream";
-//       const contentLength = upstream.headers.get("content-length");
-
-//       const headers = new Headers({
-//         "Content-Type": contentType,
-//         "Cache-Control": "no-store",
-//         "Content-Disposition": contentDisposition(filename, mediaId),
-//       });
-
-//       if (contentLength) {
-//         headers.set("Content-Length", contentLength);
-//       }
-
-//       return new Response(upstream.body, { headers });
-//     }
-
-//     // --- Fallback Error: Missing required parameter ---
-//     return NextResponse.json(
-//       { error: "Missing required parameter: 'folderId' or 'id'" },
-//       { status: 400 }
-//     );
-
-//   } catch (err: any) {
-//     console.error("DRIVE API ERROR:", err);
-//     return NextResponse.json(
-//       { error: "Unexpected server error", details: err?.message ?? String(err) },
-//       { status: 500 }
-//     );
-//   }
-// }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Toaster, toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useSWRConfig } from "swr";
 import {
   Search,
   Plus,
@@ -124,6 +125,7 @@ const PERMISSION_CATEGORY_MAP: Record<string, string> = {
 };
 
 export default function RolePermissionPage() {
+  const { mutate } = useSWRConfig();
   const { user } = useAuth();
 
   const [roles, setRoles] = useState<Role[]>([]);
@@ -527,7 +529,13 @@ export default function RolePermissionPage() {
           throw new Error(d?.error || "Failed to remove permission");
         }
       }
-      await loadRolePermissions(selectedRole.id);
+      await loadRolePermissions(selectedRole.id); // ডানপাশের তালিকা রিফ্রেশ
+      await mutate("/api/auth/me"); // 🔄 সাথে সাথে পুরো অ্যাপের পারমিশন রি-ফেচ
+      await mutate(
+        (
+          key: any // ঐচ্ছিক: সংশ্লিষ্ট সব কী রি-ফেচ
+        ) => typeof key === "string" && key.startsWith("/api/role-permissions")
+      );
       toast.success("Permissions updated");
     } catch (e: any) {
       toast.error(e.message || "Failed to update permission");

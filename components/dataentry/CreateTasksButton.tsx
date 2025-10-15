@@ -109,17 +109,18 @@ export default function CreateTasksButton({
     <Button
       onClick={createTasks}
       disabled={isCreating || disabled}
-      className={` bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white h-11 flex-1 rounded-xl font-semibold transition-all duration-300 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      size="sm"
+      className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={disabled ? 'Tasks already created' : 'Create posting tasks for this client'}
     >
       {isCreating ? (
         <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Creating Tasks...
+          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+          Creating...
         </>
       ) : (
         <>
-          <Target className="h-4 w-4 mr-2" />
+          <Target className="h-3 w-3 mr-1.5" />
           Create Tasks
         </>
       )}

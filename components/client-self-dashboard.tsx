@@ -46,7 +46,7 @@ export default function ClientSelfDashboard() {
     async function run() {
       try {
         setLoading(true);
-        const sRes = await fetch("/api/auth/get-session", {
+        const sRes = await fetch("/api/auth/me", {
           cache: "no-store",
         });
         if (!sRes.ok) throw new Error("Failed to fetch session");

@@ -1,5 +1,6 @@
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 /**
  * The app areas we consider "role-scoped" (must match the first path segment).
@@ -27,13 +28,18 @@ type Role =
   | "client"
   | "user";
 
-/**
- * If you later want to enforce permission-by-route (beyond just role/area),
- * fill this map. Each entry can match a concrete path or a regex.
- */
+interface DecodedToken {
+  sub?: string;
+  role?: Role;
+  email?: string;
+  name?: string;
+  iat?: number;
+  exp?: number;
+}
+
 const ROUTE_PERMISSION_RULES: { re: RegExp; perm: string }[] = [
-  // examples:
-  // { re: /^\/agent\/agent_tasks\/?$/, perm: "view_agent_tasks" },
+  // Add fine-grained rules if needed
+  // Example: { re: /^\/admin\/users\/delete/, perm: "users:delete" }
 ];
 
 export const config = {
@@ -47,7 +53,7 @@ export const config = {
     "/client/:path*",
     "/data_entry/:path*",
     "/api/:path*",
-    "/auth/:path*", // ✅ add auth routes so we can guard sign-in
+    "/auth/:path*",
   ],
 };
 
@@ -55,14 +61,23 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const path = url.pathname;
 
-  // Allow API auth endpoints freely.
-  if (path.startsWith("/api/auth")) return NextResponse.next();
+  // ✅ Allow NextAuth internal endpoints freely
+  if (path.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
 
   const isApi = path.startsWith("/api");
 
-  // ✅ Handle /auth/*: disable cache + redirect away if already logged in
+  // ✅ Get JWT token once and reuse
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+  }) as DecodedToken | null;
+
+  // ✅ Handle /auth/* routes
   if (path.startsWith("/auth")) {
     const res = NextResponse.next();
+    // Disable caching for auth pages
     res.headers.set(
       "Cache-Control",
       "no-store, no-cache, must-revalidate, max-age=0"
@@ -70,85 +85,73 @@ export async function middleware(req: NextRequest) {
     res.headers.set("Pragma", "no-cache");
     res.headers.set("Expires", "0");
 
-    const token = req.cookies.get("session-token")?.value;
-    if (token) {
-      // Ask our own API who the user is (role etc.)
-      const meRes = await fetch(new URL("/api/auth/me", req.url), {
-        headers: { cookie: req.headers.get("cookie") ?? "" },
-      });
-      if (meRes.ok) {
-        const me = await meRes.json();
-        const role = (me?.user?.role as Role) ?? "user";
-        // Don't redirect away from auth pages when logged in - allow users to access sign-in/sign-up pages
-        // Users can manually navigate away or use the sign-out functionality if needed
-        return res;
-      }
+    // If already logged in, redirect to appropriate dashboard
+    if (token?.sub) {
+      const role = token.role ?? "user";
+      return NextResponse.redirect(new URL(roleHome(role), req.url));
     }
-    return res; // not logged-in → show auth pages (with no-store)
+
+    return res;
   }
 
-  // ---- Protected areas (your previous logic) ----
+  // ✅ Check if route is protected
   const firstSeg = "/" + (path.split("/")[1] || "");
-  const isProtected = firstSeg in AREA_ROLE || path.startsWith("/api");
+  const isProtected = firstSeg in AREA_ROLE || isApi;
 
-  // 1) Auth check
-  const token = req.cookies.get("session-token")?.value;
-  if (isProtected && !token) {
+  // ✅ Require authentication for protected routes
+  if (isProtected && !token?.sub) {
     return isApi
       ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       : NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
 
-  if (!isProtected || !token) return NextResponse.next();
-
-  // 2) Fetch user (role + permissions)
-  const meRes = await fetch(new URL("/api/auth/me", req.url), {
-    headers: {
-      cookie: req.headers.get("cookie") ?? "",
-    },
-  });
-
-  if (!meRes.ok) {
-    return isApi
-      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      : NextResponse.redirect(new URL("/auth/sign-in", req.url));
+  // ✅ Allow unprotected routes
+  if (!isProtected) {
+    return NextResponse.next();
   }
 
-  const me: {
-    user?: {
-      id?: string;
-      role?: string | null;
-      permissions?: string[];
-      email?: string;
-      name?: string | null;
-    } | null;
-    impersonation?: { isImpersonating: boolean } | null;
-  } = await meRes.json();
+  // ✅ Get role from token (should be set in jwt callback)
+  const role = token?.role ?? "user";
 
-  const role = (me?.user?.role as Role) ?? "user";
-  const permissions = new Set(me?.user?.permissions ?? []);
+  // ⚠️ If role is missing from token, this is a config issue
+  if (!role || role === "user") {
+    console.error(
+      `[Middleware] Missing role in JWT for user ${token?.sub}. Check auth.ts jwt callback.`
+    );
+    // For safety, deny access to role-specific areas
+    if (firstSeg in AREA_ROLE) {
+      return isApi
+        ? NextResponse.json({ error: "Role not configured" }, { status: 403 })
+        : NextResponse.redirect(new URL("/auth/sign-in", req.url));
+    }
+  }
 
-  // 3) Enforce area-by-role
-  const areaPrefix = firstSeg;
-  const requiredRole = AREA_ROLE[areaPrefix as keyof typeof AREA_ROLE];
+  // ✅ Enforce role-based access control
+  const requiredRole = AREA_ROLE[firstSeg as keyof typeof AREA_ROLE];
   if (requiredRole && role !== requiredRole) {
     return deny(req, isApi, roleHome(role));
   }
 
-  // 4) OPTIONAL: permission-by-route
+  // ✅ OPTIONAL: Fine-grained permission checks
+  // Note: For permission checks, you'll need to add permissions to JWT token
+  // or accept the performance cost of fetching from DB/API
   for (const rule of ROUTE_PERMISSION_RULES) {
     if (rule.re.test(path)) {
-      if (!permissions.has(rule.perm)) {
-        return deny(req, isApi, roleHome(role));
-      }
+      // Permissions not in JWT by default (too large for token)
+      // You can either:
+      // 1. Add critical permissions to JWT (limited set)
+      // 2. Use API call for permission-heavy routes (trade-off)
+      // For now, this is a placeholder
+      console.warn(
+        `[Middleware] Permission check for ${rule.perm} requires additional implementation`
+      );
     }
   }
 
-  // 5) OK
+  // ✅ All checks passed
   return NextResponse.next();
 }
 
-/** Where to send a user if they’re blocked */
 function roleHome(role: Role): string {
   switch (role) {
     case "admin":
@@ -172,7 +175,6 @@ function roleHome(role: Role): string {
   }
 }
 
-/** Return a 403 for API or redirect for pages */
 function deny(req: NextRequest, isApi: boolean, fallback: string) {
   return isApi
     ? NextResponse.json({ error: "Forbidden" }, { status: 403 })

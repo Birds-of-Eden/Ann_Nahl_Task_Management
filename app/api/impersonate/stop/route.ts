@@ -1,11 +1,11 @@
 // app/api/impersonate/stop/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
-// ছোট util: বর্তমান রিকোয়েস্ট HTTPS কিনা
-function getIsSecure(req: NextRequest) {
+function isSecure(req: NextRequest) {
   const proto =
     req.headers.get("x-forwarded-proto") ??
     (req as any).nextUrl?.protocol?.replace(":", "") ??
@@ -15,87 +15,48 @@ function getIsSecure(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const currentToken = req.cookies.get("session-token")?.value || null;
-    const originToken = req.cookies.get("impersonation-origin")?.value || null;
-
-    if (!currentToken) {
-      return NextResponse.json({ error: "No active session" }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // বর্তমান সেশনটা সত্যি ইমপারসোনেশন কি না যাচাই
-    const session = await prisma.session.findUnique({
-      where: { token: currentToken },
-      select: { userId: true, impersonatedBy: true },
-    });
+    const targetId = req.cookies.get("impersonation-target")?.value || null;
+    const originId = req.cookies.get("impersonation-origin")?.value || null;
 
-    if (!session?.impersonatedBy) {
+    if (!targetId || !originId) {
       return NextResponse.json({ error: "Not impersonating" }, { status: 400 });
     }
 
-    // অডিট লগ
+    // অডিট লগ (actor = originId)
     await prisma.activityLog.create({
       data: {
         id: randomUUID(),
         entityType: "auth",
-        entityId: session.userId,
-        userId: session.impersonatedBy,
+        entityId: targetId,
+        userId: originId,
         action: "impersonate_stop",
         details: {},
       },
     });
-
-    // ইমপারসোনেটেড সেশন মুছে দিন
-    await prisma.session.deleteMany({ where: { token: currentToken } });
 
     const res = NextResponse.json(
       { success: true, message: "Impersonation ended" },
       { status: 200 }
     );
 
-    const isSecure = getIsSecure(req);
+    const secure = isSecure(req);
 
-    // যদি অরিজিন সেশন থাকে এবং বৈধ হয়, সেটায় ফিরে যান; না হলে সেশন ক্লিয়ার
-    if (originToken) {
-      const origin = await prisma.session.findUnique({
-        where: { token: originToken },
-        select: { expiresAt: true },
-      });
-
-      if (origin) {
-        const seconds = Math.max(
-          1,
-          Math.floor((origin.expiresAt.getTime() - Date.now()) / 1000)
-        );
-        res.cookies.set("session-token", originToken, {
-          httpOnly: true,
-          secure: isSecure,
-          sameSite: "lax",
-          path: "/",
-          maxAge: seconds,
-        });
-      } else {
-        res.cookies.set("session-token", "", {
-          httpOnly: true,
-          secure: isSecure,
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-      }
-    } else {
-      res.cookies.set("session-token", "", {
-        httpOnly: true,
-        secure: isSecure,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 0,
-      });
-    }
-
-    // অরিজিন টোকেন কুকি ক্লিয়ার
+    // কুকি ক্লিয়ার
+    res.cookies.set("impersonation-target", "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
     res.cookies.set("impersonation-origin", "", {
       httpOnly: true,
-      secure: isSecure,
+      secure,
       sameSite: "lax",
       path: "/",
       maxAge: 0,

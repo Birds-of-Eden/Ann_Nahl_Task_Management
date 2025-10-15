@@ -1,11 +1,9 @@
 // app/api/tasks/agents/[agentId]/route.ts
 
 import { type NextRequest, NextResponse } from "next/server";
-import { PrismaClient, NotificationType } from "@prisma/client";
+import { NotificationType } from "@prisma/client";
 import { pusherServer } from "@/lib/pusher/server";
-
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 export const runtime = "nodejs";
 

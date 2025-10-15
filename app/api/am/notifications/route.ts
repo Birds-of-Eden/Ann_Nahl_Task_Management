@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET(req: Request) {
   // Get current session user (AM)
-  const url = new URL("/api/auth/get-session", req.url);
+  const url = new URL("/api/auth/me", req.url);
   const sesRes = await fetch(url, {
     headers: { cookie: req.headers.get("cookie") ?? "" },
     cache: "no-store",

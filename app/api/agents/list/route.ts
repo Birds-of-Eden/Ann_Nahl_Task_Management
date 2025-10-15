@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 // replace with your real agent role ID
 const AGENT_ROLE_ID = "cmdfrtlm00001spw8i3n0bqer";

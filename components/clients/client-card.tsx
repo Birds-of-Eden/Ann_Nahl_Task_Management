@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import type { Client, TaskStatusCounts } from "@/types/client";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { hasPermissionClient } from "@/lib/permissions-client";
-import { useAuth } from "@/context/auth-context";
 import ImpersonateButton from "@/components/users/ImpersonateButton";
 import { handleDeleteClient } from "./handleDeleteClient";
 import DangerDeleteClientModal from "./DangerDeleteClientModal";
@@ -52,11 +51,10 @@ export function ClientCard({
   clientUserId,
   onViewDetails,
 }: ClientCardProps) {
-  const { user } = useAuth();
+  const { user, loading: permsLoading } = useUserSession();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user: session } = useUserSession();
 
   const [deleted, setDeleted] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -241,10 +239,7 @@ export function ClientCard({
   const displayThisMonth = Math.min(100, Math.max(0, derivedProgressThisMonth));
 
   // Role normalization
-  const roleRaw =
-    (session as any)?.user?.role?.name ??
-    (session as any)?.user?.role ??
-    (session as any)?.role;
+  const roleRaw = (user as any)?.role?.name ?? (user as any)?.role;
   const role = typeof roleRaw === "string" ? roleRaw.toLowerCase() : undefined;
   const segment = role && /^[a-z0-9_-]+$/.test(role) ? role : "admin";
 
@@ -412,54 +407,58 @@ export function ClientCard({
       {/* Footer */}
       <CardFooter className="border-t border-gray-100 bg-gray-50 p-6">
         <div className="flex flex-wrap gap-3 w-full">
-          {hasPermissionClient(
-            user?.permissions,
-            "client_card_client_view"
-          ) && (
-            <Button
-              variant="default"
-              className="flex-1 min-w-[150px] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-              onClick={handleViewDetails}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-          )}
+          {!permsLoading &&
+            hasPermissionClient(
+              user?.permissions,
+              "client_card_client_view"
+            ) && (
+              <Button
+                variant="default"
+                className="flex-1 min-w-[150px] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+                onClick={handleViewDetails}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
+            )}
 
-          {hasPermissionClient(
-            user?.permissions,
-            "client_card_Upgrade_Package"
-          ) && (
-            <Button
-              onClick={handleUpgrade}
-              className="flex-1 min-w-[150px] bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-            >
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Upgrade Package
-            </Button>
-          )}
+          {!permsLoading &&
+            hasPermissionClient(
+              user?.permissions,
+              "client_card_Upgrade_Package"
+            ) && (
+              <Button
+                onClick={handleUpgrade}
+                className="flex-1 min-w-[150px] bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              >
+                <ArrowUpCircle className="h-4 w-4 mr-2" />
+                Upgrade Package
+              </Button>
+            )}
 
-          {hasPermissionClient(user?.permissions, "client_card_delete") && (
-            <Button
-              onClick={() => setOpenDanger(true)}
-              disabled={isDeleting}
-              className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-          )}
+          {!permsLoading &&
+            hasPermissionClient(user?.permissions, "client_card_delete") && (
+              <Button
+                onClick={() => setOpenDanger(true)}
+                disabled={isDeleting}
+                className="flex-1 min-w-[150px] bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 text-white shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
 
-          {hasPermissionClient(user?.permissions, "client_card_task_view") && (
-            <Button
-              variant="default"
-              className="flex-1 min-w-[150px] bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
-              onClick={handleViewTasks}
-            >
-              <ListChecks className="h-4 w-4 mr-2" />
-              View Tasks
-            </Button>
-          )}
+          {!permsLoading &&
+            hasPermissionClient(user?.permissions, "client_card_task_view") && (
+              <Button
+                variant="default"
+                className="flex-1 min-w-[150px] bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium shadow-md rounded-lg px-5 py-2.5 transition-all duration-300"
+                onClick={handleViewTasks}
+              >
+                <ListChecks className="h-4 w-4 mr-2" />
+                View Tasks
+              </Button>
+            )}
 
           {clientUserId && (
             <ImpersonateButton

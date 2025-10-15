@@ -1,9 +1,7 @@
 //api/templates/[id]/team-members/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 // ✅ GET: Fetch all team members for a specific template
 export async function GET(
