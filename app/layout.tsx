@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/auth-context";
 import PresencePinger from "@/components/presence/PresencePinger";
 import SWRProvider from "@/components/providers/SWRProvider";
-import { SessionProvider } from "next-auth/react";
 import SessionProviderClient from "@/components/providers/SessionProviderClient";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
