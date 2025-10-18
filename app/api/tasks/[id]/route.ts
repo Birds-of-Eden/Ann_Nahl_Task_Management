@@ -37,6 +37,12 @@ export async function PUT(
     const body = await req.json();
     const { id } = await params;
 
+    // Get the existing task to preserve current dueDate if not provided
+    const existingTask = await prisma.task.findUnique({
+      where: { id },
+      select: { dueDate: true }
+    });
+
     // 1️⃣ টাস্ক আপডেট করুন
     const task = await prisma.task.update({
       where: { id },
@@ -44,12 +50,14 @@ export async function PUT(
         name: body.name,
         priority: body.priority,
         status: body.status,
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        dueDate: body.dueDate !== undefined ? (body.dueDate ? new Date(body.dueDate) : null) : existingTask?.dueDate,
         categoryId: body.categoryId,
         clientId: body.clientId,
         assignedToId: body.assignedToId,
         completionLink: body.completionLink,
         completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        // 🆕 persist content writing data if provided
+        contentWriting: body.contentWriting ?? undefined,
         // 🆕 persist data entry report if provided
         dataEntryReport: body.dataEntryReport ?? undefined,
       },

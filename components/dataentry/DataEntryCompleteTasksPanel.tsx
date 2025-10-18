@@ -63,6 +63,8 @@ export type DETask = {
   completedAt?: string | null;
   // Persisted JSON: { completedByUserId, completedByName, completedAt, status }
   dataEntryReport?: any;
+  // Persisted JSON: Content writing data with titles and content sections
+  contentWriting?: any;
 };
 
 // Status badge variant mapping
@@ -435,7 +437,7 @@ export default function DataEntryCompleteTasksPanel({
   // Check if a task is a content writing task
   const isContentWritingTask = (task: DETask | null) => {
     if (!task?.category?.name) return false;
-    const contentWritingCategories = ["Blog Posting", "Content Writing", "Guest Posting"];
+    const contentWritingCategories = ["Content Writing", "Guest Posting"];
     return contentWritingCategories.some(cat =>
       task.category?.name?.toLowerCase().includes(cat.toLowerCase())
     );
