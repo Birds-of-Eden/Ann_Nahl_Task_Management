@@ -34,6 +34,7 @@ import {
   Copy,
   KeyRound,
   LinkIcon,
+  PenTool,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -41,6 +42,7 @@ import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
 import CreateTasksButton from "./CreateTasksButton";
 import CreateNextTask from "./CreateNextTask";
+import ContentWritingModal from "./contentWritingModal";
 
 export type DETask = {
   id: string;
@@ -140,6 +142,10 @@ export default function DataEntryCompleteTasksPanel({
   const [openDate, setOpenDate] = useState(false);
   const [clientName, setClientName] = useState<string>("");
   const [clientEmail, setClientEmail] = useState<string>("");
+
+  // Content Writing Modal state
+  const [contentWritingModalOpen, setContentWritingModalOpen] = useState(false);
+  const [selectedContentTask, setSelectedContentTask] = useState<DETask | null>(null);
 
   // Fetch client name and email when clientId changes
   useEffect(() => {
@@ -424,6 +430,25 @@ export default function DataEntryCompleteTasksPanel({
     if (!task?.category?.name) return false;
     const simpleCategories = ["Social Activity", "Blog Posting"];
     return simpleCategories.includes(task.category.name);
+  };
+
+  // Check if a task is a content writing task
+  const isContentWritingTask = (task: DETask | null) => {
+    if (!task?.category?.name) return false;
+    const contentWritingCategories = ["Blog Posting", "Content Writing", "Guest Posting"];
+    return contentWritingCategories.some(cat =>
+      task.category?.name?.toLowerCase().includes(cat.toLowerCase())
+    );
+  };
+
+  const openContentWritingModal = (task: DETask) => {
+    setSelectedContentTask(task);
+    setContentWritingModalOpen(true);
+  };
+
+  const closeContentWritingModal = () => {
+    setContentWritingModalOpen(false);
+    setSelectedContentTask(null);
   };
 
   const openComplete = (t: DETask) => {
@@ -910,20 +935,39 @@ export default function DataEntryCompleteTasksPanel({
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
-                            onClick={() => openComplete(t)}
-                            size="sm"
-                            disabled={
-                              t.status === "completed" ||
-                              t.status === "qc_approved"
-                            }
-                          >
-                            {t.status === "completed" ||
-                            t.status === "qc_approved"
-                              ? "Completed"
-                              : "Complete"}
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            {/* Content Writing Button for content writing tasks ONLY */}
+                            {isContentWritingTask(t) ? (
+                              <Button
+                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
+                                onClick={() => openContentWritingModal(t)}
+                                size="sm"
+                                disabled={
+                                  t.status === "completed" ||
+                                  t.status === "qc_approved"
+                                }
+                              >
+                                <PenTool className="h-4 w-4 mr-2" />
+                                Content Writing
+                              </Button>
+                            ) : (
+                              /* Complete Button for all other tasks */
+                              <Button
+                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
+                                onClick={() => openComplete(t)}
+                                size="sm"
+                                disabled={
+                                  t.status === "completed" ||
+                                  t.status === "qc_approved"
+                                }
+                              >
+                                {t.status === "completed" ||
+                                t.status === "qc_approved"
+                                  ? "Completed"
+                                  : "Complete"}
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1157,6 +1201,17 @@ export default function DataEntryCompleteTasksPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Content Writing Modal */}
+      <ContentWritingModal
+        open={contentWritingModalOpen}
+        onOpenChange={setContentWritingModalOpen}
+        task={selectedContentTask}
+        onSuccess={() => {
+          closeContentWritingModal();
+          load(); // Refresh the task list
+        }}
+      />
     </div>
   );
 }
