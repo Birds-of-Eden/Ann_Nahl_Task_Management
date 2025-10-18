@@ -6,15 +6,36 @@ import type { TaskPriority, TaskStatus, SiteAssetType } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 // ================== CONSTANTS ==================
+// Allow ALL asset types defined in prisma enum
 const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "social_site",
   "web2_site",
   "other_asset",
+  "graphics_design",
+  "content_studio",
+  "content_writing",
+  "backlinks",
+  "completed_com",
+  "youtube_video_optimization",
+  "monitoring",
+  "review_removal",
+  "summary_report",
+  "guest_posting",
 ];
 
 const CAT_SOCIAL_ACTIVITY = "Social Activity";
 const CAT_BLOG_POSTING = "Blog Posting";
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
+const CAT_CONTENT_WRITING = "Content Writing";
+const CAT_GUEST_POSTING = "Guest Posting";
+const CAT_GRAPHICS_DESIGN = "Graphics Design";
+const CAT_CONTENT_STUDIO = "Content Studio";
+const CAT_BACKLINKS = "Backlinks";
+const CAT_COMPLETED_COMMUNICATION = "Completed Communication";
+const CAT_YT_OPT = "YouTube Video Optimization";
+const CAT_MONITORING = "Monitoring";
+const CAT_REVIEW_REMOVAL = "Review Removal";
+const CAT_SUMMARY_REPORT = "Summary Report";
 
 const WEB2_FIXED_PLATFORMS = ["medium", "tumblr", "wordpress"] as const;
 const PLATFORM_META: Record<
@@ -48,9 +69,35 @@ function normalizeTaskPriority(v: unknown): TaskPriority {
 }
 
 function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
-  if (!assetType) return CAT_SOCIAL_ACTIVITY;
-  if (assetType === "web2_site") return CAT_BLOG_POSTING;
-  return CAT_SOCIAL_ACTIVITY;
+  switch (assetType) {
+    case "web2_site":
+      return CAT_BLOG_POSTING;
+    case "social_site":
+      return CAT_SOCIAL_ACTIVITY;
+    case "content_writing":
+      return CAT_CONTENT_WRITING;
+    case "guest_posting":
+      return CAT_GUEST_POSTING;
+    case "graphics_design":
+      return CAT_GRAPHICS_DESIGN;
+    case "content_studio":
+      return CAT_CONTENT_STUDIO;
+    case "backlinks":
+      return CAT_BACKLINKS;
+    case "completed_com":
+      return CAT_COMPLETED_COMMUNICATION;
+    case "youtube_video_optimization":
+      return CAT_YT_OPT;
+    case "monitoring":
+      return CAT_MONITORING;
+    case "review_removal":
+      return CAT_REVIEW_REMOVAL;
+    case "summary_report":
+      return CAT_SUMMARY_REPORT;
+    case "other_asset":
+    default:
+      return CAT_SOCIAL_ACTIVITY;
+  }
 }
 
 function baseNameOf(name: string): string {
@@ -308,17 +355,24 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    const [socialCat, blogCat, scCat] = await Promise.all([
-      ensureCategory(CAT_SOCIAL_ACTIVITY),
-      ensureCategory(CAT_BLOG_POSTING),
-      ensureCategory(CAT_SOCIAL_COMMUNICATION),
-    ]);
-
-    const categoryIdByName = new Map<string, string>([
-      [socialCat.name, socialCat.id],
-      [blogCat.name, blogCat.id],
-      [scCat.name, scCat.id],
-    ]);
+    // Ensure all categories that can be used
+    const ALL_CATEGORY_NAMES = [
+      CAT_SOCIAL_ACTIVITY,
+      CAT_BLOG_POSTING,
+      CAT_SOCIAL_COMMUNICATION,
+      CAT_CONTENT_WRITING,
+      CAT_GUEST_POSTING,
+      CAT_GRAPHICS_DESIGN,
+      CAT_CONTENT_STUDIO,
+      CAT_BACKLINKS,
+      CAT_COMPLETED_COMMUNICATION,
+      CAT_YT_OPT,
+      CAT_MONITORING,
+      CAT_REVIEW_REMOVAL,
+      CAT_SUMMARY_REPORT,
+    ];
+    const ensured = await Promise.all(ALL_CATEGORY_NAMES.map((n) => ensureCategory(n)));
+    const categoryIdByName = new Map<string, string>(ensured.map((c) => [c.name, c.id] as const));
 
     // Web2 creds for SC (kept same)
     const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
@@ -406,7 +460,7 @@ export async function POST(req: NextRequest) {
           where: {
             assignmentId: assignment.id,
             name: { in: namesToCheck },
-            category: { name: { in: [CAT_SOCIAL_ACTIVITY, CAT_BLOG_POSTING, CAT_SOCIAL_COMMUNICATION] } },
+            category: { name: { in: ALL_CATEGORY_NAMES } },
           },
           select: { name: true },
         })
