@@ -180,6 +180,6 @@ export const DEFAULT_SUMMARY_REPORT = [
   { name: "Summary Report", url: "https://www.google.com/", isRequired: false },
 ];
 
-export const DEFAULT_MONTHLY_REPORT = [
-  { name: "Monthly Report", url: "https://www.google.com/", isRequired: false },
+export const DEFAULT_guest_posting = [
+  { name: "Guest Posting", url: "https://www.google.com/", isRequired: false },
 ];

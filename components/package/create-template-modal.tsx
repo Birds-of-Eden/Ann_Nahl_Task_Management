@@ -62,7 +62,7 @@ import {
   DEFAULT_MONITORING,
   DEFAULT_REVIEW_REMOVAL,
   DEFAULT_SUMMARY_REPORT,
-  DEFAULT_MONTHLY_REPORT,
+  DEFAULT_guest_posting,
 } from "@/Data/template_site";
 
 // === Types ===
@@ -149,7 +149,7 @@ export function CreateTemplateModal({
     "monitoring",
     "review_removal",
     "summary_report",
-    "monthly_report",
+    "guest_posting",
   ];
 
   const TYPE_CONFIG: Record<SiteAssetTypeTS, { title: string; colorClass: string; icon: React.ReactNode }> = {
@@ -165,7 +165,7 @@ export function CreateTemplateModal({
     monitoring: { title: "Monitoring", colorClass: "bg-slate-500", icon: <BarChart className="w-5 h-5" /> },
     review_removal: { title: "Review Removal", colorClass: "bg-amber-500", icon: <ShieldAlert className="w-5 h-5" /> },
     summary_report: { title: "Summary Report", colorClass: "bg-fuchsia-500", icon: <FileBarChart className="w-5 h-5" /> },
-    monthly_report: { title: "Monthly Report", colorClass: "bg-fuchsia-500", icon: <FileBarChart className="w-5 h-5" /> },
+    guest_posting: { title: "Guest Posting", colorClass: "bg-fuchsia-500", icon: <FileBarChart className="w-5 h-5" /> },
   };
 
   const [enabledTypes, setEnabledTypes] = useState<SiteAssetTypeTS[]>(ALL_TYPES);
@@ -289,9 +289,9 @@ export function CreateTemplateModal({
             : DEFAULT_SUMMARY_REPORT.map(mapDefaults("summary_report"))
         );
         setMonthlyReport(
-          pick("monthly_report").length
-            ? pick("monthly_report")
-            : DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report"))
+          pick("guest_posting").length
+            ? pick("guest_posting")
+            : DEFAULT_guest_posting.map(mapDefaults("guest_posting"))
         );
         // Enable types which have assets in initial data
         const presentTypes = Array.from(
@@ -350,7 +350,7 @@ export function CreateTemplateModal({
     setMonitoring(DEFAULT_MONITORING.map(mapDefaults("monitoring")));
     setReviewRemoval(DEFAULT_REVIEW_REMOVAL.map(mapDefaults("review_removal")));
     setSummaryReport(DEFAULT_SUMMARY_REPORT.map(mapDefaults("summary_report")));
-    setMonthlyReport(DEFAULT_MONTHLY_REPORT.map(mapDefaults("monthly_report")));
+    setMonthlyReport(DEFAULT_guest_posting.map(mapDefaults("guest_posting")));
     setEnabledTypes(ALL_TYPES);
     setCustomTypes({});
   };
@@ -389,7 +389,7 @@ export function CreateTemplateModal({
         return [reviewRemoval, setReviewRemoval];
       case "summary_report":
         return [summaryReport, setSummaryReport];
-      case "monthly_report":
+      case "guest_posting":
         return [monthlyReport, setMonthlyReport];
       default: {
         const list = customTypes[type] || [];

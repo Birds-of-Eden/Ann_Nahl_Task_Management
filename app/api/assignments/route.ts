@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       monitoring: "Monitoring",
       review_removal: "Review Removal",
       summary_report: "Summary Report",
-      monthly_report: "Monthly Report",
+      guest_posting: "Guest Posting",
     };
 
     const ensureTaskCategories = async () => {

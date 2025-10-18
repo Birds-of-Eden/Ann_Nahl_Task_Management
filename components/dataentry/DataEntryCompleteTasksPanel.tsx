@@ -950,7 +950,7 @@ export default function DataEntryCompleteTasksPanel({
                                 }
                               >
                                 <PenTool className="h-4 w-4 mr-2" />
-                                Content Writing
+                                {t.category?.name || "Content Writing"}
                               </Button>
                             ) : (
                               /* Complete Button for all other tasks */
@@ -1209,6 +1209,7 @@ export default function DataEntryCompleteTasksPanel({
         open={contentWritingModalOpen}
         onOpenChange={setContentWritingModalOpen}
         task={selectedContentTask}
+        clientId={clientId}
         onSuccess={() => {
           closeContentWritingModal();
           load(); // Refresh the task list

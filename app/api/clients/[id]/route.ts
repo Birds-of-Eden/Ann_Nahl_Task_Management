@@ -365,7 +365,7 @@ const CATEGORY_BY_ASSET_TYPE: Record<string, string> = {
   monitoring: "Monitoring",
   review_removal: "Review Removal",
   summary_report: "Summary Report",
-  monthly_report: "Monthly Report",
+  guest_posting: "Guest Posting",
 };
 
 async function ensureCategoryByName(name: string) {

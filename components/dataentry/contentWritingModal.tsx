@@ -39,7 +39,9 @@ interface ContentWritingModalProps {
   task: {
     id: string;
     name: string;
+    dueDate?: string | null;
   } | null;
+  clientId?: string;
   onSuccess?: () => void;
 }
 
@@ -47,6 +49,7 @@ export default function ContentWritingModal({
   open,
   onOpenChange,
   task,
+  clientId,
   onSuccess,
 }: ContentWritingModalProps) {
   const { user } = useUserSession();
@@ -180,12 +183,30 @@ export default function ContentWritingModal({
         }),
       });
 
-      if (!taskUpdateResponse.ok) {
-        const errorData = await taskUpdateResponse.json();
-        throw new Error(errorData?.error || "Failed to update task");
+      // 2.5) reassign to the selected 'doneBy' agent (if provided) so the task ownership reflects who actually did it
+      if (doneBy && clientId) {
+        const distBody = {
+          clientId: clientId,
+          assignments: [
+            {
+              taskId: task.id,
+              agentId: doneBy,
+              note: "Reassigned to actual performer by data_entry (content writing)",
+              dueDate: task.dueDate, // Keep existing due date
+            },
+          ],
+        } as any;
+        const rDist = await fetch(`/api/tasks/distribute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(distBody),
+        });
+        const jDist = await rDist.json();
+        if (!rDist.ok)
+          throw new Error(
+            jDist?.error || "Failed to reassign task to selected agent"
+          );
       }
-
-      // 3) Auto-approve with note including selected agent (if any)
       const approveRes = await fetch(`/api/tasks/${task.id}/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

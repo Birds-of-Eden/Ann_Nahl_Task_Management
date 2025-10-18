@@ -62,7 +62,7 @@ function mapSiteAssetTypeToCategory(type: string | undefined): string {
     monitoring: "Monitoring",
     review_removal: "Review Removal",
     summary_report: "Summary Report",
-    monthly_report: "Monthly Report",
+    guest_posting: "Guest Posting",
   };
   return labels[type] ?? type;
 }
@@ -91,7 +91,7 @@ const TEAM_ID_BY_CATEGORY: Record<string, string> = {
   Monitoring: "monitoring-team",
   "Review Removal": "review-removal-team",
   "Summary Report": "summary-report-team",
-  "Monthly Report": "monthly-report-team",
+  "Guest Posting": "monthly-report-team",
 };
 
 // Optional pretty names
@@ -106,7 +106,7 @@ const TEAM_NAME_BY_ID: Record<string, string> = {
   "monitoring-team": "Monitoring Team",
   "review-removal-team": "Review Removal Team",
   "summary-report-team": "Summary Report Team",
-  "monthly-report-team": "Monthly Report Team",
+  "monthly-report-team": "Guest Posting Team",
   "asset-team": "Asset Team",
   "design-team": "Design Team",
   "developer-team": "Developer Team",
@@ -126,7 +126,7 @@ const CATEGORY_LABELS = [
   "Monitoring",
   "Review Removal",
   "Summary Report",
-  "Monthly Report",
+  "Guest Posting",
 ];
 
 function teamIdForCategory(cat: string) {

@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       monitoring: "Monitoring",
       review_removal: "Review Removal",
       summary_report: "Summary Report",
-      monthly_report: "Monthly Report",
+      guest_posting: "Guest Posting",
     };
 
     const ensureCategory = async (name: string) => {
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
       monitoring: "Monitoring",
       review_removal: "Review Removal",
       summary_report: "Summary Report",
-      monthly_report: "Monthly Report",
+      guest_posting: "Guest Posting",
     };
     // Load all template site assets for this assignment's template filtered by selected types
     if (!assignment.templateId) {

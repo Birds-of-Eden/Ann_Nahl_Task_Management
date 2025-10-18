@@ -35,7 +35,7 @@ const SITE_ASSET_TYPES = [
   { value: "monitoring", label: "Monitoring" },
   { value: "review_removal", label: "Review Removal" },
   { value: "summary_report", label: "Summary Report" },
-  { value: "monthly_report", label: "Monthly Report" },
+  { value: "guest_posting", label: "Guest Posting" },
 ];
 
 export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: CreateNewTaskModalProps) {

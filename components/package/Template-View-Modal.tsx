@@ -52,7 +52,7 @@ interface TemplateSiteAsset {
     | "monitoring"
     | "review_removal"
     | "summary_report"
-    | "monthly_report";
+    | "guest_posting";
 
   name: string;
   url?: string;
@@ -168,7 +168,7 @@ export function TemplateViewModal({
         label: "Review Removal",
       },
       summary_report: { icon: BarChart3, color: "gray", label: "Summary Reports" },
-      monthly_report: { icon: BarChart2, color: "gray", label: "Monthly Reports" },
+      guest_posting: { icon: BarChart2, color: "gray", label: "Guest Postings" },
     };
 
     return (
@@ -217,7 +217,7 @@ export function TemplateViewModal({
     ...(groupedSites.monitoring || []),
     ...(groupedSites.review_removal || []),
     ...(groupedSites.summary_report || []),
-    ...(groupedSites.monthly_report || []),
+    ...(groupedSites.guest_posting || []),
   ];
 
   const totalSites = template.sitesAssets?.length || 0;
@@ -569,7 +569,7 @@ export function TemplateViewModal({
                   "monitoring",
                   "review_removal",
                   "summary_report",
-                  "monthly_report",
+                  "guest_posting",
                 ].map((type) => {
                   const config = getSiteTypeConfig(type);
                   const sites = groupedSites[type] || [];
