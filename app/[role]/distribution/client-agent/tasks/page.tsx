@@ -204,6 +204,16 @@ const categoryColor = (c?: string) =>
   ({
     "Social Activity": "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
     "Blog Posting": "bg-cyan-100 text-cyan-800 border-cyan-200",
+    "Social Communication": "bg-indigo-100 text-indigo-800 border-indigo-200",
+    "Content Writing": "bg-emerald-100 text-emerald-800 border-emerald-200",
+    "Guest Posting": "bg-rose-100 text-rose-800 border-rose-200",
+    "Content Studio": "bg-violet-100 text-violet-800 border-violet-200",
+    "Backlinks": "bg-amber-100 text-amber-800 border-amber-200",
+    "Completed Communication": "bg-slate-100 text-slate-800 border-slate-200",
+    "YouTube Video Optimization": "bg-red-100 text-red-800 border-red-200",
+    "Monitoring": "bg-teal-100 text-teal-800 border-teal-200",
+    "Review Removal": "bg-lime-100 text-lime-800 border-lime-200",
+    "Summary Report": "bg-pink-100 text-pink-800 border-pink-200",
   }[c ?? ""] || "bg-slate-100 text-slate-700 border-slate-200");
 
 /* Lighter cycle header gradients */
@@ -547,6 +557,16 @@ export default function CreatedTasksPage() {
                     Social Activity
                   </SelectItem>
                   <SelectItem value="Blog Posting">Blog Posting</SelectItem>
+                  <SelectItem value="Social Communication">Social Communication</SelectItem>
+                  <SelectItem value="Content Writing">Content Writing</SelectItem>
+                  <SelectItem value="Guest Posting">Guest Posting</SelectItem>
+                  <SelectItem value="Content Studio">Content Studio</SelectItem>
+                  <SelectItem value="Backlinks">Backlinks</SelectItem>
+                  <SelectItem value="Completed Communication">Completed Communication</SelectItem>
+                  <SelectItem value="YouTube Video Optimization">YouTube Video Optimization</SelectItem>
+                  <SelectItem value="Monitoring">Monitoring</SelectItem>
+                  <SelectItem value="Review Removal">Review Removal</SelectItem>
+                  <SelectItem value="Summary Report">Summary Report</SelectItem>
                 </SelectContent>
               </Select>
             </div>
