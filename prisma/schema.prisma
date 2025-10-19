@@ -405,6 +405,7 @@ model Task {
   socialCommunications Json? @default("[]")
   dataEntryReport      Json?
   contentWriting       Json?
+  reviewRemoval        Json?
 
   assignment        Assignment?        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   client            Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)

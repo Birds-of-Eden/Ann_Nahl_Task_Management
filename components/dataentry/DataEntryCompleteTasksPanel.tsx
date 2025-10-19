@@ -43,6 +43,7 @@ import { useRouter } from "next/navigation";
 import CreateTasksButton from "./CreateTasksButton";
 import CreateNextTask from "./CreateNextTask";
 import ContentWritingModal from "./contentWritingModal";
+import ReviewRemovalModal from "./ReviewRemovalModal";
 
 export type DETask = {
   id: string;
@@ -147,7 +148,14 @@ export default function DataEntryCompleteTasksPanel({
 
   // Content Writing Modal state
   const [contentWritingModalOpen, setContentWritingModalOpen] = useState(false);
-  const [selectedContentTask, setSelectedContentTask] = useState<DETask | null>(null);
+  const [selectedContentTask, setSelectedContentTask] = useState<DETask | null>(
+    null
+  );
+
+  // Review Removal Modal state
+  const [reviewRemovalModalOpen, setReviewRemovalModalOpen] = useState(false);
+  const [selectedReviewRemovalTask, setSelectedReviewRemovalTask] =
+    useState<DETask | null>(null);
 
   // Fetch client name and email when clientId changes
   useEffect(() => {
@@ -438,8 +446,20 @@ export default function DataEntryCompleteTasksPanel({
   const isContentWritingTask = (task: DETask | null) => {
     if (!task?.category?.name) return false;
     const contentWritingCategories = ["Content Writing", "Guest Posting"];
-    return contentWritingCategories.some(cat =>
+    return contentWritingCategories.some((cat) =>
       task.category?.name?.toLowerCase().includes(cat.toLowerCase())
+    );
+  };
+
+  // Check if a task is a review removal task
+  const isReviewRemovalTask = (task: DETask | null) => {
+    if (!task?.category) return false;
+    const nameLc = (task.category.name || "").toLowerCase();
+    const idLc = (task.category.id || "").toLowerCase();
+    return (
+      nameLc.includes("review removal") ||
+      nameLc === "review_removal" ||
+      idLc.includes("review_removal")
     );
   };
 
@@ -453,6 +473,16 @@ export default function DataEntryCompleteTasksPanel({
     setSelectedContentTask(null);
   };
 
+  const openReviewRemovalModal = (task: DETask) => {
+    setSelectedReviewRemovalTask(task);
+    setReviewRemovalModalOpen(true);
+  };
+
+  const closeReviewRemovalModal = () => {
+    setReviewRemovalModalOpen(false);
+    setSelectedReviewRemovalTask(null);
+  };
+
   const openComplete = (t: DETask) => {
     setSelected(t);
     setLink(t.completionLink || "");
@@ -461,7 +491,7 @@ export default function DataEntryCompleteTasksPanel({
     setUsername(""); // Keep blank initially, will be auto-filled when link changes
     // Don't reset password - keep the last used one
     setPassword(password); // Keep current password value
-    
+
     // Set completed date: first try task's completedAt, then last used date, then current date
     if (t.completedAt) {
       const d = new Date(t.completedAt);
@@ -478,7 +508,7 @@ export default function DataEntryCompleteTasksPanel({
     } else {
       setCompletedAt(new Date());
     }
-    
+
     // Set the last used agent if available
     if (lastUsedAgent) {
       setDoneBy(lastUsedAgent);
@@ -613,7 +643,7 @@ export default function DataEntryCompleteTasksPanel({
       toast.error("Completed date cannot be in the future");
       return;
     }
-    
+
     // Save the selected agent as last used
     if (doneBy) {
       setLastUsedAgent(doneBy);
@@ -834,7 +864,7 @@ export default function DataEntryCompleteTasksPanel({
                         <div>
                           <p>No tasks found</p>
                         </div>
-                        {/* {!nextTasksAlreadyCreated && ( */}
+                        {!nextTasksAlreadyCreated && (
                           <CreateNextTask
                             clientId={clientId}
                             onCreated={() => {
@@ -850,7 +880,7 @@ export default function DataEntryCompleteTasksPanel({
                               load();
                             }}
                           />
-                        {/* )} */}
+                        )}
                       </div>
                       {q ||
                       statusFilter !== "all" ||
@@ -951,6 +981,20 @@ export default function DataEntryCompleteTasksPanel({
                               >
                                 <PenTool className="h-4 w-4 mr-2" />
                                 {t.category?.name || "Content Writing"}
+                              </Button>
+                            ) : isReviewRemovalTask(t) ? (
+                              <Button
+                                className="bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 shadow-sm"
+                                onClick={() => openReviewRemovalModal(t)}
+                                size="sm"
+                                disabled={
+                                  t.status === "completed" ||
+                                  t.status === "qc_approved"
+                                }
+                              >
+                                {t.status === "completed" || t.status === "qc_approved"
+                                  ? "Completed"
+                                  : "Complete"}
                               </Button>
                             ) : (
                               /* Complete Button for all other tasks */
@@ -1065,7 +1109,11 @@ export default function DataEntryCompleteTasksPanel({
                       <Input
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder={lastUsedPassword ? "Using previously saved password" : "Enter password"}
+                        placeholder={
+                          lastUsedPassword
+                            ? "Using previously saved password"
+                            : "Enter password"
+                        }
                         type="text"
                         className="rounded-xl h-11 bg-white border-gray-300 font-mono pr-10"
                       />
@@ -1078,8 +1126,7 @@ export default function DataEntryCompleteTasksPanel({
                     <p className="text-xs text-gray-500 mt-1">
                       {lastUsedPassword
                         ? "Using your last saved password. You can edit it above."
-                        : "Enter password if required. Will be saved for next use."
-                      }
+                        : "Enter password if required. Will be saved for next use."}
                     </p>
                   </div>
                 </div>
@@ -1093,8 +1140,8 @@ export default function DataEntryCompleteTasksPanel({
                   <UserRound className="h-4 w-4 text-blue-600" />
                   Done by (agent) *
                 </legend>
-                <Select 
-                  value={doneBy} 
+                <Select
+                  value={doneBy}
                   onValueChange={(value) => {
                     setDoneBy(value);
                     setLastUsedAgent(value);
@@ -1213,6 +1260,18 @@ export default function DataEntryCompleteTasksPanel({
         onSuccess={() => {
           closeContentWritingModal();
           load(); // Refresh the task list
+        }}
+      />
+
+      {/* Review Removal Modal */}
+      <ReviewRemovalModal
+        open={reviewRemovalModalOpen}
+        onOpenChange={setReviewRemovalModalOpen}
+        task={selectedReviewRemovalTask}
+        clientId={clientId}
+        onSuccess={() => {
+          closeReviewRemovalModal();
+          load();
         }}
       />
     </div>
