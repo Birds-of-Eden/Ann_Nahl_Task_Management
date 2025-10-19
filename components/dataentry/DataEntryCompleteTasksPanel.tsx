@@ -834,7 +834,7 @@ export default function DataEntryCompleteTasksPanel({
                         <div>
                           <p>No tasks found</p>
                         </div>
-                        {!nextTasksAlreadyCreated && (
+                        {/* {!nextTasksAlreadyCreated && ( */}
                           <CreateNextTask
                             clientId={clientId}
                             onCreated={() => {
@@ -850,7 +850,7 @@ export default function DataEntryCompleteTasksPanel({
                               load();
                             }}
                           />
-                        )}
+                        {/* )} */}
                       </div>
                       {q ||
                       statusFilter !== "all" ||
