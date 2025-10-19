@@ -128,8 +128,18 @@ function isWeekend(date: Date): boolean {
   return day === 0 || day === 6;
 }
 
+function dateOnly(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function toLocalMiddayISOString(d: Date): string {
+  const local = new Date(d);
+  local.setHours(12, 0, 0, 0);
+  return local.toISOString();
+}
+
 function addWorkingDays(startDate: Date, workingDays: number): Date {
-  const result = new Date(startDate);
+  const result = dateOnly(startDate);
   let daysToAdd = workingDays;
   while (daysToAdd > 0) {
     result.setDate(result.getDate() + 1);
@@ -137,7 +147,7 @@ function addWorkingDays(startDate: Date, workingDays: number): Date {
       daysToAdd--;
     }
   }
-  return result;
+  return dateOnly(result);
 }
 // 👇 Inclusive month count: counts the start month and end month if any overlap
 function monthsBetweenInclusive(d1: Date, d2: Date): number {
@@ -279,13 +289,11 @@ export async function POST(req: NextRequest) {
     if (!client.dueDate)
       return NextResponse.json({ message: "Client due date is required" }, { status: 400 });
 
-    const startDate = new Date(client.startDate);
-    const dueDate = new Date(client.dueDate);
+    const startDate = dateOnly(new Date(client.startDate));
+    const dueDate = dateOnly(new Date(client.dueDate));
 
-    const today = new Date();
-    const cutoff = today <= dueDate
-      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      : new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+    const todayOnly = dateOnly(new Date());
+    const cutoff = todayOnly <= dueDate ? todayOnly : dueDate;
 
     // Assignment
     const templateId = templateIdRaw === "none" ? null : templateIdRaw;
@@ -409,9 +417,10 @@ export async function POST(req: NextRequest) {
       let accepted = 0;
 
       for (const d of cadenceDates(startDate)) {
-        if (d > cutoff) break; // এই API cutoff পর্যন্তই বানাবে
+        const dOnly = dateOnly(d);
+        if (dOnly.getTime() > cutoff.getTime()) break; // এই API cutoff পর্যন্তই বানাবে
 
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const key = `${dOnly.getFullYear()}-${String(dOnly.getMonth() + 1).padStart(2, "0")}`;
         const used = perMonthCount.get(key) ?? 0;
 
         if (used < freqPerMonth) {
@@ -426,7 +435,7 @@ export async function POST(req: NextRequest) {
             catName,
             base,
             name: `${base} -${seqIndex}`,
-            dueDate: d,
+            dueDate: dOnly,
             seqIndex,
           });
 
@@ -477,7 +486,7 @@ export async function POST(req: NextRequest) {
         status: "pending" as TaskStatus,
         priority: overridePriority ?? item.src.priority,
         idealDurationMinutes: item.src.idealDurationMinutes ?? undefined,
-        dueDate: item.dueDate.toISOString(),
+        dueDate: toLocalMiddayISOString(item.dueDate),
         completionLink: item.src.completionLink ?? undefined,
         email: item.src.email ?? undefined,
         password: item.src.password ?? undefined,
