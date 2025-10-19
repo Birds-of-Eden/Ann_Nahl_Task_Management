@@ -44,6 +44,7 @@ import CreateTasksButton from "./CreateTasksButton";
 import CreateNextTask from "./CreateNextTask";
 import ContentWritingModal from "./contentWritingModal";
 import ReviewRemovalModal from "./ReviewRemovalModal";
+import BacklinkingModal from "./BacklinkingModal";
 
 export type DETask = {
   id: string;
@@ -155,6 +156,11 @@ export default function DataEntryCompleteTasksPanel({
   // Review Removal Modal state
   const [reviewRemovalModalOpen, setReviewRemovalModalOpen] = useState(false);
   const [selectedReviewRemovalTask, setSelectedReviewRemovalTask] =
+    useState<DETask | null>(null);
+
+  // Backlinking Modal state
+  const [backlinkingModalOpen, setBacklinkingModalOpen] = useState(false);
+  const [selectedBacklinkingTask, setSelectedBacklinkingTask] =
     useState<DETask | null>(null);
 
   // Fetch client name and email when clientId changes
@@ -463,6 +469,13 @@ export default function DataEntryCompleteTasksPanel({
     );
   };
 
+  const isBacklinkingTask = (task: DETask | null) => {
+    if (!task?.category) return false;
+    const nameLc = (task.category.name || "").toLowerCase();
+    const idLc = (task.category.id || "").toLowerCase();
+    return nameLc.includes("backlinks") || idLc.includes("backlinks");
+  };
+
   const openContentWritingModal = (task: DETask) => {
     setSelectedContentTask(task);
     setContentWritingModalOpen(true);
@@ -481,6 +494,16 @@ export default function DataEntryCompleteTasksPanel({
   const closeReviewRemovalModal = () => {
     setReviewRemovalModalOpen(false);
     setSelectedReviewRemovalTask(null);
+  };
+
+  const openBacklinkingModal = (task: DETask) => {
+    setSelectedBacklinkingTask(task);
+    setBacklinkingModalOpen(true);
+  };
+
+  const closeBacklinkingModal = () => {
+    setBacklinkingModalOpen(false);
+    setSelectedBacklinkingTask(null);
   };
 
   const openComplete = (t: DETask) => {
@@ -996,6 +1019,20 @@ export default function DataEntryCompleteTasksPanel({
                                   ? "Completed"
                                   : "Complete"}
                               </Button>
+                            ) : isBacklinkingTask(t) ? (
+                              <Button
+                                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 shadow-sm"
+                                onClick={() => openBacklinkingModal(t)}
+                                size="sm"
+                                disabled={
+                                  t.status === "completed" ||
+                                  t.status === "qc_approved"
+                                }
+                              >
+                                {t.status === "completed" || t.status === "qc_approved"
+                                  ? "Completed"
+                                  : "Complete"}
+                              </Button>
                             ) : (
                               /* Complete Button for all other tasks */
                               <Button
@@ -1271,6 +1308,17 @@ export default function DataEntryCompleteTasksPanel({
         clientId={clientId}
         onSuccess={() => {
           closeReviewRemovalModal();
+          load();
+        }}
+      />
+
+      <BacklinkingModal
+        open={backlinkingModalOpen}
+        onOpenChange={setBacklinkingModalOpen}
+        task={selectedBacklinkingTask}
+        clientId={clientId}
+        onSuccess={() => {
+          closeBacklinkingModal();
           load();
         }}
       />

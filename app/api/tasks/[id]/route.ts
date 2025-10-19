@@ -60,6 +60,29 @@ export async function PUT(
       return undefined;
     })();
 
+    // Build backLinking payload if provided
+    const backLinkingPayload = (() => {
+      if (body?.backLinking && typeof body.backLinking === "object") {
+        return body.backLinking;
+      }
+      const linksArray: string[] | undefined = Array.isArray(body?.backlinkingLinks)
+        ? body.backlinkingLinks.filter((l: any) => typeof l === "string" && l.trim()).map((l: string) => l.trim())
+        : undefined;
+      if (linksArray && linksArray.length) {
+        const linkMap: Record<string, string> = {};
+        linksArray.forEach((link, idx) => {
+          linkMap[`Backlink${idx + 1}`] = link;
+        });
+        const payload: any = { links: linkMap };
+        if (typeof body?.orderDate === "string") payload.orderDate = body.orderDate;
+        if (typeof body?.month === "string") payload.month = body.month;
+        if (typeof body?.quantity === "number") payload.quantity = body.quantity;
+        if (typeof body?.dripPeriod === "string") payload.dripPeriod = body.dripPeriod;
+        return payload;
+      }
+      return undefined;
+    })();
+
     // 1️⃣ টাস্ক আপডেট করুন
     const task = await prisma.task.update({
       where: { id },
@@ -79,6 +102,8 @@ export async function PUT(
         dataEntryReport: body.dataEntryReport ?? undefined,
         // 🆕 persist review removal data if provided
         reviewRemoval: reviewRemovalPayload ?? undefined,
+        // 🆕 persist backlinking data if provided
+        backLinking: backLinkingPayload ?? undefined,
       },
       include: { assignedTo: true },
     });
