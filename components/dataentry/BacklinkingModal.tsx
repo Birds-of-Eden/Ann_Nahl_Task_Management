@@ -70,6 +70,12 @@ export default function BacklinkingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedAt, setCompletedAt] = useState<Date | null>(null);
 
+  const toLocalMiddayISOString = (d: Date) => {
+    const local = new Date(d);
+    local.setHours(12, 0, 0, 0); // normalize to local midday to avoid UTC date shifting
+    return local.toISOString();
+  };
+
   // Load agents on open
   useEffect(() => {
     const loadAgents = async () => {
@@ -154,10 +160,11 @@ export default function BacklinkingModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "completed",
-          completedAt: completedAt ? completedAt.toISOString() : new Date().toISOString(),
-          // Backlinking persistence inputs (API builds Task.backLinking from these)
+          completedAt: completedAt
+            ? toLocalMiddayISOString(completedAt)
+            : toLocalMiddayISOString(new Date()),
           backlinkingLinks: links,
-          orderDate: orderDate.toISOString(),
+          orderDate: toLocalMiddayISOString(orderDate),
           month,
           quantity: parseInt(quantity),
           dripPeriod,

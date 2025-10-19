@@ -61,6 +61,12 @@ export default function ReviewRemovalModal({
   const [completedAt, setCompletedAt] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const toLocalMiddayISOString = (d: Date) => {
+    const local = new Date(d);
+    local.setHours(12, 0, 0, 0);
+    return local.toISOString();
+  };
+
   // Load agents on open
   useEffect(() => {
     const loadAgents = async () => {
@@ -138,7 +144,7 @@ export default function ReviewRemovalModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "completed",
-          completedAt: completedAt.toISOString(),
+          completedAt: toLocalMiddayISOString(completedAt),
           reviewRemovalLinks: links,
           dataEntryReport: {
             completedByUserId: user.id,
