@@ -120,15 +120,13 @@ export default function ReviewRemovalModal({
 
     setIsSubmitting(true);
     try {
-      // 1) Mark task as completed
+      // 1) Mark task as completed without setting completionLink (should remain null)
       const completionResponse = await fetch(`/api/tasks/agents/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taskId: task.id,
           status: "completed",
-          completionLink: links,
-          contentType: "review_removal",
         }),
       });
       if (!completionResponse.ok)
@@ -149,7 +147,6 @@ export default function ReviewRemovalModal({
             completedBy: new Date().toISOString(),
             status: "Review removal submitted",
             doneByAgentId: doneBy || undefined,
-            links,
           },
         }),
       });

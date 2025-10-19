@@ -43,6 +43,23 @@ export async function PUT(
       select: { dueDate: true }
     });
 
+    // Build reviewRemoval payload if provided
+    const reviewRemovalPayload = (() => {
+      if (body?.reviewRemoval && typeof body.reviewRemoval === "object") {
+        return body.reviewRemoval;
+      }
+      if (Array.isArray(body?.reviewRemovalLinks)) {
+        const obj: Record<string, string> = {};
+        body.reviewRemovalLinks
+          .filter((l: any) => typeof l === "string" && l.trim())
+          .forEach((link: string, idx: number) => {
+            obj[`ReviewLink${idx + 1}`] = link.trim();
+          });
+        return Object.keys(obj).length ? obj : undefined;
+      }
+      return undefined;
+    })();
+
     // 1️⃣ টাস্ক আপডেট করুন
     const task = await prisma.task.update({
       where: { id },
@@ -60,6 +77,8 @@ export async function PUT(
         contentWriting: body.contentWriting ?? undefined,
         // 🆕 persist data entry report if provided
         dataEntryReport: body.dataEntryReport ?? undefined,
+        // 🆕 persist review removal data if provided
+        reviewRemoval: reviewRemovalPayload ?? undefined,
       },
       include: { assignedTo: true },
     });
