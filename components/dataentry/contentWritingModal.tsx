@@ -39,6 +39,7 @@ interface ContentWritingModalProps {
   task: {
     id: string;
     name: string;
+    category?: { id: string; name: string } | null;
     dueDate?: string | null;
   } | null;
   clientId?: string;
@@ -176,8 +177,12 @@ export default function ContentWritingModal({
             completedByName:
               (user as any)?.name || (user as any)?.email || user.id,
             completedBy: new Date().toISOString(),
-            status: "Content submitted by data entry",
-            contentSections: formattedContent,
+            status:
+              ((task?.category?.name || "").toLowerCase().includes("guest posting")
+                ? "Guest Posting Content submitted by data entry"
+                : (task?.category?.name || "").toLowerCase().includes("content writing")
+                ? "Content Writing Content submitted by data entry"
+                : "Content submitted by data entry"),
             doneByAgentId: doneBy || undefined,
           },
         }),
