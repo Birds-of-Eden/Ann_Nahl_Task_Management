@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Save, UserRound, Search, Calendar } from "lucide-react";
+import { Plus, Trash2, Save, UserRound, Search, Calendar, PenTool, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,12 +180,15 @@ export default function ContentWritingModal({
             completedByName:
               (user as any)?.name || (user as any)?.email || user.id,
             completedBy: new Date().toISOString(),
-            status:
-              ((task?.category?.name || "").toLowerCase().includes("guest posting")
-                ? "Guest Posting Content submitted by data entry"
-                : (task?.category?.name || "").toLowerCase().includes("content writing")
-                ? "Content Writing Content submitted by data entry"
-                : "Content submitted by data entry"),
+            status: (task?.category?.name || "")
+              .toLowerCase()
+              .includes("guest posting")
+              ? "Guest Posting Content submitted by data entry"
+              : (task?.category?.name || "")
+                  .toLowerCase()
+                  .includes("content writing")
+              ? "Content Writing Content submitted by data entry"
+              : "Content submitted by data entry",
             doneByAgentId: doneBy || undefined,
           },
         }),
@@ -289,43 +292,49 @@ export default function ContentWritingModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] flex flex-col rounded-2xl border bg-white/80 backdrop-blur-sm">
-        <DialogHeader className="pb-4 border-b">
-          <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg">
-              <Save className="h-5 w-5 text-white" />
-            </div>
-            Submit Content:{" "}
-            <span className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg text-white">
-              {task?.name}
-            </span>
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 text-sm pt-1">
-            Create and organize your guest posting content. Add multiple
-            sections and format your text as needed.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] flex flex-col rounded-3xl border-0 bg-white shadow-2xl overflow-hidden">
+        {/* Modern Header with Gradient */}
+        <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 -m-6 mb-6 px-8 py-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-white flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                <PenTool className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-1">
+                  Submit Content Writing
+                </div>
+                <div className="text-white font-black text-xl truncate">
+                  {task?.name}
+                </div>
+              </div>
+            </DialogTitle>
+            <DialogDescription className="text-white/90 text-sm pt-2 pl-16 font-medium">
+              Create and organize guest posting content. Add sections and format your text. This task will be auto-approved upon submission.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="px-6 pb-6 space-y-6 flex-1 overflow-y-auto">
           <Tabs
             value={activeSection}
             onValueChange={setActiveSection}
             className="flex-1 flex flex-col"
           >
             <div className="flex items-center justify-between mb-4">
-              <TabsList className="flex-wrap h-auto p-1 bg-gray-100">
+              <TabsList className="flex-wrap h-auto p-2 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl shadow-inner">
                 {contentSections.map((section, index) => (
-                  <div key={section.id} className="flex items-center">
+                  <div key={section.id} className="flex items-center gap-1 bg-white rounded-xl shadow-sm px-2 py-1">
                     <TabsTrigger
                       value={section.id}
-                      className="relative px-3 py-2 text-sm data-[state=active]:bg-white"
+                      className="relative px-3 py-2 text-sm font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-xl transition-all"
                     >
                       <Input
                         value={section.title}
                         onChange={(e) =>
                           updateSectionTitle(section.id, e.target.value)
                         }
-                        className="h-6 text-sm border-none p-0 bg-transparent focus:bg-white px-1 -mx-1"
+                        className="h-6 text-sm border-none p-0 bg-transparent focus:ring-0 focus-visible:ring-0"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </TabsTrigger>
@@ -333,11 +342,11 @@ export default function ContentWritingModal({
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => removeContentSection(section.id)}
-                        className="h-4 w-4 p-0 ml-1 hover:bg-red-100 hover:text-red-600"
+                        className="h-7 w-7 rounded-full hover:bg-red-100 hover:text-red-600 transition-all"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -349,14 +358,14 @@ export default function ContentWritingModal({
                 onClick={addContentSection}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 bg-gradient-to-br from-blue-500 to-purple-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm text-white hover:text-white"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-500 via-violet-500 to-blue-500 hover:from-purple-600 hover:via-violet-600 hover:to-blue-600 text-white hover:text-white rounded-2xl h-12 font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all border-0"
               >
                 <Plus className="h-4 w-4" />
-                Add Content
+                Add Section
               </Button>
             </div>
 
-            <div className="flex-1 flex flex-col border rounded-lg overflow-hidden">
+            <div className="flex-1 flex flex-col border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               {contentSections.map((section) => (
                 <TabsContent
                   key={section.id}
@@ -368,20 +377,23 @@ export default function ContentWritingModal({
                     onContentChange={(content) =>
                       updateSectionContent(section.id, content)
                     }
-                    height={400}
+                    height={380}
+                    placeholder="Write compelling content for this section..."
                   />
                 </TabsContent>
               ))}
             </div>
           </Tabs>
 
-          {/* Agent and Date Section in a final Fieldset */}
-          <fieldset className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <div className="space-y-2">
-              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                <UserRound className="h-4 w-4 text-blue-600" />
-                Done by (agent) *
-              </legend>
+          {/* Agent and Date Section - Modern Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <UserRound className="h-4 w-4 text-blue-600" />
+                </div>
+                Done by (Agent) *
+              </label>
               <Select
                 value={doneBy}
                 onValueChange={(value) => {
@@ -389,7 +401,7 @@ export default function ContentWritingModal({
                   setLastUsedAgent(value);
                 }}
               >
-                <SelectTrigger className="rounded-xl h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50 text-base">
+                <SelectTrigger className="rounded-2xl h-14 border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-base font-medium">
                   <SelectValue placeholder="Select agent..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-gray-200 shadow-lg p-3 w-[300px]">
@@ -447,11 +459,13 @@ export default function ContentWritingModal({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                <Calendar className="h-4 w-4 text-purple-600" />
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                <div className="bg-purple-100 p-2 rounded-lg">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                </div>
                 Completed At *
-              </legend>
+              </label>
               <DatePicker
                 selected={completedAt}
                 onChange={(date: Date | null) => {
@@ -464,31 +478,33 @@ export default function ContentWritingModal({
                 showYearDropdown
                 dropdownMode="select"
                 placeholderText="Select completion date"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm h-11 focus:border-purple-500 focus:ring-purple-500/50 transition-all"
+                className="w-full border-2 border-slate-200 rounded-2xl px-5 py-2 text-base h-14 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 transition-all font-medium"
                 maxDate={new Date()}
               />
             </div>
-          </fieldset>
-
-          <div className="pt-4 border-t mt-4 flex justify-end">
-            <Button
-              variant="outline"
-              onClick={closeModal}
-              className="rounded-xl h-11"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={submitContentWriting}
-              disabled={isSubmitting || !doneBy}
-              className="ml-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Submitting..." : "Submit Content"}
-            </Button>
           </div>
         </div>
+
+        {/* Footer with Modern Button Design */}
+        <DialogFooter className="pt-8 border-t-2 border-slate-100 px-6 pb-6 gap-4">
+          <Button
+            variant="outline"
+            onClick={closeModal}
+            className="rounded-2xl h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white hover:text-white font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 border-0 px-8"
+            disabled={isSubmitting}
+          >
+            <X className="h-5 w-5 mr-2" />
+            Cancel
+          </Button>
+          <Button
+            onClick={submitContentWriting}
+            disabled={isSubmitting || !doneBy || !completedAt || contentSections.length === 0}
+            className="ml-2 bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 hover:from-purple-700 hover:via-violet-700 hover:to-blue-700 rounded-2xl h-14 font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all px-8"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            {isSubmitting ? "Submitting..." : "Submit Content"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

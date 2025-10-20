@@ -1411,7 +1411,7 @@ export default function DataEntryCompleteTasksPanel({
             <Button
               variant="outline"
               onClick={() => resetModal()}
-              className="rounded-2xl h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 border-0 px-8"
+              className="rounded-2xl h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white hover:text-white font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 border-0 px-8"
             >
               <X className="h-5 w-5 mr-2" />
               Cancel

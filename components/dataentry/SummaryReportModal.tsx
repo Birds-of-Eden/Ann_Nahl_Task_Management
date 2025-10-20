@@ -11,6 +11,8 @@ import {
   UserRound,
   Search,
   Calendar,
+  ClipboardPlus,
+  Save,
 } from "lucide-react";
 import {
   Dialog,
@@ -186,50 +188,71 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[80vw] max-h-[80vh] overflow-y-auto rounded-2xl border bg-white/80 backdrop-blur-md">
-        <DialogHeader className="border-b pb-3">
-          <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-3">
-            <FileText className="h-5 w-5 text-indigo-600" />
-            Create Summary Report
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 text-sm">
-            Add a title, upload your report PDF, and provide a short summary
-            text.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col rounded-3xl border-0 bg-white shadow-2xl overflow-hidden">
+        {/* Modern Header with Gradient */}
+        <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 -m-6 mb-6 px-8 py-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-white flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                <ClipboardPlus className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-1">
+                  Create Summary Report
+                </div>
+                <div className="text-white font-black text-xl truncate">
+                  {task?.name}
+                </div>
+              </div>
+            </DialogTitle>
+            <DialogDescription className="text-white/90 text-sm pt-2 pl-16 font-medium">
+              Add a title, upload your report PDF, and provide a summary. This task will be auto-approved upon submission.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-5 py-3">
+        <div className="px-6 pb-6 space-y-6 flex-1 overflow-y-auto">
           {/* Title Input */}
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1">
-              <Type className="h-4 w-4 text-indigo-500" />
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+              <div className="bg-green-100 p-2 rounded-lg">
+                <Type className="h-4 w-4 text-green-600" />
+              </div>
               Report Title *
-            </legend>
+            </label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter report title"
-              className="rounded-xl h-11 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/50 transition-all"
+              placeholder="Enter a descriptive title for your summary report"
+              className="rounded-2xl h-14 border-2 border-green-500 focus:border-green-500 focus:ring-4 focus:ring-green-500 transition-all text-base font-medium px-5"
             />
-          </fieldset>
+          </div>
 
           {/* PDF Upload */}
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1">
-              <FileDown className="h-4 w-4 text-green-600" />
-              Upload PDF File
-            </legend>
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+              <div className="bg-emerald-100 p-2 rounded-lg">
+                <FileDown className="h-4 w-4 text-emerald-600" />
+              </div>
+              Upload PDF File (Optional)
+            </label>
             <label
               htmlFor="pdf-upload"
-              className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl py-6 cursor-pointer hover:bg-gray-50 transition-all"
+              className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl py-8 cursor-pointer hover:bg-gradient-to-br hover:from-green-50 hover:to-emerald-50 hover:border-green-400 transition-all group"
             >
-              <Upload className="h-5 w-5 text-gray-500 mr-2" />
+              <Upload className="h-8 w-8 text-slate-400 group-hover:text-green-600 mb-3 transition-colors" />
               {pdfFile ? (
-                <span className="font-medium text-gray-800">
-                  {pdfFile.name}
-                </span>
+                <div className="text-center">
+                  <span className="font-bold text-green-700 text-lg">
+                    {pdfFile.name}
+                  </span>
+                  <p className="text-xs text-slate-500 mt-1">Click to change file</p>
+                </div>
               ) : (
-                <span className="text-gray-500">Click to upload PDF</span>
+                <div className="text-center">
+                  <span className="text-slate-600 font-semibold">Click to upload PDF</span>
+                  <p className="text-xs text-slate-500 mt-1">or drag and drop your file here</p>
+                </div>
               )}
               <input
                 id="pdf-upload"
@@ -241,26 +264,37 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
                 className="hidden"
               />
             </label>
-          </fieldset>
-
-          {/* Textarea */}
-          <div className="flex-1 flex flex-col border rounded-lg overflow-hidden">
-            <JoditEditorComponent
-              initialValue={text}
-              onContentChange={(content) => setText(content)}
-              height={400}
-            />
           </div>
 
-          {/* Agent Selection */}
-          <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t mt-4">
-            <div className="space-y-2">
-              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                <UserRound className="h-4 w-4 text-blue-600" />
-                Done by (agent) *
-              </legend>
+          {/* Rich Text Editor */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+              <div className="bg-teal-100 p-2 rounded-lg">
+                <FileText className="h-4 w-4 text-teal-600" />
+              </div>
+              Summary Text *
+            </label>
+            <div className="border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <JoditEditorComponent
+                initialValue={text}
+                onContentChange={(content) => setText(content)}
+                height={350}
+                placeholder="Write a detailed summary of the report..."
+              />
+            </div>
+          </div>
+
+          {/* Agent and Date Section - Modern Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <UserRound className="h-4 w-4 text-blue-600" />
+                </div>
+                Done by (Agent) *
+              </label>
               <Select value={doneBy} onValueChange={setDoneBy}>
-                <SelectTrigger className="rounded-xl h-12 border-gray-300 text-base">
+                <SelectTrigger className="rounded-2xl h-14 border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-base font-medium">
                   <SelectValue placeholder="Select agent..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-gray-200 shadow-lg p-3 w-[300px]">
@@ -272,6 +306,10 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
                         className="pl-12 h-12 text-base border-2 border-white"
                         value={agentSearchTerm}
                         onChange={(e) => setAgentSearchTerm(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.currentTarget.focus();
+                        }}
                       />
                     </div>
                   </div>
@@ -284,9 +322,27 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
                               .toLowerCase()
                               .includes(agentSearchTerm.toLowerCase())
                       )
+                      .sort((a, b) => {
+                        if (a.id === doneBy) return -1;
+                        if (b.id === doneBy) return 1;
+                        return 0;
+                      })
                       .map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name || "Unnamed Agent"}
+                        <SelectItem
+                          key={a.id}
+                          value={a.id}
+                          className="rounded-lg py-2 px-2 my-1 hover:bg-gray-100 focus:bg-blue-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 w-full p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${
+                                a.id === doneBy ? "bg-blue-500" : "bg-green-500"
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              {a.name || "Unnamed Agent"}
+                            </div>
+                          </div>
                         </SelectItem>
                       ))}
                   </div>
@@ -294,11 +350,13 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                <Calendar className="h-4 w-4 text-purple-600" />
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                <div className="bg-purple-100 p-2 rounded-lg">
+                  <Calendar className="h-4 w-4 text-purple-600" />
+                </div>
                 Completed At *
-              </legend>
+              </label>
               <DatePicker
                 selected={completedAt}
                 onChange={(d) => setCompletedAt(d)}
@@ -307,28 +365,30 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
                 showYearDropdown
                 dropdownMode="select"
                 placeholderText="Select completion date"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm h-11 focus:border-purple-500 focus:ring-purple-500/50"
+                className="w-full border-2 border-slate-200 rounded-2xl px-5 py-2 text-base h-14 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 transition-all font-medium"
                 maxDate={new Date()}
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t flex justify-end gap-2">
+        {/* Footer with Modern Button Design */}
+        <DialogFooter className="pt-8 border-t-2 border-slate-100 px-6 pb-6 gap-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl h-11 bg-red-500 hover:bg-red-600 text-white font-medium transition-all"
+            className="rounded-2xl h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white hover:text-white font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 border-0 px-8"
+            disabled={submitting}
           >
-            <X className="h-4 w-4 mr-2" />
+            <X className="h-5 w-5 mr-2" />
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || !doneBy}
-            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 rounded-xl h-11 font-semibold text-white shadow-sm transition-all"
+            disabled={submitting || !doneBy || !completedAt}
+            className="ml-2 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 rounded-2xl h-14 font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all px-8"
           >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <Save className="h-5 w-5 mr-2" />
             {submitting ? "Submitting..." : "Submit Report"}
           </Button>
         </DialogFooter>
