@@ -10,12 +10,8 @@ const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "social_site",
   "web2_site",
   "other_asset",
-  "content_studio",
   "content_writing",
   "backlinks",
-  "completed_com",
-  "youtube_video_optimization",
-  "monitoring",
   "review_removal",
   "summary_report",
   "guest_posting",
@@ -26,11 +22,7 @@ const CAT_BLOG_POSTING = "Blog Posting";
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
 const CAT_CONTENT_WRITING = "Content Writing";
 const CAT_GUEST_POSTING = "Guest Posting";
-const CAT_CONTENT_STUDIO = "Content Studio";
 const CAT_BACKLINKS = "Backlinks";
-const CAT_COMPLETED_COMMUNICATION = "Completed Communication";
-const CAT_YT_OPT = "YouTube Video Optimization";
-const CAT_MONITORING = "Monitoring";
 const CAT_REVIEW_REMOVAL = "Review Removal";
 const CAT_SUMMARY_REPORT = "Summary Report";
 
@@ -75,16 +67,8 @@ function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
       return CAT_CONTENT_WRITING;
     case "guest_posting":
       return CAT_GUEST_POSTING;
-    case "content_studio":
-      return CAT_CONTENT_STUDIO;
     case "backlinks":
       return CAT_BACKLINKS;
-    case "completed_com":
-      return CAT_COMPLETED_COMMUNICATION;
-    case "youtube_video_optimization":
-      return CAT_YT_OPT;
-    case "monitoring":
-      return CAT_MONITORING;
     case "review_removal":
       return CAT_REVIEW_REMOVAL;
     case "summary_report":
@@ -132,6 +116,16 @@ function addWorkingDays(startDate: Date, workingDays: number): Date {
     if (!isWeekend(result)) daysToAdd--;
   }
   return result;
+}
+
+function dateOnly(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(startDate: Date, days: number): Date {
+  const copy = new Date(startDate);
+  copy.setDate(copy.getDate() + days);
+  return dateOnly(copy);
 }
 
 // Inclusive month count: counts the start month and end month if any overlap
@@ -352,11 +346,7 @@ export async function POST(req: NextRequest) {
       CAT_SOCIAL_COMMUNICATION,
       CAT_CONTENT_WRITING,
       CAT_GUEST_POSTING,
-      CAT_CONTENT_STUDIO,
       CAT_BACKLINKS,
-      CAT_COMPLETED_COMMUNICATION,
-      CAT_YT_OPT,
-      CAT_MONITORING,
       CAT_REVIEW_REMOVAL,
       CAT_SUMMARY_REPORT,
     ];
@@ -365,6 +355,14 @@ export async function POST(req: NextRequest) {
 
     // Web2 creds for SC
     const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+
+    const CUSTOM_SCHEDULE_OFFSETS: Record<string, number[]> = {
+      [CAT_CONTENT_WRITING]: [30, 60, 90],
+      [CAT_BACKLINKS]: [30, 60],
+      [CAT_REVIEW_REMOVAL]: [30, 60, 90],
+      [CAT_SUMMARY_REPORT]: [30, 60, 90],
+      [CAT_GUEST_POSTING]: [30, 60, 90],
+    };
 
     // 👇 NEW: per-month capped schedule builder (first = +15WD, then +7WD), starting from today
     function* cadenceDates(from: Date, end: Date) {
@@ -393,17 +391,6 @@ export async function POST(req: NextRequest) {
       const catName = resolveCategoryFromType(src.templateSiteAsset?.type);
       const base = baseNameOf(src.name);
 
-      const freqPerMonthRaw = src.templateSiteAsset?.defaultPostingFrequency ?? 1;
-      const freqPerMonth = Math.max(1, Number(freqPerMonthRaw) || 1);
-
-      // Calculate total months remaining (from today to dueDate)
-      const remainingMonths = monthsBetweenInclusive(todayMidnight, dueDate);
-      const totalNeeded = remainingMonths * freqPerMonth;
-
-      // Per-month cap implementation
-      const perMonthCount = new Map<string, number>(); // "YYYY-MM" -> count for THIS src
-      let accepted = 0;
-
       // Get existing tasks for this source to determine starting sequence index
       const existingTasksForSource = await prisma.task.findMany({
         where: {
@@ -414,6 +401,38 @@ export async function POST(req: NextRequest) {
         select: { name: true },
         orderBy: { createdAt: "asc" },
       });
+
+      const customOffsets = CUSTOM_SCHEDULE_OFFSETS[catName];
+      if (customOffsets) {
+        const customDates = customOffsets
+          .map((offset) => addDays(startDate, offset))
+          .filter((date) => date.getTime() > todayMidnight.getTime() && date.getTime() <= dueDate.getTime());
+
+        customDates.forEach((dueDateForTask, idx) => {
+          const seqIndex = existingTasksForSource.length + idx + 1;
+          future.push({
+            src,
+            catName,
+            base,
+            name: `${base} -${seqIndex}`,
+            dueDate: dueDateForTask,
+            seqIndex,
+          });
+        });
+
+        continue;
+      }
+
+      const freqPerMonthRaw = src.templateSiteAsset?.defaultPostingFrequency ?? 1;
+      const freqPerMonth = Math.max(1, Number(freqPerMonthRaw) || 1);
+
+      // Calculate total months remaining (from today to dueDate)
+      const remainingMonths = monthsBetweenInclusive(todayMidnight, dueDate);
+      const totalNeeded = remainingMonths * freqPerMonth;
+
+      // Per-month cap implementation
+      const perMonthCount = new Map<string, number>(); // "YYYY-MM" -> count for THIS src
+      let accepted = 0;
 
       const startingSeqIndex = existingTasksForSource.length + 1;
 

@@ -11,12 +11,8 @@ const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "social_site",
   "web2_site",
   "other_asset",
-  "content_studio",
   "content_writing",
   "backlinks",
-  "completed_com",
-  "youtube_video_optimization",
-  "monitoring",
   "review_removal",
   "summary_report",
   "guest_posting",
@@ -27,11 +23,7 @@ const CAT_BLOG_POSTING = "Blog Posting";
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
 const CAT_CONTENT_WRITING = "Content Writing";
 const CAT_GUEST_POSTING = "Guest Posting";
-const CAT_CONTENT_STUDIO = "Content Studio";
 const CAT_BACKLINKS = "Backlinks";
-const CAT_COMPLETED_COMMUNICATION = "Completed Communication";
-const CAT_YT_OPT = "YouTube Video Optimization";
-const CAT_MONITORING = "Monitoring";
 const CAT_REVIEW_REMOVAL = "Review Removal";
 const CAT_SUMMARY_REPORT = "Summary Report";
 
@@ -76,16 +68,8 @@ function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
       return CAT_CONTENT_WRITING;
     case "guest_posting":
       return CAT_GUEST_POSTING;
-    case "content_studio":
-      return CAT_CONTENT_STUDIO;
     case "backlinks":
       return CAT_BACKLINKS;
-    case "completed_com":
-      return CAT_COMPLETED_COMMUNICATION;
-    case "youtube_video_optimization":
-      return CAT_YT_OPT;
-    case "monitoring":
-      return CAT_MONITORING;
     case "review_removal":
       return CAT_REVIEW_REMOVAL;
     case "summary_report":
@@ -136,6 +120,12 @@ function toLocalMiddayISOString(d: Date): string {
   const local = new Date(d);
   local.setHours(12, 0, 0, 0);
   return local.toISOString();
+}
+
+function addDays(startDate: Date, days: number): Date {
+  const copy = new Date(startDate);
+  copy.setDate(copy.getDate() + days);
+  return dateOnly(copy);
 }
 
 function addWorkingDays(startDate: Date, workingDays: number): Date {
@@ -366,11 +356,7 @@ export async function POST(req: NextRequest) {
       CAT_SOCIAL_COMMUNICATION,
       CAT_CONTENT_WRITING,
       CAT_GUEST_POSTING,
-      CAT_CONTENT_STUDIO,
       CAT_BACKLINKS,
-      CAT_COMPLETED_COMMUNICATION,
-      CAT_YT_OPT,
-      CAT_MONITORING,
       CAT_REVIEW_REMOVAL,
       CAT_SUMMARY_REPORT,
     ];
@@ -379,6 +365,14 @@ export async function POST(req: NextRequest) {
 
     // Web2 creds for SC (kept same)
     const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+
+    const CUSTOM_SCHEDULE_OFFSETS: Record<string, number[]> = {
+      [CAT_CONTENT_WRITING]: [30, 60, 90],
+      [CAT_BACKLINKS]: [30, 60],
+      [CAT_REVIEW_REMOVAL]: [30, 60, 90],
+      [CAT_SUMMARY_REPORT]: [30, 60, 90],
+      [CAT_GUEST_POSTING]: [30, 60, 90],
+    };
 
     // 👇 NEW: per-month capped schedule builder (first = +15WD, then +7WD), cut at `cutoff`
     function* cadenceDates(from: Date) {
@@ -404,6 +398,25 @@ export async function POST(req: NextRequest) {
     for (const src of sourceTasks) {
       const catName = resolveCategoryFromType(src.templateSiteAsset?.type);
       const base = baseNameOf(src.name);
+
+      const customOffsets = CUSTOM_SCHEDULE_OFFSETS[catName];
+      if (customOffsets) {
+        const customDates = customOffsets
+          .map((offset) => addDays(startDate, offset))
+          .filter((date) => date.getTime() <= cutoff.getTime() && date.getTime() <= dueDate.getTime());
+
+        customDates.forEach((dueDateForTask, idx) => {
+          future.push({
+            src,
+            catName,
+            base,
+            name: `${base} -${idx + 1}`,
+            dueDate: dueDateForTask,
+            seqIndex: idx + 1,
+          });
+        });
+        continue;
+      }
 
       const freqPerMonthRaw = src.templateSiteAsset?.defaultPostingFrequency ?? 1;
       const freqPerMonth = Math.max(1, Number(freqPerMonthRaw) || 1);
