@@ -4,10 +4,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { SiteAssetType } from "@prisma/client";
 
-// Optional: if you have these helpers, keep them. Otherwise this file works without them.
-import { logActivity } from "@/lib/logActivity"; // not used directly below; tx.activityLog used instead
-import { diffChanges } from "@/utils/audit"; // not used in POST - left for parity
-
 // --- Helpers -----------------------------------------------------------------
 
 /** Map frontend type string -> Prisma enum (covers ALL types) */
@@ -16,6 +12,8 @@ const mapSiteAssetType = (frontendType: string): SiteAssetType => {
     social_site: SiteAssetType.social_site,
     web2_site: SiteAssetType.web2_site,
     additional_site: SiteAssetType.other_asset, // front uses 'additional_site' → DB 'other_asset'
+    image_optimization: SiteAssetType.image_optimization,
+    aws_upload: SiteAssetType.aws_upload,
 
     graphics_design: SiteAssetType.graphics_design,
     content_studio: SiteAssetType.content_studio,

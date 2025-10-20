@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
       web2_site: "Web 2.0 Asset Creation",
       other_asset: "Additional Asset Creation",
       graphics_design: "Graphics Design",
+      image_optimization: "Image Optimization",
+      aws_upload: "AWS Upload",
       content_studio: "Content Studio",
       content_writing: "Content Writing",
       backlinks: "Backlinks",

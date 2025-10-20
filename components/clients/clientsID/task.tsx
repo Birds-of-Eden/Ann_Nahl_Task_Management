@@ -262,6 +262,8 @@ export function Tasks({ clientData }: TasksProps) {
     if (category === "Social Activity") return "from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20"
     if (category === "Content Studio") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
     if (category === "YouTube Video Optimization") return "from-red-500/10 to-orange-500/10 dark:from-red-500/20 dark:to-orange-500/20"
+    if (category === "Content Writing") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
+    if (category === "Guest Posting") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
     return "from-slate-500/10 to-slate-500/10 dark:from-slate-500/20 dark:to-slate-500/20"
   }
 

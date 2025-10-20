@@ -53,6 +53,8 @@ enum SiteAssetType {
   web2_site
   other_asset
   graphics_design
+  image_optimization
+  aws_upload
   content_studio
   content_writing
   backlinks

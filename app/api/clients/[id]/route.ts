@@ -354,6 +354,8 @@ const CATEGORY_BY_ASSET_TYPE: Record<string, string> = {
   social_site: "Social Asset Creation",
   web2_site: "Web 2.0 Asset Creation",
   other_asset: "Additional Asset Creation",
+  image_optimization: "Image Optimization",
+  aws_upload: "AWS Upload",
 
   // the 9 non-creation categories you showed
   graphics_design: "Graphics Design",

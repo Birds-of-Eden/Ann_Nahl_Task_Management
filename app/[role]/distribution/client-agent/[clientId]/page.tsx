@@ -55,6 +55,8 @@ function mapSiteAssetTypeToCategory(type: string | undefined): string {
   }
   const labels: Record<string, string> = {
     content_studio: "Content Studio",
+    image_optimization: "Image Optimization",
+    aws_upload: "AWS Upload",
     content_writing: "Content Writing",
     backlinks: "Backlinks",
     completed_com: "Completed Communication",
@@ -77,6 +79,8 @@ const POSTING_CATEGORIES = [
 // --- Team routing maps (ids from your Team table) ---
 const TEAM_ID_BY_CATEGORY: Record<string, string> = {
   "Asset Creation": "asset-team",
+  "Image Optimization": "asset-team",
+  "AWS Upload": "asset-team",
   "Graphics Design": "graphics-design-team",
   // ✅ NEW: both go to social-team
   "Social Activity": "social-team",
@@ -117,6 +121,8 @@ const TEAM_NAME_BY_ID: Record<string, string> = {
 const CATEGORY_LABELS = [
   "Graphics Design",
   "Asset Creation",
+  "Image Optimization",
+  "AWS Upload",
   ...POSTING_CATEGORIES,
   "Content Studio",
   "Content Writing",
