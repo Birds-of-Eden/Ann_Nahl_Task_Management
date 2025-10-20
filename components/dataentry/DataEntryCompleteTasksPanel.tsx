@@ -802,79 +802,100 @@ export default function DataEntryCompleteTasksPanel({
 
   return (
     <div className="space-y-6">
-      {/* Statistics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Total Tasks Card */}
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">
-              Total Tasks Remain
+      {/* Statistics Grid - Modern Elegant Design */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        {/* Total Tasks Card - Redesigned */}
+        <Card className="group relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-700 hover:shadow-indigo-500/50 transition-all duration-500 hover:scale-105">
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3 pt-6">
+            <CardTitle className="text-sm font-semibold tracking-wide text-white/90 uppercase">
+              Tasks Remaining
             </CardTitle>
-            <BarChart3 className="h-4 w-4 text-blue-600" />
+            <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-900">
+          <CardContent className="relative">
+            <div className="text-5xl font-black text-white mb-2 tracking-tight">
               {stats.total}
             </div>
-            <p className="text-xs text-blue-600 mt-1">
-              All tasks assigned to you
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Completed Tasks Card */}
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">
-              Total Completed
-            </CardTitle>
-            <BarChart3 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div>
-              <div className="text-2xl font-bold text-green-900">
-                {stats.dataEntryCompleted}
-              </div>
-              <p className="text-xs text-green-700 mt-1">
-                Completed by you (Data Entry)
-              </p>
+            <p className="text-sm text-white/80 font-medium">Assigned to you</p>
+            <div className="absolute bottom-0 right-0 opacity-10">
+              <BarChart3 className="h-32 w-32 text-white" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Overdue Tasks Card */}
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-amber-700">
-              Over Due
+        {/* Completed Tasks Card - Redesigned */}
+        <Card className="group relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 hover:shadow-emerald-500/50 transition-all duration-500 hover:scale-105">
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3 pt-6">
+            <CardTitle className="text-sm font-semibold tracking-wide text-white/90 uppercase">
+              Completed
             </CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-amber-600" />
+            <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+              <CheckCircle2 className="h-6 w-6 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-900">
+          <CardContent className="relative">
+            <div className="text-5xl font-black text-white mb-2 tracking-tight">
+              {stats.dataEntryCompleted}
+            </div>
+            <p className="text-sm text-white/80 font-medium">
+              Completed by you
+            </p>
+            <div className="absolute bottom-0 right-0 opacity-10">
+              <CheckCircle2 className="h-32 w-32 text-white" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Overdue Tasks Card - Redesigned */}
+        <Card className="group relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-orange-500 via-amber-600 to-red-600 hover:shadow-orange-500/50 transition-all duration-500 hover:scale-105">
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3 pt-6">
+            <CardTitle className="text-sm font-semibold tracking-wide text-white/90 uppercase">
+              Overdue
+            </CardTitle>
+            <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
+              <AlertCircle className="h-6 w-6 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="text-5xl font-black text-white mb-2 tracking-tight">
               {stats.overdue}
             </div>
-            <p className="text-xs text-amber-600 mt-1">
-              {stats.last7Days} in last 7 days • {stats.last30Days} in last 30
-              days
+            <p className="text-sm text-white/80 font-medium">
+              {stats.last7Days} last 7d • {stats.last30Days} last 30d
             </p>
+            <div className="absolute bottom-0 right-0 opacity-10">
+              <AlertCircle className="h-32 w-32 text-white" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tasks Panel */}
-      <Card className="border-0 shadow-xl overflow-hidden bg-white/90 backdrop-blur">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <BarChart3 className="h-6 w-6" />
-              {clientId
-                ? clientName
-                  ? `${clientName}`
-                  : `Client ${clientId}`
-                : "All Clients"}{" "}
-              — Complete Tasks
-            </CardTitle>
+      {/* Tasks Panel - Redesigned with Glassmorphism */}
+      <Card className="border-0 shadow-2xl overflow-hidden backdrop-blur-xl bg-white/95">
+        <CardHeader className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-8 px-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-md">
+                <BarChart3 className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-3xl font-black tracking-tight">
+                  {clientId
+                    ? clientName
+                      ? `${clientName}`
+                      : `Client ${clientId}`
+                    : "All Clients"}
+                </CardTitle>
+                <p className="text-white/80 text-sm font-medium mt-1">
+                  Complete Tasks Dashboard
+                </p>
+              </div>
+            </div>
             <CreateTasksButton
               clientId={clientId}
               disabled={hasCreatedTasks}
@@ -886,326 +907,376 @@ export default function DataEntryCompleteTasksPanel({
           </div>
         </CardHeader>
 
-        <CardContent className="p-6">
-          {/* Filters and Search */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <CardContent className="p-8">
+          {/* Filters and Search - Enhanced Design */}
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-indigo-500">
+                <Search className="h-5 w-5" />
+              </div>
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search tasks..."
-                className="pl-10 h-11 rounded-xl"
+                placeholder="Search tasks by name, category, priority..."
+                className="pl-12 h-14 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-base font-medium shadow-sm transition-all"
               />
             </div>
           </div>
 
-          {/* Tasks Table */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-slate-50">
-                <tr className="text-left text-slate-700">
-                  <th className="px-4 py-3 font-medium">Task</th>
-                  <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Priority</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Due Date</th>
-                  <th className="px-4 py-3 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
-                      <div className="flex justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      </div>
-                      <p className="mt-2">Loading tasks...</p>
-                    </td>
+          {/* Tasks Table - Modern Professional Design */}
+          <div className="border-2 border-slate-200 rounded-3xl overflow-hidden shadow-lg bg-white">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
+                  <tr className="text-left">
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider">
+                      Task
+                    </th>
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider">
+                      Due Date
+                    </th>
+                    <th className="px-6 py-5 font-bold text-sm text-slate-700 uppercase tracking-wider text-right">
+                      Action
+                    </th>
                   </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
-                      <div className="flex flex-col items-center gap-3">
-                        <div>
-                          <p>No tasks found</p>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="py-24">
+                        <div className="flex flex-col items-center justify-center gap-4">
+                          <div className="relative">
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200"></div>
+                            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent absolute top-0 left-0"></div>
+                          </div>
+                          <p className="text-lg font-bold text-slate-600 animate-pulse">
+                            Loading tasks...
+                          </p>
                         </div>
-                        {!nextTasksAlreadyCreated && (
-                          <CreateNextTask
-                            clientId={clientId}
-                            onCreated={() => {
-                              try {
-                                if (typeof window !== "undefined") {
-                                  localStorage.setItem(
-                                    `nextTasksCreated:${clientId}`,
-                                    "1"
-                                  );
-                                }
-                              } catch {}
-                              setNextTasksAlreadyCreated(true);
-                              load();
-                            }}
-                          />
-                        )}
-                      </div>
-                      {q ||
-                      statusFilter !== "all" ||
-                      priorityFilter !== "all" ? (
-                        <Button
-                          variant="outline"
-                          className="mt-2"
-                          onClick={() => {
-                            setQ("");
-                            setStatusFilter("all");
-                            setPriorityFilter("all");
-                          }}
-                        >
-                          Clear filters
-                        </Button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((t) => {
-                    const isOverdue =
-                      t.dueDate &&
-                      new Date(t.dueDate) < new Date() &&
-                      (t.status === "pending" || t.status === "in_progress");
+                      </td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-24">
+                        <div className="flex flex-col items-center gap-6">
+                          <div className="bg-gradient-to-br from-slate-100 to-slate-200 p-8 rounded-3xl">
+                            <BarChart3 className="h-20 w-20 text-slate-400" />
+                          </div>
+                          <div className="text-center">
+                            <h3 className="text-2xl font-black text-slate-700 mb-2">
+                              No Tasks Found
+                            </h3>
+                            <p className="text-slate-500 font-medium">
+                              There are currently no tasks matching your
+                              criteria
+                            </p>
+                          </div>
+                          {!nextTasksAlreadyCreated && (
+                            <CreateNextTask
+                              clientId={clientId}
+                              onCreated={() => {
+                                try {
+                                  if (typeof window !== "undefined") {
+                                    localStorage.setItem(
+                                      `nextTasksCreated:${clientId}`,
+                                      "1"
+                                    );
+                                  }
+                                } catch {}
+                                setNextTasksAlreadyCreated(true);
+                                load();
+                              }}
+                            />
+                          )}
+                        </div>
+                        {q ||
+                        statusFilter !== "all" ||
+                        priorityFilter !== "all" ? (
+                          <div className="mt-6 flex justify-center">
+                            <Button
+                              variant="outline"
+                              className="rounded-2xl h-12 px-6 font-semibold border-2 hover:bg-slate-100 transition-all"
+                              onClick={() => {
+                                setQ("");
+                                setStatusFilter("all");
+                                setPriorityFilter("all");
+                              }}
+                            >
+                              Clear filters
+                            </Button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((t) => {
+                      const isOverdue =
+                        t.dueDate &&
+                        new Date(t.dueDate) < new Date() &&
+                        (t.status === "pending" || t.status === "in_progress");
 
-                    return (
-                      <tr
-                        key={t.id}
-                        className="hover:bg-slate-50/80 transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <div
-                            className="font-medium text-slate-900 truncate max-w-[200px]"
-                            title={t.name}
-                          >
-                            {t.name}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 border-blue-200"
-                          >
-                            {t.category?.name || "—"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`font-medium ${
-                              priorityColor[t.priority] || "text-gray-600"
-                            }`}
-                          >
-                            {t.priority
-                              ? t.priority.charAt(0).toUpperCase() +
-                                t.priority.slice(1)
-                              : "—"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant={statusVariant[t.status] || "outline"}
-                            className="capitalize"
-                          >
-                            {t.status.replaceAll("_", " ")}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div
-                            className={`flex items-center gap-1 ${
-                              isOverdue ? "text-red-600 font-medium" : ""
-                            }`}
-                          >
-                            {t.dueDate ? (
-                              <>
-                                <Calendar className="h-4 w-4" />
-                                {format(new Date(t.dueDate), "MMM dd, yyyy")}
-                                {isOverdue && (
-                                  <AlertCircle className="h-4 w-4 ml-1" />
-                                )}
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex gap-2 justify-end">
-                            {/* Content Writing Button for content writing tasks ONLY */}
-                            {isContentWritingTask(t) ? (
-                              <Button
-                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
-                                onClick={() => openContentWritingModal(t)}
-                                size="sm"
-                                disabled={
-                                  t.status === "completed" ||
+                      return (
+                        <tr
+                          key={t.id}
+                          className="group hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-300 ease-in-out"
+                        >
+                          <td className="px-6 py-5">
+                            <div
+                              className="font-bold text-slate-800 truncate max-w-[250px] group-hover:text-indigo-700 transition-colors"
+                              title={t.name}
+                            >
+                              {t.name}
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <Badge
+                              variant="outline"
+                              className="bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-300 font-semibold px-3 py-1 rounded-full shadow-sm"
+                            >
+                              {t.category?.name || "—"}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span
+                              className={`font-bold text-sm uppercase tracking-wide ${
+                                priorityColor[t.priority] || "text-gray-600"
+                              }`}
+                            >
+                              {t.priority
+                                ? t.priority.charAt(0).toUpperCase() +
+                                  t.priority.slice(1)
+                                : "—"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <Badge
+                              variant={statusVariant[t.status] || "outline"}
+                              className="capitalize font-semibold px-3 py-1 rounded-full shadow-sm"
+                            >
+                              {t.status.replaceAll("_", " ")}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div
+                              className={`flex items-center gap-2 font-medium ${
+                                isOverdue
+                                  ? "text-red-600 font-bold"
+                                  : "text-slate-600"
+                              }`}
+                            >
+                              {t.dueDate ? (
+                                <>
+                                  <Calendar className="h-4 w-4" />
+                                  {format(new Date(t.dueDate), "MMM dd, yyyy")}
+                                  {isOverdue && (
+                                    <AlertCircle className="h-4 w-4 ml-1 animate-pulse" />
+                                  )}
+                                </>
+                              ) : (
+                                "—"
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex gap-3 justify-end">
+                              {/* Content Writing Button for content writing tasks ONLY */}
+                              {isContentWritingTask(t) ? (
+                                <Button
+                                  className="bg-gradient-to-r from-purple-600 via-violet-600 to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openContentWritingModal(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <PenTool className="h-4 w-4 mr-2" />
+                                  {t.category?.name || "Content Writing"}
+                                </Button>
+                              ) : isReviewRemovalTask(t) ? (
+                                <Button
+                                  className="bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openReviewRemovalModal(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <Star className="h-4 w-4 mr-2" />
+                                  Review Removal
+                                </Button>
+                              ) : isBacklinkingTask(t) ? (
+                                <Button
+                                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openBacklinkingModal(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <LinkIcon className="h-4 w-4 mr-2" />
+                                  Backlinking
+                                </Button>
+                              ) : isSummaryReportTask(t) ? (
+                                <Button
+                                  className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openSummaryReportModal(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <ClipboardPlus className="h-4 w-4 mr-2" />
+                                  Summary Report
+                                </Button>
+                              ) : (
+                                /* Complete Button for all other tasks */
+                                <Button
+                                  className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openComplete(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <CircleCheckBig className="h-4 w-4 mr-2" />
+                                  {t.status === "completed" ||
                                   t.status === "qc_approved"
-                                }
-                              >
-                                <PenTool className="h-4 w-4 mr-2" />
-                                {t.category?.name || "Content Writing"}
-                              </Button>
-                            ) : isReviewRemovalTask(t) ? (
-                              <Button
-                                className="bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 shadow-sm"
-                                onClick={() => openReviewRemovalModal(t)}
-                                size="sm"
-                                disabled={
-                                  t.status === "completed" ||
-                                  t.status === "qc_approved"
-                                }
-                              >
-                                <Star className="h-4 w-4 mr-2" />
-                                {t.status === "review_removal" ||
-                                t.status === "qc_approved"
-                                  ? "Review Removal"
-                                  : "Review Removal"}
-                              </Button>
-                            ) : isBacklinkingTask(t) ? (
-                              <Button
-                                className="bg-gradient-to-r from-orange-500 to-yellow-600 hover:opacity-90 shadow-sm"
-                                onClick={() => openBacklinkingModal(t)}
-                                size="sm"
-                                disabled={
-                                  t.status === "completed" ||
-                                  t.status === "qc_approved"
-                                }
-                              >
-                                <LinkIcon className="h-4 w-4 mr-2" />
-                                {t.status === "completed" ||
-                                t.status === "qc_approved"
-                                  ? "Backlinking"
-                                  : "Backlinking"}
-                              </Button>
-                            ) : isSummaryReportTask(t) ? (
-                              <Button
-                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-sm"
-                                onClick={() => openSummaryReportModal(t)}
-                                size="sm"
-                                disabled={
-                                  t.status === "completed" ||
-                                  t.status === "qc_approved"
-                                }
-                              >
-                                <ClipboardPlus  className="h-4 w-4 mr-2" />
-                                {t.status === "completed" ||
-                                t.status === "qc_approved"
-                                  ? "Summary Report"
-                                  : "Summary Report"}
-                              </Button>
-                            ) : (
-                              /* Complete Button for all other tasks */
-                              <Button
-                                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-700 hover:to-blue-700 shadow-sm"
-                                onClick={() => openComplete(t)}
-                                size="sm"
-                                disabled={
-                                  t.status === "completed" ||
-                                  t.status === "qc_approved"
-                                }
-                              >
-                                <CircleCheckBig className="h-4 w-4 mr-2" />
-                                {t.status === "completed" ||
-                                t.status === "qc_approved"
-                                  ? "Completed"
-                                  : "Complete"}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                                    ? "Completed"
+                                    : "Complete"}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {isReadyForPostingCreation && (
-            <div className="mt-6 flex justify-end">
+            <div className="mt-8 flex justify-end">
               <Button
                 onClick={createPostingTasks}
                 disabled={creatingPosting}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md hover:from-indigo-700 hover:to-purple-700"
+                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 shadow-2xl hover:shadow-indigo-500/50 hover:scale-105 transition-all duration-300 h-14 px-8 rounded-2xl font-bold text-lg"
               >
-                {creatingPosting ? "Creating..." : "Create Posting Tasks"}
+                {creatingPosting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Rss className="h-5 w-5 mr-3" />
+                    Create Posting Tasks
+                  </>
+                )}
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Completion Dialog - Updated Design */}
+      {/* Completion Dialog - Professional Redesign */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && resetModal()}>
-        <DialogContent className="sm:max-w-[650px] rounded-2xl border bg-white/80 backdrop-blur-sm">
-          {/* Updated Header */}
-          <DialogHeader className="pb-4 border-b">
-            <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-3">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg">
-                <CheckCircle2 className="h-5 w-5 text-white" />
-              </div>
-              Complete Task:{" "}
-              <span className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-lg text-white">
-                {selected?.name}
-              </span>
-            </DialogTitle>
-            <DialogDescription className="text-gray-500 text-sm pt-1">
-              Provide completion details below. This task will be auto-approved
-              upon submission.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[750px] rounded-3xl border-0 bg-white shadow-2xl overflow-hidden">
+          {/* Modern Header with Gradient */}
+          <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 -m-6 mb-6 px-8 py-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black text-white flex items-center gap-4">
+                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+                  <CheckCircle2 className="h-7 w-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-1">
+                    Complete Task
+                  </div>
+                  <div className="text-white font-black text-xl truncate">
+                    {selected?.name}
+                  </div>
+                </div>
+              </DialogTitle>
+              <DialogDescription className="text-white/90 text-sm pt-2 pl-16 font-medium">
+                Provide completion details below. This task will be
+                auto-approved upon submission.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-6 py-2">
-            {/* Fieldset for better grouping */}
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                <LinkIcon className="h-4 w-4 text-green-600" />
-                Completed Link *
-              </legend>
+          <div className="space-y-8 px-6 pb-6">
+            {/* Completion Link Section */}
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                <div className="bg-emerald-100 p-2 rounded-lg">
+                  <LinkIcon className="h-4 w-4 text-emerald-600" />
+                </div>
+                Completion Link *
+              </label>
               <Input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="https://example.com/your-completed-work"
-                className="rounded-xl h-11 border-gray-300 focus:border-green-500 focus:ring-green-500/50 transition-all"
+                className="rounded-2xl h-14 border-2 border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all text-base font-medium px-5"
               />
-            </fieldset>
+            </div>
 
-            {/* Conditional Credentials Section - Refined Design */}
+            {/* Credentials Section - Premium Design */}
             {!isSimpleTask(selected) && (
-              <fieldset className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-gray-700">
+              <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-2 border-amber-200 rounded-3xl p-6 space-y-5 shadow-inner">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="bg-amber-500 p-2 rounded-xl">
+                    <KeyRound className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-base font-black text-slate-800 uppercase tracking-wide">
+                    Account Credentials
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                       Email
                     </label>
                     <Input
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={clientEmail || "email@example.com"}
-                      className="rounded-xl h-11 bg-white border-gray-300"
+                      className="rounded-2xl h-12 bg-white border-2 border-amber-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all font-medium"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-gray-700">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                       Username
                     </label>
                     <Input
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="username"
-                      className="rounded-xl h-11 bg-white border-gray-300"
+                      className="rounded-2xl h-12 bg-white border-2 border-amber-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all font-medium"
                     />
                   </div>
 
-                  <div className="md:col-span-2 space-y-1.5">
-                    <label className="text-sm font-medium text-gray-700">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                       Password
                     </label>
-                    {/* Password input - now editable and visible */}
                     <div className="relative">
                       <Input
                         value={password}
@@ -1216,31 +1287,33 @@ export default function DataEntryCompleteTasksPanel({
                             : "Enter password"
                         }
                         type="text"
-                        className="rounded-xl h-11 bg-white border-gray-300 font-mono pr-10"
+                        className="rounded-2xl h-12 bg-white border-2 border-amber-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 font-mono pr-20 transition-all font-medium"
                       />
                       {lastUsedPassword && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs font-bold text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-full">
                           SAVED
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-2 font-medium">
                       {lastUsedPassword
-                        ? "Using your last saved password. You can edit it above."
-                        : "Enter password if required. Will be saved for next use."}
+                        ? "✓ Using your last saved password. You can edit it above."
+                        : "Password will be saved for next use."}
                     </p>
                   </div>
                 </div>
-              </fieldset>
+              </div>
             )}
 
-            {/* Agent and Date Section in a final Fieldset */}
-            <fieldset className="grid grid-cols-2 gap-6 pt-2">
-              <div className="space-y-2">
-                <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                  <UserRound className="h-4 w-4 text-blue-600" />
-                  Done by (agent) *
-                </legend>
+            {/* Agent and Date Section - Modern Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <UserRound className="h-4 w-4 text-blue-600" />
+                  </div>
+                  Done by (Agent) *
+                </label>
                 <Select
                   value={doneBy}
                   onValueChange={(value) => {
@@ -1248,7 +1321,7 @@ export default function DataEntryCompleteTasksPanel({
                     setLastUsedAgent(value);
                   }}
                 >
-                  <SelectTrigger className="rounded-xl h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500/50 text-base">
+                  <SelectTrigger className="rounded-2xl h-14 border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 text-base font-medium">
                     <SelectValue placeholder="Select agent..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-gray-200 shadow-lg p-3 w-[300px]">
@@ -1307,11 +1380,13 @@ export default function DataEntryCompleteTasksPanel({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <legend className="text-sm font-semibold text-gray-700 flex items-center gap-2 px-1 mb-1">
-                  <Calendar className="h-4 w-4 text-purple-600" />
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                  </div>
                   Completed At *
-                </legend>
+                </label>
                 <DatePicker
                   selected={completedAt}
                   onChange={(date: Date | null) => {
@@ -1324,29 +1399,29 @@ export default function DataEntryCompleteTasksPanel({
                   showYearDropdown
                   dropdownMode="select"
                   placeholderText="Select completion date"
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm h-11 focus:border-purple-500 focus:ring-purple-500/50 transition-all"
+                  className="w-full border-2 border-slate-200 rounded-2xl px-5 py-2 text-base h-14 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 transition-all font-medium"
                   maxDate={new Date()}
                 />
               </div>
-            </fieldset>
+            </div>
           </div>
 
-          {/* Footer with consistent button styles */}
-          <DialogFooter className="pt-6 border-t mt-4">
+          {/* Footer with Modern Button Design */}
+          <DialogFooter className="pt-8 border-t-2 border-slate-100 px-6 pb-6 gap-4">
             <Button
               variant="outline"
               onClick={() => resetModal()}
-              className="rounded-xl h-11 bg-red-500 hover:bg-red-600 hover:text-white text-white font-medium transition-all"
+              className="rounded-2xl h-14 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105 border-0 px-8"
             >
-              <X className="h-4 w-4 mr-2" />
+              <X className="h-5 w-5 mr-2" />
               Cancel
             </Button>
             <Button
-              className="ml-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm transition-all"
+              className="ml-2 bg-gradient-to-r from-emerald-500 via-green-600 to-teal-600 hover:from-emerald-600 hover:via-green-700 hover:to-teal-700 rounded-2xl h-14 font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all px-8"
               disabled={!doneBy}
               onClick={submit}
             >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="h-5 w-5 mr-2" />
               Submit Completion
             </Button>
           </DialogFooter>
