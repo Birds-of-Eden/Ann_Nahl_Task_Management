@@ -408,6 +408,7 @@ model Task {
   contentWriting       Json?
   reviewRemoval        Json?
   backLinking          Json?
+  summaryReport        Json?
 
   assignment        Assignment?        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   client            Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)

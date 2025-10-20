@@ -60,6 +60,14 @@ export async function PUT(
       return undefined;
     })();
 
+    // Build summaryReport payload if provided
+    const summaryReportPayload = (() => {
+      if (body?.summaryReport && typeof body.summaryReport === "object") {
+        return body.summaryReport;
+      }
+      return undefined;
+    })();
+
     // Build backLinking payload if provided
     const backLinkingPayload = (() => {
       if (body?.backLinking && typeof body.backLinking === "object") {
@@ -104,6 +112,8 @@ export async function PUT(
         reviewRemoval: reviewRemovalPayload ?? undefined,
         // 🆕 persist backlinking data if provided
         backLinking: backLinkingPayload ?? undefined,
+        // 🆕 persist summary report data if provided
+        summaryReport: summaryReportPayload ?? undefined,
       },
       include: { assignedTo: true },
     });

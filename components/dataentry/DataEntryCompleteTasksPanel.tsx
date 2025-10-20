@@ -35,6 +35,10 @@ import {
   KeyRound,
   LinkIcon,
   PenTool,
+  Star,
+  Rss,
+  ClipboardPlus,
+  CircleCheckBig,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -45,6 +49,7 @@ import CreateNextTask from "./CreateNextTask";
 import ContentWritingModal from "./contentWritingModal";
 import ReviewRemovalModal from "./ReviewRemovalModal";
 import BacklinkingModal from "./BacklinkingModal";
+import SummaryReportModal from "./SummaryReportModal";
 
 export type DETask = {
   id: string;
@@ -163,9 +168,9 @@ export default function DataEntryCompleteTasksPanel({
   const [selectedBacklinkingTask, setSelectedBacklinkingTask] =
     useState<DETask | null>(null);
 
-  // AWSUpload Modal state
-  const [awsUploadModalOpen, setAWSUploadModalOpen] = useState(false);
-  const [selectedAWSUploadTask, setSelectedAWSUploadTask] =
+  // Summary Report Modal state
+  const [summaryReportModalOpen, setSummaryReportModalOpen] = useState(false);
+  const [selectedSummaryReportTask, setSelectedSummaryReportTask] =
     useState<DETask | null>(null);
 
   // Fetch client name and email when clientId changes
@@ -453,6 +458,7 @@ export default function DataEntryCompleteTasksPanel({
       "Social Activity",
       "Blog Posting",
       "Image Optimization",
+      "Content Studio",
     ];
     return simpleCategories.includes(task.category.name);
   };
@@ -485,6 +491,18 @@ export default function DataEntryCompleteTasksPanel({
     return nameLc.includes("backlinks") || idLc.includes("backlinks");
   };
 
+  // Check if a task is a Summary Report task
+  const isSummaryReportTask = (task: DETask | null) => {
+    if (!task?.category) return false;
+    const nameLc = (task.category.name || "").toLowerCase();
+    const idLc = (task.category.id || "").toLowerCase();
+    return (
+      nameLc.includes("summary report") ||
+      nameLc === "summary_report" ||
+      idLc.includes("summary_report")
+    );
+  };
+
   const openContentWritingModal = (task: DETask) => {
     setSelectedContentTask(task);
     setContentWritingModalOpen(true);
@@ -515,14 +533,14 @@ export default function DataEntryCompleteTasksPanel({
     setSelectedBacklinkingTask(null);
   };
 
-  const openAWSUploadModal = (task: DETask) => {
-    setSelectedAWSUploadTask(task);
-    setAWSUploadModalOpen(true);
+  const openSummaryReportModal = (task: DETask) => {
+    setSelectedSummaryReportTask(task);
+    setSummaryReportModalOpen(true);
   };
 
-  const closeAWSUploadModal = () => {
-    setAWSUploadModalOpen(false);
-    setSelectedAWSUploadTask(null);
+  const closeSummaryReportModal = () => {
+    setSummaryReportModalOpen(false);
+    setSelectedSummaryReportTask(null);
   };
 
   const openComplete = (t: DETask) => {
@@ -1040,14 +1058,15 @@ export default function DataEntryCompleteTasksPanel({
                                   t.status === "qc_approved"
                                 }
                               >
-                                {t.status === "completed" ||
+                                <Star className="h-4 w-4 mr-2" />
+                                {t.status === "review_removal" ||
                                 t.status === "qc_approved"
-                                  ? "Completed"
-                                  : "Complete"}
+                                  ? "Review Removal"
+                                  : "Review Removal"}
                               </Button>
                             ) : isBacklinkingTask(t) ? (
                               <Button
-                                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 shadow-sm"
+                                className="bg-gradient-to-r from-orange-500 to-yellow-600 hover:opacity-90 shadow-sm"
                                 onClick={() => openBacklinkingModal(t)}
                                 size="sm"
                                 disabled={
@@ -1055,10 +1074,27 @@ export default function DataEntryCompleteTasksPanel({
                                   t.status === "qc_approved"
                                 }
                               >
+                                <LinkIcon className="h-4 w-4 mr-2" />
                                 {t.status === "completed" ||
                                 t.status === "qc_approved"
-                                  ? "Completed"
-                                  : "Complete"}
+                                  ? "Backlinking"
+                                  : "Backlinking"}
+                              </Button>
+                            ) : isSummaryReportTask(t) ? (
+                              <Button
+                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 shadow-sm"
+                                onClick={() => openSummaryReportModal(t)}
+                                size="sm"
+                                disabled={
+                                  t.status === "completed" ||
+                                  t.status === "qc_approved"
+                                }
+                              >
+                                <ClipboardPlus  className="h-4 w-4 mr-2" />
+                                {t.status === "completed" ||
+                                t.status === "qc_approved"
+                                  ? "Summary Report"
+                                  : "Summary Report"}
                               </Button>
                             ) : (
                               /* Complete Button for all other tasks */
@@ -1071,6 +1107,7 @@ export default function DataEntryCompleteTasksPanel({
                                   t.status === "qc_approved"
                                 }
                               >
+                                <CircleCheckBig className="h-4 w-4 mr-2" />
                                 {t.status === "completed" ||
                                 t.status === "qc_approved"
                                   ? "Completed"
@@ -1347,6 +1384,16 @@ export default function DataEntryCompleteTasksPanel({
         clientId={clientId}
         onSuccess={() => {
           closeBacklinkingModal();
+          load();
+        }}
+      />
+      <SummaryReportModal
+        open={summaryReportModalOpen}
+        onOpenChange={setSummaryReportModalOpen}
+        task={selectedSummaryReportTask}
+        clientId={clientId}
+        onSuccess={() => {
+          closeSummaryReportModal();
           load();
         }}
       />
