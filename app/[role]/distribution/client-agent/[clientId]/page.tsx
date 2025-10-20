@@ -56,7 +56,6 @@ function mapSiteAssetTypeToCategory(type: string | undefined): string {
   const labels: Record<string, string> = {
     content_studio: "Content Studio",
     image_optimization: "Image Optimization",
-    aws_upload: "AWS Upload",
     content_writing: "Content Writing",
     backlinks: "Backlinks",
     completed_com: "Completed Communication",

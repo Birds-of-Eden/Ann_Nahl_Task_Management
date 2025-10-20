@@ -123,6 +123,10 @@ export default function ReviewRemovalModal({
       toast.error("Please fill all link fields");
       return;
     }
+    if (!doneBy) {
+      toast.error("Please select an agent");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -329,7 +333,7 @@ export default function ReviewRemovalModal({
           </Button>
           <Button
             onClick={submitReviewRemoval}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !doneBy}
             className="ml-2 bg-gradient-to-r from-red-500 to-orange-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm"
           >
             <Save className="h-4 w-4 mr-2" />

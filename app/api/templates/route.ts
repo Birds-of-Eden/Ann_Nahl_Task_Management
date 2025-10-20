@@ -13,7 +13,6 @@ const mapSiteAssetType = (frontendType: string): SiteAssetType => {
     web2_site: SiteAssetType.web2_site,
     additional_site: SiteAssetType.other_asset, // front uses 'additional_site' → DB 'other_asset'
     image_optimization: SiteAssetType.image_optimization,
-    aws_upload: SiteAssetType.aws_upload,
 
     graphics_design: SiteAssetType.graphics_design,
     content_studio: SiteAssetType.content_studio,

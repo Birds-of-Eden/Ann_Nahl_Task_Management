@@ -56,7 +56,6 @@ import {
   DEFAULT_ADDITIONAL_SITES,
   DEFAULT_GRAPHICS_DESIGN,
   DEFAULT_IMAGE_OPTIMIZATION,
-  DEFAULT_AWS_UPLOAD,
   DEFAULT_CONTENT_STUDIO,
   DEFAULT_CONTENT_WRITING,
   DEFAULT_BACKLINKS,
@@ -122,7 +121,6 @@ export function CreateTemplateModal({
   const [additionalSites, setAdditionalSites] = useState<SiteAsset[]>([]);
   const [graphicsDesign, setGraphicsDesign] = useState<SiteAsset[]>([]);
   const [imageOptimization, setImageOptimization] = useState<SiteAsset[]>([]);
-  const [awsUpload, setAwsUpload] = useState<SiteAsset[]>([]);
   const [contentStudio, setContentStudio] = useState<SiteAsset[]>([]);
   const [contentWriting, setContentWriting] = useState<SiteAsset[]>([]);
   const [backlinks, setBacklinks] = useState<SiteAsset[]>([]);
@@ -146,7 +144,6 @@ export function CreateTemplateModal({
     "additional_site",
     "graphics_design",
     "image_optimization",
-    "aws_upload",
     "content_studio",
     "content_writing",
     "backlinks",
@@ -164,7 +161,6 @@ export function CreateTemplateModal({
     additional_site: { title: "Additional Sites", colorClass: "bg-green-500", icon: <Sparkles className="w-5 h-5" /> },
     graphics_design: { title: "Graphics Design", colorClass: "bg-rose-500", icon: <Palette className="w-5 h-5" /> },
     image_optimization: { title: "Image Optimization", colorClass: "bg-rose-500", icon: <Palette className="w-5 h-5" /> },
-    aws_upload: { title: "AWS Upload", colorClass: "bg-rose-500", icon: <Palette className="w-5 h-5" /> },
     content_studio: { title: "Content Studio", colorClass: "bg-emerald-500", icon: <PenTool className="w-5 h-5" /> },
     content_writing: { title: "Content Writing", colorClass: "bg-indigo-500", icon: <FileEdit className="w-5 h-5" /> },
     backlinks: { title: "Backlinks", colorClass: "bg-sky-500", icon: <LinkIcon className="w-5 h-5" /> },
@@ -248,11 +244,6 @@ export function CreateTemplateModal({
           pick("image_optimization").length
             ? pick("image_optimization")
             : DEFAULT_IMAGE_OPTIMIZATION.map(mapDefaults("image_optimization"))
-        );
-        setAwsUpload(
-          pick("aws_upload").length
-            ? pick("aws_upload")
-            : DEFAULT_AWS_UPLOAD.map(mapDefaults("aws_upload"))
         );
         setContentStudio(
           pick("content_studio").length
@@ -347,7 +338,6 @@ export function CreateTemplateModal({
     setAdditionalSites(DEFAULT_ADDITIONAL_SITES.map(mapDefaults("additional_site")));
     setGraphicsDesign(DEFAULT_GRAPHICS_DESIGN.map(mapDefaults("graphics_design")));
     setImageOptimization(DEFAULT_IMAGE_OPTIMIZATION.map(mapDefaults("image_optimization")));
-    setAwsUpload(DEFAULT_AWS_UPLOAD.map(mapDefaults("aws_upload")));
     setContentStudio(DEFAULT_CONTENT_STUDIO.map(mapDefaults("content_studio")));
     setContentWriting(DEFAULT_CONTENT_WRITING.map(mapDefaults("content_writing")));
     setBacklinks(DEFAULT_BACKLINKS.map(mapDefaults("backlinks")));
@@ -395,8 +385,6 @@ export function CreateTemplateModal({
         return [graphicsDesign, setGraphicsDesign];
       case "image_optimization":
         return [imageOptimization, setImageOptimization];
-      case "aws_upload":
-        return [awsUpload, setAwsUpload];
       case "content_studio":
         return [contentStudio, setContentStudio];
       case "content_writing":
@@ -482,7 +470,6 @@ export function CreateTemplateModal({
         additionalSites,
         graphicsDesign,
         imageOptimization,
-        awsUpload,
         contentStudio,
         contentWriting,
         backlinks,

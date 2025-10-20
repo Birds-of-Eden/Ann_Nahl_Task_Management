@@ -148,14 +148,6 @@ export const DEFAULT_IMAGE_OPTIMIZATION = [
   },
 ];
 
-export const DEFAULT_AWS_UPLOAD = [
-  {
-    name: "AWS Upload",
-    url: "https://aws.amazon.com/",
-    isRequired: true,
-  },
-];
-
 export const DEFAULT_CONTENT_STUDIO = [
   {
     name: "Content Studio",

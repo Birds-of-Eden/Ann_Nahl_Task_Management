@@ -163,6 +163,11 @@ export default function DataEntryCompleteTasksPanel({
   const [selectedBacklinkingTask, setSelectedBacklinkingTask] =
     useState<DETask | null>(null);
 
+  // AWSUpload Modal state
+  const [awsUploadModalOpen, setAWSUploadModalOpen] = useState(false);
+  const [selectedAWSUploadTask, setSelectedAWSUploadTask] =
+    useState<DETask | null>(null);
+
   // Fetch client name and email when clientId changes
   useEffect(() => {
     const fetchClientData = async () => {
@@ -444,7 +449,11 @@ export default function DataEntryCompleteTasksPanel({
 
   const isSimpleTask = (task: DETask | null) => {
     if (!task?.category?.name) return false;
-    const simpleCategories = ["Social Activity", "Blog Posting"];
+    const simpleCategories = [
+      "Social Activity",
+      "Blog Posting",
+      "Image Optimization",
+    ];
     return simpleCategories.includes(task.category.name);
   };
 
@@ -504,6 +513,16 @@ export default function DataEntryCompleteTasksPanel({
   const closeBacklinkingModal = () => {
     setBacklinkingModalOpen(false);
     setSelectedBacklinkingTask(null);
+  };
+
+  const openAWSUploadModal = (task: DETask) => {
+    setSelectedAWSUploadTask(task);
+    setAWSUploadModalOpen(true);
+  };
+
+  const closeAWSUploadModal = () => {
+    setAWSUploadModalOpen(false);
+    setSelectedAWSUploadTask(null);
   };
 
   const openComplete = (t: DETask) => {
@@ -664,6 +683,12 @@ export default function DataEntryCompleteTasksPanel({
     }
     if (completedAt.getTime() > Date.now()) {
       toast.error("Completed date cannot be in the future");
+      return;
+    }
+
+    // Require agent selection
+    if (!doneBy) {
+      toast.error("Please select an agent (Done by)");
       return;
     }
 
@@ -1015,7 +1040,8 @@ export default function DataEntryCompleteTasksPanel({
                                   t.status === "qc_approved"
                                 }
                               >
-                                {t.status === "completed" || t.status === "qc_approved"
+                                {t.status === "completed" ||
+                                t.status === "qc_approved"
                                   ? "Completed"
                                   : "Complete"}
                               </Button>
@@ -1029,7 +1055,8 @@ export default function DataEntryCompleteTasksPanel({
                                   t.status === "qc_approved"
                                 }
                               >
-                                {t.status === "completed" || t.status === "qc_approved"
+                                {t.status === "completed" ||
+                                t.status === "qc_approved"
                                   ? "Completed"
                                   : "Complete"}
                               </Button>
@@ -1279,6 +1306,7 @@ export default function DataEntryCompleteTasksPanel({
             </Button>
             <Button
               className="ml-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm transition-all"
+              disabled={!doneBy}
               onClick={submit}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />

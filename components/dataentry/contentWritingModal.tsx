@@ -134,7 +134,10 @@ export default function ContentWritingModal({
       toast.error("Completed date cannot be in the future");
       return;
     }
-
+    if (!doneBy) {
+      toast.error("Please select an agent");
+      return;
+    }
     setIsSubmitting(true);
     try {
       // Format the content for submission
@@ -478,7 +481,7 @@ export default function ContentWritingModal({
             </Button>
             <Button
               onClick={submitContentWriting}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !doneBy}
               className="ml-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 rounded-xl h-11 font-semibold shadow-sm"
             >
               <Save className="h-4 w-4 mr-2" />

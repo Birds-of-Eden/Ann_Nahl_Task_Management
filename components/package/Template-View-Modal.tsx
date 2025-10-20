@@ -45,7 +45,6 @@ interface TemplateSiteAsset {
     | "other_asset"
     | "graphics_design"
     | "image_optimization"
-    | "aws_upload"
     | "content_studio"
     | "content_writing"
     | "backlinks"
@@ -155,7 +154,6 @@ export function TemplateViewModal({
       other_asset: { icon: FileText, color: "purple", label: "Assets" },
       graphics_design: { icon: Palette, color: "pink", label: "Design" },
       image_optimization: { icon: Palette, color: "pink", label: "Image Optimization" },
-      aws_upload: { icon: Palette, color: "pink", label: "AWS Upload" },
       content_studio: { icon: Edit3, color: "indigo", label: "Content Studio" },
       content_writing: { icon: PenTool, color: "orange", label: "Writing" },
       backlinks: { icon: Link2, color: "teal", label: "Backlinks" },
@@ -214,7 +212,6 @@ export function TemplateViewModal({
   const otherTasks = [
     ...(groupedSites.graphics_design || []),
     ...(groupedSites.image_optimization || []),
-    ...(groupedSites.aws_upload || []),
     ...(groupedSites.content_studio || []),
     ...(groupedSites.content_writing || []),
     ...(groupedSites.backlinks || []),
@@ -568,7 +565,6 @@ export function TemplateViewModal({
                 {[
                   "graphics_design",
                   "image_optimization",
-                  "aws_upload",
                   "content_studio",
                   "content_writing",
                   "backlinks",
