@@ -125,39 +125,46 @@ export function AddClientAskPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-50 via-white to-indigo-50 px-4 py-12">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-violet-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-fuchsia-400/30 to-pink-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="relative z-10 px-4 py-12">
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
         className="mx-auto w-full max-w-3xl"
       >
-        {/* Question */}
-        <Card className="border-gray-200/70 shadow-lg">
-          <CardContent className="p-8 md:p-10">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-gray-100 p-2">
-                <HelpCircle className="h-5 w-5 text-gray-700" />
+        {/* Question Card */}
+        <Card className="border-violet-200/50 shadow-2xl bg-white/90 backdrop-blur-xl">
+          <CardContent className="p-8 md:p-12">
+            <div className="flex items-start gap-4">
+              <div className="rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-3 shadow-lg">
+                <HelpCircle className="h-6 w-6 text-white" />
               </div>
               <div className="flex-1">
-                <p className="text-lg md:text-xl font-semibold text-gray-900 leading-relaxed">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 leading-relaxed">
                   Would you like to{" "}
-                  <span className="text-cyan-700 font-bold">
+                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                     add a new client
                   </span>{" "}
                   through onboarding, or{" "}
-                  <span className="text-emerald-700 font-bold">
+                  <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                     work with an existing client
                   </span>{" "}
                   already in the system?
                 </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Choose one option below — we’ll direct you instantly to the
+                <p className="mt-3 text-base text-gray-600">
+                  Choose one option below — we'll direct you instantly to the
                   right flow.
                 </p>
 
-                {/* Answers (no redirect yet) */}
-                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Answers */}
+                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <AnswerChip
                     label="New client"
                     hotkey="N"
@@ -188,23 +195,23 @@ export function AddClientAskPage() {
                       className="mt-6"
                     >
                       <Separator className="mb-6" />
-                      <div className="rounded-xl border border-cyan-200/70 bg-white/80 p-5 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="rounded-lg p-3 bg-cyan-50 text-cyan-700">
-                            <UserPlus2 className="h-6 w-6" />
+                      <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-6 shadow-xl">
+                        <div className="flex items-start gap-4">
+                          <div className="rounded-xl p-3 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+                            <UserPlus2 className="h-7 w-7" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900">
+                            <p className="text-lg font-bold text-gray-900">
                               New client onboarding
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 mt-2">
                               Create a fresh record and start the guided
-                              onboarding.
+                              onboarding process.
                             </p>
                           </div>
-                          <Button onClick={goNew}>
+                          <Button onClick={goNew} className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg">
                             Start Onboarding
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            <ArrowRight className="ml-2 h-5 w-5" />
                           </Button>
                         </div>
                       </div>
@@ -221,35 +228,35 @@ export function AddClientAskPage() {
                       className="mt-6"
                     >
                       <Separator className="mb-6" />
-                      <div className="rounded-xl border border-emerald-200/70 bg-white/80 p-5 shadow-sm">
-                        <div className="flex items-start gap-3 mb-4">
-                          <div className="rounded-lg p-3 bg-emerald-50 text-emerald-700">
-                            <Users className="h-6 w-6" />
+                      <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-xl">
+                        <div className="flex items-start gap-4 mb-6">
+                          <div className="rounded-xl p-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                            <Users className="h-7 w-7" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900">
+                            <p className="text-lg font-bold text-gray-900">
                               Use an existing client
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Search and select a client below to view their
-                              details.
+                            <p className="text-sm text-gray-600 mt-2">
+                              Search and select a client below to continue their
+                              onboarding.
                             </p>
                           </div>
                         </div>
 
                         {/* Search and Filter */}
-                        <div className="flex gap-3 mb-4">
+                        <div className="flex gap-3 mb-5">
                           <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                               value={q}
                               onChange={(e) => setQ(e.target.value)}
                               placeholder="Search by name, company, email…"
-                              className="pl-9"
+                              className="pl-9 h-11 border-2 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 rounded-xl"
                             />
                           </div>
                           <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="w-40 h-11 border-2 focus:border-emerald-500 rounded-xl">
                               <Filter className="h-4 w-4 mr-2" />
                               <SelectValue placeholder="Status" />
                             </SelectTrigger>
@@ -272,11 +279,11 @@ export function AddClientAskPage() {
                             No clients found.
                           </div>
                         ) : (
-                          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden">
+                          <ul className="divide-y divide-gray-100 rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
                             {filtered.slice(0, 20).map((c) => (
                               <li
                                 key={c.id}
-                                className="flex items-center justify-between gap-3 p-3 hover:bg-gray-50 transition"
+                                className="flex items-center justify-between gap-3 p-4 hover:bg-emerald-50/50 transition-all duration-200"
                               >
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2">
@@ -306,9 +313,10 @@ export function AddClientAskPage() {
                                   <Button
                                     size="sm"
                                     onClick={() => handlePickClient(c)}
+                                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md"
                                   >
                                     Select Client
-                                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                                    <ArrowRight className="ml-1.5 h-4 w-4" />
                                   </Button>
                                 </div>
                               </li>
@@ -326,14 +334,16 @@ export function AddClientAskPage() {
                 </AnimatePresence>
 
                 {/* Keyboard hint */}
-                <div className="mt-6 text-xs text-muted-foreground">
-                  Tips: press <Kbd>N</Kbd> for New, <Kbd>E</Kbd> for Existing.
+                <div className="mt-8 flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                  <span className="font-medium">💡 Keyboard shortcuts:</span>
+                  <Kbd>N</Kbd> for New, <Kbd>E</Kbd> for Existing.
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
+      </div>
     </div>
   );
 }
@@ -356,16 +366,16 @@ function AnswerChip({
   onClick: () => void;
 }) {
   const base =
-    "flex items-center justify-between rounded-xl border p-4 bg-white/80 backdrop-blur-sm transition-all hover:shadow-md cursor-pointer";
+    "flex items-center justify-between rounded-2xl border-2 p-5 bg-white backdrop-blur-sm transition-all hover:shadow-xl cursor-pointer transform hover:scale-105 duration-200";
   const activeCls =
     color === "cyan"
-      ? "border-cyan-300 ring-2 ring-cyan-200"
-      : "border-emerald-300 ring-2 ring-emerald-200";
-  const inactiveCls = "border-gray-200/70";
+      ? "border-violet-400 ring-4 ring-violet-200 shadow-xl scale-105 bg-gradient-to-br from-violet-50 to-purple-50"
+      : "border-emerald-400 ring-4 ring-emerald-200 shadow-xl scale-105 bg-gradient-to-br from-emerald-50 to-teal-50";
+  const inactiveCls = "border-gray-200 hover:border-gray-300";
   const iconWrap =
     color === "cyan"
-      ? "bg-cyan-50 text-cyan-700"
-      : "bg-emerald-50 text-emerald-700";
+      ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg"
+      : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg";
 
   return (
     <button
@@ -374,13 +384,13 @@ function AnswerChip({
       className={`${base} ${active ? activeCls : inactiveCls}`}
       aria-pressed={active}
     >
-      <div className="flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${iconWrap}`}>
-          <Icon className="h-5 w-5" />
+      <div className="flex items-center gap-4">
+        <div className={`rounded-xl p-3 ${iconWrap}`}>
+          <Icon className="h-6 w-6" />
         </div>
-        <span className="font-medium text-gray-900">{label}</span>
+        <span className="font-bold text-gray-900 text-lg">{label}</span>
       </div>
-      <div className="text-[10px] text-muted-foreground border rounded px-1.5 py-0.5">
+      <div className="text-xs font-semibold text-gray-500 border-2 border-gray-300 rounded-lg px-3 py-1.5">
         {hotkey}
       </div>
     </button>
@@ -389,7 +399,7 @@ function AnswerChip({
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px] font-semibold">
+    <kbd className="rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-xs font-bold shadow-sm">
       {children}
     </kbd>
   );

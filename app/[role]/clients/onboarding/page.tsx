@@ -116,22 +116,57 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 py-12">
-      <div>
-        <StepIndicator
-          steps={steps}
-          currentStep={currentStep}
-          onStepClick={goToStep}
-        />
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 md:p-12">
-          <CurrentStepComponent
-            formData={formData}
-            updateFormData={updateFormData}
-            onNext={nextStep}
-            onPrevious={previousStep}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
+        {/* Animated Gradient Orbs */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-violet-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-fuchsia-400/30 to-pink-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+      </div>
+
+      {/* Content Container */}
+      <div className="relative z-10">
+        <div>
+          <StepIndicator
+            steps={steps}
+            currentStep={currentStep}
+            onStepClick={goToStep}
           />
+          
+          {/* Main Content Card */}
+          <div className="relative">
+            {/* Card Glow Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 via-purple-500/20 to-fuchsia-500/20 rounded-3xl blur-2xl" />
+            
+            {/* Actual Card */}
+            <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-6 sm:p-8 md:p-12 lg:p-16 animate-in fade-in slide-in-from-bottom duration-700">
+              {/* Decorative Corner Elements */}
+              <div className="absolute top-0 left-0 w-20 h-20 bg-gradient-to-br from-violet-500/10 to-transparent rounded-tl-3xl" />
+              <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-fuchsia-500/10 to-transparent rounded-br-3xl" />
+              
+              <CurrentStepComponent
+                formData={formData}
+                updateFormData={updateFormData}
+                onNext={nextStep}
+                onPrevious={previousStep}
+              />
+            </div>
+          </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .bg-grid-pattern {
+          background-image: 
+            linear-gradient(to right, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+          background-size: 40px 40px;
+        }
+      `}</style>
     </div>
   );
 }

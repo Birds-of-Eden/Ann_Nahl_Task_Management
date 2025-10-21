@@ -72,17 +72,17 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
 
   if (loading) {
     return (
-      <Card className="overflow-hidden border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <FileText className="w-6 h-6" />
+      <Card className="overflow-hidden border-2 border-indigo-100 shadow-xl rounded-2xl">
+        <CardHeader className="bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white py-6">
+          <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+            <FileText className="w-7 h-7" />
             Assignment Preview
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-20 w-full" />
+        <CardContent className="p-8 space-y-4">
+          <Skeleton className="h-6 w-3/4 rounded-lg" />
+          <Skeleton className="h-6 w-1/2 rounded-lg" />
+          <Skeleton className="h-24 w-full rounded-xl" />
         </CardContent>
       </Card>
     );
@@ -90,41 +90,35 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
 
   if (!templateDetails) {
     return (
-      <Card className="overflow-hidden border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-red-500 to-pink-500 text-white">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <AlertCircle className="w-6 h-6" />
+      <Card className="overflow-hidden border-2 border-red-100 shadow-xl rounded-2xl">
+        <CardHeader className="bg-gradient-to-r from-red-600 via-pink-600 to-rose-600 text-white py-6">
+          <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+            <AlertCircle className="w-7 h-7" />
             Assignment Preview
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <p className="text-gray-500">Unable to load template details.</p>
+        <CardContent className="p-8">
+          <p className="text-gray-600 text-base">Unable to load template details.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="overflow-hidden border-0 shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <FileText className="w-6 h-6" />
-          Assignment Preview
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6 space-y-6">
+    <div className="space-y-6">
+      <CardContent className="p-0 space-y-6">
         {/* Template Overview */}
-        <div>
-          <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-500" />
+        <div className="bg-white p-6 rounded-xl border-2 border-indigo-200">
+          <h3 className="font-bold text-xl mb-3 flex items-center gap-2 text-gray-900">
+            <CheckCircle className="w-6 h-6 text-green-500" />
             {templateDetails.name}
           </h3>
-          <p className="text-gray-600 mb-3">{templateDetails.description}</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+          <p className="text-gray-600 mb-4 leading-relaxed">{templateDetails.description}</p>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300 px-3 py-1.5 font-semibold">
               {templateDetails.status}
             </Badge>
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="bg-gray-100 text-gray-800 border-gray-300 px-3 py-1.5 font-semibold">
               {existingAssignments} existing assignments
             </Badge>
           </div>
@@ -132,22 +126,22 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
 
         {/* Sites & Assets */}
         {templateDetails.sitesAssets && templateDetails.sitesAssets.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-500" />
+          <div className="bg-white p-6 rounded-xl border-2 border-blue-200">
+            <h4 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-900">
+              <Clock className="w-5 h-5 text-blue-500" />
               Sites & Assets ({templateDetails.sitesAssets.length})
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {templateDetails.sitesAssets.map((asset) => (
-                <div key={asset.id} className="p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{asset.name}</span>
+                <div key={asset.id} className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-sm text-gray-900">{asset.name}</span>
                     {asset.isRequired && (
-                      <Badge variant="destructive" className="text-xs">Required</Badge>
+                      <Badge variant="destructive" className="text-xs font-semibold">Required</Badge>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <div>Type: {asset.type}</div>
+                  <div className="text-sm text-gray-700 space-y-1.5">
+                    <div className="font-medium">Type: {asset.type}</div>
                     {asset.defaultPostingFrequency && (
                       <div>Frequency: {asset.defaultPostingFrequency}/month</div>
                     )}
@@ -163,19 +157,19 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
 
         {/* Team Members */}
         {templateDetails.templateTeamMembers && templateDetails.templateTeamMembers.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-green-500" />
+          <div className="bg-white p-6 rounded-xl border-2 border-green-200">
+            <h4 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-900">
+              <Users className="w-5 h-5 text-green-500" />
               Team Members ({templateDetails.templateTeamMembers.length})
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {templateDetails.templateTeamMembers.map((member, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center justify-between p-4 bg-green-50 rounded-xl border-2 border-green-200 hover:shadow-lg transition-shadow">
                   <div>
-                    <span className="font-medium text-sm">{member.agent.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">{member.agent.email}</span>
+                    <span className="font-bold text-sm text-gray-900">{member.agent.name}</span>
+                    <span className="text-sm text-gray-600 ml-2">{member.agent.email}</span>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs font-semibold bg-white">
                     {member.role}
                   </Badge>
                 </div>
@@ -185,16 +179,33 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
         )}
 
         {/* Assignment Info */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• An assignment will be automatically created</li>
-            <li>• Team members will be notified</li>
-            <li>• Tasks will be generated based on template assets</li>
-            <li>• You'll receive a confirmation email</li>
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border-2 border-indigo-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <h4 className="font-bold text-indigo-900 text-lg">What happens next?</h4>
+          </div>
+          <ul className="text-base text-indigo-800 space-y-2.5">
+            <li className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              An assignment will be automatically created
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              Team members will be notified
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              Tasks will be generated based on template assets
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              You'll receive a confirmation email
+            </li>
           </ul>
         </div>
       </CardContent>
-    </Card>
+    </div>
   );
 }

@@ -124,21 +124,18 @@ const ReviewSectionCard: FC<ReviewSectionProps> = ({
   children,
   gradient = "from-blue-50 to-indigo-50",
 }) => (
-  <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-gray-50/50 rounded-2xl hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5">
-    <CardHeader className="relative space-y-0 py-6 px-6 border-b-0">
-      <div
-        className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-5`}
-      />
+  <Card className="overflow-hidden border-2 border-indigo-100 shadow-xl bg-gradient-to-br from-white to-indigo-50/30 rounded-2xl hover:shadow-2xl transition-all duration-300">
+    <CardHeader className="relative space-y-0 py-6 px-8 border-b-0">
       <div className="flex items-center gap-3 relative z-10">
-        <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-sm">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
           <Icon className="w-5 h-5 text-white" />
         </div>
-        <CardTitle className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+        <CardTitle className="text-2xl font-bold text-gray-900">
           {title}
         </CardTitle>
       </div>
     </CardHeader>
-    <CardContent className="p-6 relative">{children}</CardContent>
+    <CardContent className="p-8 relative">{children}</CardContent>
   </Card>
 );
 
@@ -146,17 +143,17 @@ const InfoItem: FC<InfoItemProps> = ({ label, value, icon: Icon }) => {
   if (!value) return null;
 
   return (
-    <div className="group flex items-start gap-3 p-3 rounded-xl hover:bg-white hover:shadow-md transition-all duration-200">
+    <div className="group flex items-start gap-3 p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-200">
       {Icon && (
-        <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-indigo-100 transition-colors">
-          <Icon className="w-4 h-4 text-slate-600 group-hover:text-indigo-600" />
+        <div className="p-2 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors">
+          <Icon className="w-4 h-4 text-indigo-600" />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 block">
+        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">
           {label}
         </span>
-        <span className="text-slate-800 font-semibold text-sm leading-relaxed break-words">
+        <span className="text-gray-900 font-medium text-base leading-relaxed break-words">
           {value}
         </span>
       </div>
@@ -503,17 +500,16 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
   }
 
   return (
-    <div className="space-y-8 p-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-3 rounded-full shadow-lg">
-          <Sparkles className="w-5 h-5" />
-          <span className="font-semibold">Review & Confirm</span>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg mb-4">
+          <Sparkles className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-          Almost There!
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 bg-clip-text text-transparent">
+          Review & Confirm
         </h1>
-        <p className="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
+        <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
           Please review all the information below carefully. This will be used
           to create the client profile and assign the template.
         </p>
@@ -678,23 +674,21 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-slate-200">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8">
         <Button
           variant="outline"
           onClick={onPrevious}
-          className="border-slate-300 text-slate-700 hover:bg-slate-50 px-8 py-3 rounded-xl transition-all duration-300"
-          size="lg"
+          className="px-8 py-6 text-lg font-semibold border-2 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 hover:border-indigo-400 transition-all duration-200 rounded-xl"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Previous
         </Button>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button
             onClick={handleDownload}
             variant="outline"
-            className="border-slate-300 text-slate-700 hover:bg-slate-50 px-6 py-3 rounded-xl"
-            size="lg"
+            className="px-6 py-6 text-base font-semibold border-2 hover:bg-gray-50 transition-all duration-200 rounded-xl"
           >
             <Download className="w-5 h-5 mr-2" />
             Download
@@ -703,8 +697,7 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
           <Button
             onClick={handleSubmit}
             disabled={isSaving}
-            size="lg"
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
+            className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 hover:from-indigo-700 hover:via-purple-700 hover:to-violet-700 text-white shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transform hover:scale-105 transition-all duration-200"
           >
             {isSaving ? (
               <>

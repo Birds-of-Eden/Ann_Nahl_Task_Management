@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, CheckCircle, Sparkles } from "lucide-react";
+import { Package, CheckCircle, Sparkles, Calendar, Clock, TrendingUp, Zap } from "lucide-react";
 import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 
@@ -120,12 +120,15 @@ export function PackageInfo({
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg mb-4 animate-pulse">
+            <Package className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Select Package
           </h1>
-          <p className="text-gray-500 mt-2">Loading available packages...</p>
+          <p className="text-gray-600 text-lg">Loading available packages...</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -147,90 +150,126 @@ export function PackageInfo({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Select Package
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Header Section */}
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg mb-4">
+          <Package className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          Select Your Package
         </h1>
-        <p className="text-gray-500 mt-2">
-          Choose the package that best suits your project needs and
-          requirements.
+        <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+          Choose the perfect package that aligns with your project needs and business goals.
         </p>
       </div>
 
       {packages.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mb-4">
-            <Package className="w-12 h-12 text-blue-600" />
+        <div className="text-center py-16">
+          <div className="mx-auto w-32 h-32 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
+            <Package className="w-16 h-16 text-blue-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">
             No Packages Available
           </h3>
-          <p className="text-gray-500">
+          <p className="text-gray-600 text-lg max-w-md mx-auto">
             Please contact support to set up packages for your organization.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {packages.map((pkg) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {packages.map((pkg, index) => (
             <Card
               key={pkg.id}
-              className={`relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
+              className={`relative overflow-hidden cursor-pointer transition-all duration-500 group ${
                 selectedPackage === pkg.id
-                  ? "ring-2 ring-blue-500 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50"
-                  : "hover:shadow-md"
+                  ? "ring-4 ring-blue-500 shadow-2xl scale-105 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"
+                  : "hover:shadow-xl hover:-translate-y-2 bg-white"
               }`}
               onClick={() => handlePackageSelect(pkg.id)}
+              style={{ animationDelay: `${index * 100}ms` }}
             >
+              {/* Selection Badge */}
               {selectedPackage === pkg.id && (
-                <div className="absolute top-4 right-4 z-10">
-                  <div className="bg-blue-500 rounded-full p-1">
-                    <CheckCircle className="w-5 h-5 text-white" />
+                <div className="absolute top-4 right-4 z-10 animate-in zoom-in duration-300">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full p-2 shadow-lg">
+                    <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                 </div>
               )}
 
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+              {/* Top Gradient Bar */}
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+              </div>
 
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-500" />
-                  {pkg.name}
-                </CardTitle>
-                <CardDescription className="text-sm text-gray-600 line-clamp-3">
-                  {pkg.description ||
-                    "A comprehensive package designed to meet your business needs."}
-                </CardDescription>
-              </CardHeader>
+              {/* Glow Effect on Hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 to-purple-400/0 group-hover:from-blue-400/10 group-hover:to-purple-400/10 transition-all duration-500" />
 
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                  <div className="flex items-center gap-4">
-                    {pkg._count?.templates && (
-                      <Badge variant="secondary" className="text-xs">
-                        {pkg._count.templates} Templates
-                      </Badge>
-                    )}
-                    {pkg._count?.clients && (
-                      <Badge variant="outline" className="text-xs">
-                        {pkg._count.clients} Clients
-                      </Badge>
+              <CardHeader className="pb-4 pt-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                      {pkg.name}
+                    </CardTitle>
+                    {pkg.totalMonths && (
+                      <div className="flex items-center gap-2 text-sm text-blue-600 font-semibold">
+                        <Clock className="w-4 h-4" />
+                        <span>{pkg.totalMonths} Months Duration</span>
+                      </div>
                     )}
                   </div>
                 </div>
+                <CardDescription className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                  {pkg.description ||
+                    "A comprehensive package designed to meet your business needs and exceed expectations."}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="pt-0 pb-6">
+                {/* Stats Section */}
+                <div className="flex items-center gap-3 mb-5">
+                  {pkg._count?.templates && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>{pkg._count.templates} Templates</span>
+                    </div>
+                  )}
+                  {pkg._count?.clients && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{pkg._count.clients} Clients</span>
+                    </div>
+                  )}
+                </div>
 
                 <Button
-                  className={`w-full transition-all duration-200 ${
+                  className={`w-full h-12 font-semibold transition-all duration-300 ${
                     selectedPackage === pkg.id
-                      ? "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md"
-                      : "bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-100 hover:to-purple-100 text-gray-700 hover:text-blue-700"
+                      ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white shadow-xl"
+                      : "bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 text-gray-700 hover:text-blue-700 border-2 border-gray-200 hover:border-blue-300"
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePackageSelect(pkg.id);
                   }}
                 >
-                  {selectedPackage === pkg.id ? "Selected" : "Select Package"}
+                  {selectedPackage === pkg.id ? (
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5" />
+                      Selected
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Select Package
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -238,11 +277,19 @@ export function PackageInfo({
         </div>
       )}
 
-      <div className="flex flex-col gap-6">
-        <div className="flex gap-6">
-          {/* Start Date */}
-          <div className="flex-1">
-            <Label htmlFor="startDate" className="mb-1 block">
+      {/* Date Selection Card */}
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-xl border border-blue-100 p-8 space-y-6 hover:shadow-2xl transition-shadow duration-300">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
+            <Calendar className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Project Timeline</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="group">
+            <Label htmlFor="startDate" className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-blue-500" />
               Start Date
             </Label>
             <DatePicker
@@ -274,7 +321,7 @@ export function PackageInfo({
               showYearDropdown
               dropdownMode="select"
               placeholderText="Select start date"
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-12 border-2 border-gray-200 rounded-xl px-4 py-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200"
               maxDate={formData.dueDate ? new Date(formData.dueDate) : undefined}
               disabled={!selectedPackage}
               required
@@ -286,9 +333,9 @@ export function PackageInfo({
             )}
           </div>
 
-          {/* Due Date */}
-          <div className="flex-1">
-            <Label htmlFor="dueDate" className="mb-1 block">
+          <div className="group">
+            <Label htmlFor="dueDate" className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4 text-blue-500" />
               Due Date
             </Label>
             <DatePicker
@@ -304,7 +351,7 @@ export function PackageInfo({
               showYearDropdown
               dropdownMode="select"
               placeholderText="Select due date"
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-12 border-2 border-gray-200 rounded-xl px-4 py-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200"
               minDate={formData.startDate ? new Date(formData.startDate) : new Date(new Date().setHours(0, 0, 0, 0))}
               disabled={!formData.startDate}
               required
@@ -318,31 +365,45 @@ export function PackageInfo({
         </div>
 
         {selectedPackageData?.totalMonths && formData.startDate && formData.dueDate && (
-          <div className="text-sm text-gray-600">
-            <p>
-              <span className="font-medium">Package Duration:</span> {selectedPackageData.totalMonths} months
-            </p>
-            <p className="text-green-600">
-              {calculateDurationText(formData.startDate, formData.dueDate)}
-            </p>
+          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">
+                  Package Duration: {selectedPackageData.totalMonths} months
+                </p>
+                <p className="text-sm text-green-700 font-medium">
+                  {calculateDurationText(formData.startDate, formData.dueDate)}
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex justify-between pt-6">
+      {/* Navigation */}
+      <div className="flex justify-between pt-8">
         <Button
           variant="outline"
           onClick={onPrevious}
-          className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 hover:border-blue-300"
+          className="px-8 py-6 text-lg font-semibold border-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 hover:border-blue-400 transition-all duration-200 rounded-xl"
         >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
           Previous
         </Button>
         <Button
           onClick={onNext}
           disabled={!selectedPackage}
-          className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          Next
+          Continue to Next Step
+          <svg className="w-5 h-5 ml-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
         </Button>
       </div>
     </div>
