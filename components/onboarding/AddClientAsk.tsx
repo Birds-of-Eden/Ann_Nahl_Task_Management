@@ -9,7 +9,6 @@ import {
   Users,
   ArrowRight,
   Search,
-  GalleryVerticalEnd,
   Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -125,46 +124,40 @@ export function AddClientAskPage() {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden">
       {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-violet-400/30 to-purple-400/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-fuchsia-400/30 to-pink-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-white to-slate-100" />
 
-      <div className="relative z-10 px-4 py-12">
+      <div className="relative z-10 py-16">
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="mx-auto w-full max-w-3xl"
+        className="mx-auto w-full max-w-5xl px-4"
       >
         {/* Question Card */}
-        <Card className="border-violet-200/50 shadow-2xl bg-white/90 backdrop-blur-xl">
+        <Card className="border border-slate-200 bg-white/95 shadow-lg backdrop-blur">
           <CardContent className="p-8 md:p-12">
-            <div className="flex items-start gap-4">
-              <div className="rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 p-3 shadow-lg">
-                <HelpCircle className="h-6 w-6 text-white" />
+            <div className="space-y-10">
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">
+                    <HelpCircle className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-3">
+                    <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 leading-tight">
+                      Manage client onboarding with confidence
+                    </h1>
+                    <p className="text-sm md:text-base text-slate-600 max-w-2xl">
+                      Decide whether you’re creating a fresh client profile or continuing an existing engagement. We’ll guide you directly to the correct workflow.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-xl md:text-2xl font-bold text-gray-900 leading-relaxed">
-                  Would you like to{" "}
-                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                    add a new client
-                  </span>{" "}
-                  through onboarding, or{" "}
-                  <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                    work with an existing client
-                  </span>{" "}
-                  already in the system?
-                </p>
-                <p className="mt-3 text-base text-gray-600">
-                  Choose one option below — we'll direct you instantly to the
-                  right flow.
-                </p>
 
-                {/* Answers */}
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-slate-700">How would you like to proceed?</p>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <AnswerChip
                     label="New client"
                     hotkey="N"
@@ -182,162 +175,158 @@ export function AddClientAskPage() {
                     onClick={() => setChoice("existing")}
                   />
                 </div>
+              </div>
 
-                {/* Reveal the relevant action/section */}
-                <AnimatePresence initial={false} mode="popLayout">
-                  {choice === "new" && (
-                    <motion.div
-                      key="new-cta"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                      className="mt-6"
-                    >
-                      <Separator className="mb-6" />
-                      <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 p-6 shadow-xl">
-                        <div className="flex items-start gap-4">
-                          <div className="rounded-xl p-3 bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
-                            <UserPlus2 className="h-7 w-7" />
+              <AnimatePresence initial={false} mode="popLayout">
+                {choice === "new" && (
+                  <motion.div
+                    key="new-cta"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Separator className="mb-8" />
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 md:p-7 shadow-sm">
+                      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500 text-white shadow-sm">
+                            <UserPlus2 className="h-6 w-6" />
                           </div>
-                          <div className="flex-1">
-                            <p className="text-lg font-bold text-gray-900">
+                          <div className="space-y-1">
+                            <p className="text-lg font-semibold text-slate-900">
                               New client onboarding
                             </p>
-                            <p className="text-sm text-gray-600 mt-2">
-                              Create a fresh record and start the guided
-                              onboarding process.
+                            <p className="text-sm text-slate-600">
+                              Create a fresh profile and move through the guided onboarding journey.
                             </p>
                           </div>
-                          <Button onClick={goNew} className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg">
-                            Start Onboarding
-                            <ArrowRight className="ml-2 h-5 w-5" />
-                          </Button>
+                        </div>
+                        <Button onClick={goNew} className="bg-slate-900 text-white shadow-sm hover:bg-slate-950">
+                          Start Onboarding
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {choice === "existing" && (
+                  <motion.div
+                    key="existing-inline"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Separator className="mb-8" />
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 md:p-7 shadow-sm space-y-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm">
+                          <Users className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-lg font-semibold text-slate-900">
+                            Continue with an existing client
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            Search your roster and select the client whose onboarding you’d like to resume.
+                          </p>
                         </div>
                       </div>
-                    </motion.div>
-                  )}
 
-                  {choice === "existing" && (
-                    <motion.div
-                      key="existing-inline"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
-                      className="mt-6"
-                    >
-                      <Separator className="mb-6" />
-                      <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 shadow-xl">
-                        <div className="flex items-start gap-4 mb-6">
-                          <div className="rounded-xl p-3 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
-                            <Users className="h-7 w-7" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-lg font-bold text-gray-900">
-                              Use an existing client
-                            </p>
-                            <p className="text-sm text-gray-600 mt-2">
-                              Search and select a client below to continue their
-                              onboarding.
-                            </p>
-                          </div>
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="relative flex-1">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder="Search by name, company, email…"
+                            className="h-11 rounded-xl border-slate-200 pl-9 focus:border-emerald-500 focus:ring-emerald-100"
+                          />
                         </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                          <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 md:w-44">
+                            <Filter className="mr-2 h-4 w-4" />
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                        {/* Search and Filter */}
-                        <div className="flex gap-3 mb-5">
-                          <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <Input
-                              value={q}
-                              onChange={(e) => setQ(e.target.value)}
-                              placeholder="Search by name, company, email…"
-                              className="pl-9 h-11 border-2 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 rounded-xl"
-                            />
-                          </div>
-                          <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-40 h-11 border-2 focus:border-emerald-500 rounded-xl">
-                              <Filter className="h-4 w-4 mr-2" />
-                              <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Status</SelectItem>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
                         </div>
-
-                        {/* List */}
-                        {loading ? (
-                          <div className="flex items-center justify-center py-10">
-                            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
-                          </div>
-                        ) : filtered.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500 border border-dashed border-gray-200 rounded-lg">
-                            No clients found.
-                          </div>
-                        ) : (
-                          <ul className="divide-y divide-gray-100 rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
-                            {filtered.slice(0, 20).map((c) => (
-                              <li
-                                key={c.id}
-                                className="flex items-center justify-between gap-3 p-4 hover:bg-emerald-50/50 transition-all duration-200"
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium text-gray-900 truncate">
-                                      {c.name}
-                                    </p>
-                                    {c.status && (
-                                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                                        c.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
-                                        c.status === 'inactive' ? 'bg-red-50 text-red-700 border-red-200' :
-                                        'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                      }`}>
-                                        {c.status}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-gray-600 truncate">
-                                    {c.company ?? "—"} • {c.email ?? "—"}
-                                  </p>
-                                </div>
+                      ) : filtered.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-sm text-slate-500">
+                          No clients match your filters.
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                          {filtered.slice(0, 20).map((c) => (
+                            <li
+                              key={c.id}
+                              className="flex flex-col gap-3 p-4 transition-colors duration-150 hover:bg-emerald-50/60 md:flex-row md:items-center md:justify-between"
+                            >
+                              <div className="min-w-0 space-y-1">
                                 <div className="flex items-center gap-2">
-                                  {c.package?.name && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-gray-50">
-                                      {c.package.name}
+                                  <p className="truncate font-medium text-slate-900">
+                                    {c.name}
+                                  </p>
+                                  {c.status && (
+                                    <span
+                                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                        c.status === "active"
+                                          ? "bg-emerald-50 text-emerald-700"
+                                          : c.status === "inactive"
+                                            ? "bg-rose-50 text-rose-700"
+                                            : "bg-amber-50 text-amber-700"
+                                      }`}
+                                    >
+                                      {c.status}
                                     </span>
                                   )}
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handlePickClient(c)}
-                                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md"
-                                  >
-                                    Select Client
-                                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                                  </Button>
                                 </div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {/* Optional hint */}
-                        <p className="mt-3 text-[11px] text-muted-foreground">
-                          Showing up to 20 results. Refine your search to find
-                          more.
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                                <p className="text-xs text-slate-600 truncate">
+                                  {c.company ?? "—"} • {c.email ?? "—"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {c.package?.name && (
+                                  <span className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                    {c.package.name}
+                                  </span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  onClick={() => handlePickClient(c)}
+                                  className="bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                                >
+                                  Select Client
+                                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="text-xs text-slate-500">
+                        Showing up to 20 results. Refine your search to narrow the list.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                {/* Keyboard hint */}
-                <div className="mt-8 flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                  <span className="font-medium">💡 Keyboard shortcuts:</span>
-                  <Kbd>N</Kbd> for New, <Kbd>E</Kbd> for Existing.
-                </div>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                <span className="font-medium">Keyboard shortcuts:</span>
+                <Kbd>N</Kbd> for New, <Kbd>E</Kbd> for Existing.
               </div>
             </div>
           </CardContent>
@@ -366,16 +355,16 @@ function AnswerChip({
   onClick: () => void;
 }) {
   const base =
-    "flex items-center justify-between rounded-2xl border-2 p-5 bg-white backdrop-blur-sm transition-all hover:shadow-xl cursor-pointer transform hover:scale-105 duration-200";
+    "flex items-center justify-between rounded-2xl border bg-white px-5 py-4 text-left transition-all duration-150 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2";
   const activeCls =
     color === "cyan"
-      ? "border-violet-400 ring-4 ring-violet-200 shadow-xl scale-105 bg-gradient-to-br from-violet-50 to-purple-50"
-      : "border-emerald-400 ring-4 ring-emerald-200 shadow-xl scale-105 bg-gradient-to-br from-emerald-50 to-teal-50";
-  const inactiveCls = "border-gray-200 hover:border-gray-300";
+      ? "border-violet-400 shadow-lg ring-2 ring-violet-200"
+      : "border-emerald-400 shadow-lg ring-2 ring-emerald-200";
+  const inactiveCls = "border-slate-200 hover:border-slate-300";
   const iconWrap =
     color === "cyan"
-      ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg"
-      : "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg";
+      ? "bg-violet-500"
+      : "bg-emerald-500";
 
   return (
     <button
@@ -385,14 +374,15 @@ function AnswerChip({
       aria-pressed={active}
     >
       <div className="flex items-center gap-4">
-        <div className={`rounded-xl p-3 ${iconWrap}`}>
-          <Icon className="h-6 w-6" />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm ${iconWrap}`}>
+          <Icon className="h-5 w-5" />
         </div>
-        <span className="font-bold text-gray-900 text-lg">{label}</span>
+        <div className="space-y-1">
+          <p className="text-base font-semibold text-slate-900">{label}</p>
+          <p className="text-xs text-slate-500">Press {hotkey} to select</p>
+        </div>
       </div>
-      <div className="text-xs font-semibold text-gray-500 border-2 border-gray-300 rounded-lg px-3 py-1.5">
-        {hotkey}
-      </div>
+      <Kbd>{hotkey}</Kbd>
     </button>
   );
 }

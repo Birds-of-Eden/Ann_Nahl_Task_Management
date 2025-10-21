@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
       {/* Content Container */}
       <div className="relative z-10">
-        <div>
+        <div className="mt-8">
           <StepIndicator
             steps={steps}
             currentStep={currentStep}
