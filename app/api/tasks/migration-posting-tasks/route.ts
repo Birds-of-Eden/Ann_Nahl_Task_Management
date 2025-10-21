@@ -310,17 +310,20 @@ export async function POST(req: NextRequest) {
       });
       if (found) return found;
       try {
-        return await prisma.taskCategory.create({
+        const created = await prisma.taskCategory.create({
           data: { name },
           select: { id: true, name: true },
         });
-      } catch {
-        return await prisma.taskCategory.findFirst({
-          where: { name },
-          select: { id: true, name: true },
-        });
-      }
+        if (created) return created;
+      } catch {}
+      const refetched = await prisma.taskCategory.findFirst({
+        where: { name },
+        select: { id: true, name: true },
+      });
+      if (refetched) return refetched;
+      throw new Error(`Task category ${name} not found`);
     }
+
     const [socialCat, blogCat, scCat] = await Promise.all([
       ensureCategory(CAT_SOCIAL_ACTIVITY),
       ensureCategory(CAT_BLOG_POSTING),
