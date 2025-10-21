@@ -174,7 +174,9 @@ export default function ContentWritingModal({
         body: JSON.stringify({
           status: "completed",
           completedAt: completedAt.toISOString(),
-          contentWriting: formattedContent, // Store content in contentWriting field
+          taskCompletionJson: {
+            contentWriting: formattedContent,
+          },
           dataEntryReport: {
             completedByUserId: user.id,
             completedByName:

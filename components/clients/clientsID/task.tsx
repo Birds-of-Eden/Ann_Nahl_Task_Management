@@ -1,4 +1,4 @@
-////components/clients/clientsID/task.tsx
+//components/clients/[clientsID]/task.tsx
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,9 +14,39 @@ import {
   AlertCircle,
   Loader,
   Link as LinkIcon,
+  FileText,
+  FileDown,
+  ClipboardList,
+  ListChecks,
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Client } from "@/types/client"
+
+// ---------- Small UI Helpers ----------
+const Pill = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+    {children}
+  </span>
+)
+
+const LinkPill = ({ href, label }: { href: string; label?: string }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-blue-700 hover:underline dark:border-slate-700 dark:bg-slate-800"
+  >
+    <LinkIcon className="h-3.5 w-3.5" />
+    {label ?? href}
+  </a>
+)
+
+const KeyStat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="flex items-center gap-2">
+    <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+    <Pill>{value}</Pill>
+  </div>
+)
 
 interface TasksProps {
   clientData: Client
@@ -26,13 +56,8 @@ export function Tasks({ clientData }: TasksProps) {
   type TaskItem = NonNullable<Client["tasks"]>[number]
 
   // ---------- Aggregates ----------
-  // normalize status variations to canonical keys
   const normalizeStatus = (raw?: string | null) => {
-    const s = (raw ?? "")
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replace(/[-\s]+/g, "_")
+    const s = (raw ?? "").toString().trim().toLowerCase().replace(/[-\s]+/g, "_")
     if (["done", "complete", "completed", "finished", "qc_approved", "approved"].includes(s)) return "completed"
     if (["in_progress", "in-progress", "progress", "doing", "working"].includes(s)) return "in_progress"
     if (["overdue", "late"].includes(s)) return "overdue"
@@ -46,43 +71,21 @@ export function Tasks({ clientData }: TasksProps) {
   const pendingTasks = clientData.tasks?.filter((t) => normalizeStatus((t as any).status) === "pending").length || 0
   const overdueTasks = clientData.tasks?.filter((t) => normalizeStatus((t as any).status) === "overdue").length || 0
 
-  // Define QC approval types and helpers
+  // QC helpers
   type TaskWithQC = TaskItem & {
     reviewStatus?: string | null
     qcApproved?: boolean | string | null
     review?: { status?: string | null }
   }
-
   const isQcApproved = (t: TaskWithQC) => {
-    // normalize string statuses
-    const norm = (s?: string | null) =>
-      (s ?? "")
-        .trim()
-        .toLowerCase()
-        .replace(/[\s-]+/g, "_")
-
-    // consider reviewStatus, nested review.status, and the task's own status
+    const norm = (s?: string | null) => (s ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_")
     const statusFromTask = norm((t as any).status)
     const status = norm(t.reviewStatus) || norm(t.review?.status) || statusFromTask
-
-    // accept common variants
-    const approvedVariants = new Set([
-      "qc_approved",
-      "approved_by_qc",
-      "approved",
-      "qa_approved",
-    ])
-
-    // handle boolean or "true" string
+    const approvedVariants = new Set(["qc_approved", "approved_by_qc", "approved", "qa_approved"])
     const flag = t.qcApproved === true || t.qcApproved === "true"
-
     return flag || approvedVariants.has(status)
   }
-
-  // Count QC approved tasks using the helper
   const qcApprovedTasks = clientData.tasks?.filter((t) => isQcApproved(t as TaskWithQC)).length ?? 0
-  console.log("qcApprovedTasks", qcApprovedTasks)
-
   const derivedProgress = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0
 
   // ---------- Dates ----------
@@ -92,14 +95,12 @@ export function Tasks({ clientData }: TasksProps) {
     const today = Date.now()
     return Math.max(0, Math.ceil((today - start) / (1000 * 60 * 60 * 24)))
   }
-
   const getDaysRemaining = () => {
     if (!clientData.dueDate) return 0
     const due = new Date(clientData.dueDate).getTime()
     const today = Date.now()
     return Math.max(0, Math.ceil((due - today) / (1000 * 60 * 60 * 24)))
   }
-
   const getTotalDays = () => {
     if (!clientData.startDate || !clientData.dueDate) return 0
     const start = new Date(clientData.startDate).getTime()
@@ -168,35 +169,37 @@ export function Tasks({ clientData }: TasksProps) {
     </div>
   )
 
-  // ---------- Grouping & Sorting ----------
+  // ---------- Category plumbing ----------
   // Normalize category names to canonical labels matching the desired order
   const canonicalCategory = (raw?: string | null) => {
     const name = (raw ?? "").trim()
     if (!name || /^uncategorized$/i.test(name)) return "Additional Asset Creation"
 
     const lower = name.toLowerCase()
-    // Web 2.0 variations
-    if (/^web\s*2(\.0)?/.test(lower) || /web2/.test(lower) || /web\s*2\.0\s*platform/.test(lower)) {
+    if (/^web\s*2(\.0)?/.test(lower) || /web2/.test(lower) || /web\s*2\.0\s*platform/.test(lower) || /web 2\.?0 asset/.test(lower)) {
       return "Web 2.0 Creation"
     }
-    // Additional Asset variations
     if (/additional\s*asset/.test(lower)) return "Additional Asset Creation"
-    // Graphics Design variations
     if (/graphics?\s*design/.test(lower)) return "Graphics Design"
-    // Social Asset Creation variations
     if (/social\s*asset\s*creation/.test(lower)) return "Social Asset Creation"
-    // Social Activity stays as-is
     if (/social\s*activity/.test(lower)) return "Social Activity"
-    // Content Studio
     if (/content\s*studio/.test(lower)) return "Content Studio"
-    // YouTube Video Optimization variations
     if (/youtube.*(optimization|optimi[sz]ation|seo)/.test(lower)) return "YouTube Video Optimization"
-    // Backlinks
     if (/backlinks?/.test(lower)) return "Backlinks"
-    // Blog Posting
     if (/blog\s*posting/.test(lower)) return "Blog Posting"
-
+    if (/content\s*writing/.test(lower)) return "Content Writing"
+    if (/guest\s*posting/.test(lower)) return "Guest Posting"
+    if (/review\s*removal/.test(lower)) return "Review Removal"
+    if (/summary\s*report/.test(lower)) return "Summary Report"
     return name
+  }
+
+  // Detect a functional type for R&D renderers (from asset.type or canonical category)
+  const getFunctionalType = (task: TaskItem) => {
+    const t = (task as any)?.templateSiteAsset?.type?.toString()?.toLowerCase() || ""
+    if (t) return t
+    const cat = canonicalCategory(task?.category?.name).toLowerCase().replace(/\s+/g, "_")
+    return cat // e.g., "content_writing", "guest_posting", "backlinks", "review_removal", "summary_report"
   }
 
   // Build groups
@@ -211,23 +214,20 @@ export function Tasks({ clientData }: TasksProps) {
   // Sort tasks: Completed → In Progress → Pending → Overdue, then priority, then due date
   const STATUS_ORDER = ["completed", "in_progress", "pending", "overdue"]
   const PRIORITY_ORDER = ["high", "medium", "low"]
-
   const sortTasks = (tasks: TaskItem[]) =>
     [...tasks].sort((a, b) => {
       const sA = STATUS_ORDER.indexOf(normalizeStatus((a as any).status))
       const sB = STATUS_ORDER.indexOf(normalizeStatus((b as any).status))
       if (sA !== sB) return sA - sB
-
       const pA = PRIORITY_ORDER.indexOf((a.priority || "low") as any)
       const pB = PRIORITY_ORDER.indexOf((b.priority || "low") as any)
       if (pA !== pB) return pA - pB
-
       const dA = a.dueDate ? new Date(a.dueDate).getTime() : Infinity
       const dB = b.dueDate ? new Date(b.dueDate).getTime() : Infinity
       return dA - dB
     })
 
-  // Category flow per request; others follow alphabetically
+  // Category flow (yours) + others alphabetical
   const CATEGORY_FLOW = [
     "Graphics Design",
     "Social Asset Creation",
@@ -238,6 +238,10 @@ export function Tasks({ clientData }: TasksProps) {
     "Backlinks",
     "Content Studio",
     "YouTube Video Optimization",
+    "Content Writing",
+    "Guest Posting",
+    "Review Removal",
+    "Summary Report",
   ]
 
   const orderedCategories = Object.entries(grouped).sort(([a], [b]) => {
@@ -251,7 +255,169 @@ export function Tasks({ clientData }: TasksProps) {
     return a.localeCompare(b)
   })
 
-  // Pick a pleasant header accent per category
+  // ---------- R&D: data helpers ----------
+  const cleanUrl = (raw?: string | null) => {
+    const s = (raw ?? "").trim().replace(/^"+|"+$/g, "").replace(/^'+|'+$/g, "")
+    // If someone double-pasted "https://\"https://..." keep last https
+    const m = s.match(/https?:\/\/[^\s"]+/g)
+    return m?.[m.length - 1] || s
+  }
+  const formatDate = (d?: string | null) => {
+    if (!d) return "—"
+    const dt = new Date(d)
+    return isNaN(+dt) ? "—" : dt.toLocaleDateString()
+  }
+
+  // ---------- R&D: per-category renderers ----------
+  const PendingBox = ({ note }: { note?: string }) => (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-200">
+      <ClipboardList className="mr-1 inline h-4 w-4" />
+      {note || "Pending — awaiting completion data."}
+    </div>
+  )
+
+  const SectionTitle = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
+    <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+      {icon}
+      <span>{title}</span>
+    </div>
+  )
+
+  const RenderContentWriting = (task: TaskItem) => {
+    const status = normalizeStatus((task as any).status)
+    const items = (task as any)?.taskCompletionJson?.contentWriting as
+      | { title?: string; content?: string }[]
+      | undefined
+
+    if (status !== "completed") return <PendingBox />
+    if (!items?.length) return <PendingBox note="Completed, but no content items attached." />
+
+    return (
+      <div className="space-y-3">
+        {items.map((it, idx) => (
+          <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+            <SectionTitle icon={<FileText className="h-4 w-4" />} title={it?.title || `Item ${idx + 1}`} />
+            {it?.content ? (
+              <div
+                className="prose prose-sm max-w-none dark:prose-invert"
+                // NOTE: ensure server-side sanitization; this trusts your API.
+                dangerouslySetInnerHTML={{ __html: it.content }}
+              />
+            ) : (
+              <p className="text-sm text-slate-500">No content provided.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const RenderGuestPosting = (task: TaskItem) => {
+    // same schema as content writing per your example
+    return RenderContentWriting(task)
+  }
+
+  const RenderBacklinks = (task: TaskItem) => {
+    const status = normalizeStatus((task as any).status)
+    const data = (task as any)?.taskCompletionJson || {}
+    const links: string[] = Array.isArray(data?.backlinkingLinks) ? data.backlinkingLinks : []
+
+    if (status !== "completed") return <PendingBox />
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
+          <KeyStat label="Month" value={data?.month ?? "—"} />
+          <KeyStat label="Quantity" value={data?.quantity ?? "—"} />
+          <KeyStat label="Drip Period" value={data?.dripPeriod ?? "—"} />
+          <KeyStat label="Order Date" value={formatDate(data?.orderDate)} />
+          {data?.doneByAgentId && <KeyStat label="Done By" value={data.doneByAgentId} />}
+        </div>
+        <div>
+          <SectionTitle icon={<ListChecks className="h-4 w-4" />} title="Backlink URLs" />
+          <div className="flex flex-wrap gap-2">
+            {links.length ? (
+              links.map((raw, i) => {
+                const href = cleanUrl(raw)
+                const label = `Link ${i + 1}`
+                return <LinkPill key={i} href={href} label={label} />
+              })
+            ) : (
+              <p className="text-sm text-slate-500">No links attached.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const RenderReviewRemoval = (task: TaskItem) => {
+    const status = normalizeStatus((task as any).status)
+    const links: string[] = (task as any)?.taskCompletionJson?.reviewRemoval || []
+
+    if (status !== "completed") return <PendingBox />
+    return (
+      <div className="space-y-2">
+        <SectionTitle icon={<ListChecks className="h-4 w-4" />} title="Review Links" />
+        <div className="flex flex-wrap gap-2">
+          {links.length ? (
+            links.map((raw, i) => {
+              const href = cleanUrl(raw)
+              return <LinkPill key={i} href={href} label={`ReviewLink${i + 1}`} />
+            })
+          ) : (
+            <p className="text-sm text-slate-500">No review links provided.</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const RenderSummaryReport = (task: TaskItem) => {
+    const status = normalizeStatus((task as any).status)
+    const data = (task as any)?.taskCompletionJson || {}
+    const title = data?.title
+    const text = data?.text
+    const pdf = data?.pdfFileName
+
+    if (status !== "completed") return <PendingBox />
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+          <SectionTitle icon={<FileText className="h-4 w-4" />} title={title || "Summary Report"} />
+          {text ? (
+            <div
+              className="prose prose-sm max-w-none dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: text }}
+            />
+          ) : (
+            <p className="text-sm text-slate-500">No report text provided.</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <KeyStat label="PDF" value={pdf || "—"} />
+          {pdf && (
+            <span className="ml-1 inline-flex items-center gap-1 text-xs text-blue-700">
+              <FileDown className="h-3.5 w-3.5" />
+              {pdf}
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Map functional type to renderer
+  const renderSpecialByType = (task: TaskItem) => {
+    const t = getFunctionalType(task)
+    if (t.includes("content_writing")) return <RenderContentWriting {...(task as any)} />
+    if (t.includes("guest_posting")) return <RenderGuestPosting {...(task as any)} />
+    if (t.includes("backlinks")) return <RenderBacklinks {...(task as any)} />
+    if (t.includes("review_removal")) return <RenderReviewRemoval {...(task as any)} />
+    if (t.includes("summary_report")) return <RenderSummaryReport {...(task as any)} />
+    return null
+  }
+
+  // Header color
   const headerGradient = (category: string) => {
     if (category === "Graphics Design") return "from-fuchsia-500/10 to-rose-500/10 dark:from-fuchsia-500/20 dark:to-rose-500/20"
     if (category === "Social Asset Creation") return "from-pink-500/10 to-rose-500/10 dark:from-pink-500/20 dark:to-rose-500/20"
@@ -263,7 +429,9 @@ export function Tasks({ clientData }: TasksProps) {
     if (category === "Content Studio") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
     if (category === "YouTube Video Optimization") return "from-red-500/10 to-orange-500/10 dark:from-red-500/20 dark:to-orange-500/20"
     if (category === "Content Writing") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
-    if (category === "Guest Posting") return "from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20"
+    if (category === "Guest Posting") return "from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20"
+    if (category === "Review Removal") return "from-rose-500/10 to-red-500/10 dark:from-rose-500/20 dark:to-red-500/20"
+    if (category === "Summary Report") return "from-teal-500/10 to-emerald-500/10 dark:from-teal-500/20 dark:to-emerald-500/20"
     return "from-slate-500/10 to-slate-500/10 dark:from-slate-500/20 dark:to-slate-500/20"
   }
 
@@ -345,21 +513,21 @@ export function Tasks({ clientData }: TasksProps) {
         </Card>
       </div>
 
-      {/* Task Breakdown (color-coded) */}
+      {/* Task Breakdown */}
       <Card className="shadow-lg border-0 bg-white dark:bg-slate-800">
         <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center gap-2">
             <BarChart3 className="text-indigo-600" />
             <span>Task Breakdown - {clientData.name}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="space-y-3">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium text-slate-900 dark:text-slate-100">QC Approved</h4>
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                {qcApprovedTasks}
+                  {qcApprovedTasks}
                 </Badge>
               </div>
               <ColoredProgress
@@ -413,7 +581,7 @@ export function Tasks({ clientData }: TasksProps) {
         </CardContent>
       </Card>
 
-      {/* Categories in an Accordion (flow enforced) */}
+      {/* Categories */}
       <Card className="shadow-lg border-0 bg-white dark:bg-slate-800">
         <CardHeader className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/20 dark:to-teal-500/20">
           <CardTitle className="flex items-center space-x-2">
@@ -422,16 +590,12 @@ export function Tasks({ clientData }: TasksProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-2 md:p-4">
-          <Accordion
-            type="multiple"
-            className="w-full"
-            defaultValue={orderedCategories.slice(0, 2).map(([name]) => name)}
-          >
+          <Accordion type="multiple" className="w-full" defaultValue={orderedCategories.slice(0, 2).map(([name]) => name)}>
             {orderedCategories.map(([categoryName, rawTasks]) => {
               const tasks = sortTasks(rawTasks)
               return (
                 <AccordionItem key={categoryName} value={categoryName} className="border-slate-200 dark:border-slate-700">
-                  <AccordionTrigger className={`px-4 py-3 rounded-md hover:no-underline group`}>
+                  <AccordionTrigger className="px-4 py-3 rounded-md hover:no-underline group">
                     <div className={`w-full flex items-center justify-between rounded-md px-2 py-1.5 bg-gradient-to-r ${headerGradient(categoryName)}`}>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{categoryName}</span>
@@ -453,34 +617,67 @@ export function Tasks({ clientData }: TasksProps) {
                         const platform = task.templateSiteAsset?.name || "Platform"
                         const duration = task.idealDurationMinutes ?? 0
                         const link = (task as any).completionLink?.trim?.() || task.templateSiteAsset?.url || ""
+                        const status = normalizeStatus((task as any).status)
+                        const functionalType = getFunctionalType(task)
+
                         return (
                           <div
                             key={task.id}
-                            className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200/70 dark:border-slate-700/70"
+                            className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200/70 dark:border-slate-700/70"
                           >
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5">{getStatusIcon(task.status)}</div>
-                              <div>
-                                <h4 className="font-medium text-slate-900 dark:text-slate-100">{task.name}</h4>
-                                <p className="text-sm text-slate-500 dark:text-slate-300">
-                                  {platform} • {duration} min
-                                </p>
-                                {link && (
-                                  <a
-                                    href={link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1 break-all"
-                                  >
-                                    <LinkIcon className="h-3.5 w-3.5" />
-                                    {link}
-                                  </a>
-                                )}
+                            {/* Top line */}
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5">{getStatusIcon(task.status)}</div>
+                                <div>
+                                  <h4 className="font-medium text-slate-900 dark:text-slate-100">{task.name}</h4>
+                                  <p className="text-sm text-slate-500 dark:text-slate-300">
+                                    {platform} • {duration} min
+                                  </p>
+                                  {link && (
+                                    <a
+                                      href={link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1 break-all"
+                                    >
+                                      <LinkIcon className="h-3.5 w-3.5" />
+                                      {link}
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 self-start md:self-center">
+                                <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                                <Badge className={getStatusColor((task as any).status)}>
+                                  {status.replace(/_/g, " ")}
+                                </Badge>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                              <Badge className={getStatusColor((task as any).status)}>{normalizeStatus((task as any).status).replace(/_/g, " ")}</Badge>
+
+                            {/* NEW: Special per-category renderers */}
+                            <div className="rounded-lg bg-white/60 p-3 dark:bg-slate-800/60">
+                              {renderSpecialByType(task) || (() => {
+                                const notes = (task as any)?.taskCompletionJson?.notes || (task as any)?.notes
+                                if (notes) {
+                                  return (
+                                    <div className="space-y-1">
+                                      <SectionTitle icon={<FileText className="h-4 w-4" />} title="Notes" />
+                                      <div
+                                        className="prose prose-sm max-w-none dark:prose-invert"
+                                        // NOTE: ensure server-side sanitization; this trusts your API.
+                                        dangerouslySetInnerHTML={{ __html: notes }}
+                                      />
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <p className="text-sm text-slate-500">
+                                    {/* Default: compact note for categories without custom renderer */}
+                                    No extra completion data for this category.
+                                  </p>
+                                )
+                              })()}
                             </div>
                           </div>
                         )

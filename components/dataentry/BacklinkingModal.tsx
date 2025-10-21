@@ -167,11 +167,14 @@ export default function BacklinkingModal({
           completedAt: completedAt
             ? toLocalMiddayISOString(completedAt)
             : toLocalMiddayISOString(new Date()),
-          backlinkingLinks: links,
-          orderDate: toLocalMiddayISOString(orderDate),
-          month,
-          quantity: parseInt(quantity),
-          dripPeriod,
+          taskCompletionJson: {
+            backlinkingLinks: links,
+            orderDate: toLocalMiddayISOString(orderDate),
+            month,
+            quantity: parseInt(quantity),
+            dripPeriod,
+            doneByAgentId: doneBy || undefined,
+          },
           dataEntryReport: {
             completedByUserId: user.id,
             completedByName:

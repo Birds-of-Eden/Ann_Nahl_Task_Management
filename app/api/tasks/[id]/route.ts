@@ -104,16 +104,7 @@ export async function PUT(
         assignedToId: body.assignedToId,
         completionLink: body.completionLink,
         completedAt: body.completedAt ? new Date(body.completedAt) : null,
-        // 🆕 persist content writing data if provided
-        contentWriting: body.contentWriting ?? undefined,
-        // 🆕 persist data entry report if provided
-        dataEntryReport: body.dataEntryReport ?? undefined,
-        // 🆕 persist review removal data if provided
-        reviewRemoval: reviewRemovalPayload ?? undefined,
-        // 🆕 persist backlinking data if provided
-        backLinking: backLinkingPayload ?? undefined,
-        // 🆕 persist summary report data if provided
-        summaryReport: summaryReportPayload ?? undefined,
+        taskCompletionJson: body.taskCompletionJson ?? undefined,
       },
       include: { assignedTo: true },
     });

@@ -151,7 +151,9 @@ export default function ReviewRemovalModal({
         body: JSON.stringify({
           status: "completed",
           completedAt: toLocalMiddayISOString(completedAt),
-          reviewRemovalLinks: links,
+          taskCompletionJson: {
+            reviewRemoval: links,
+          },
           dataEntryReport: {
             completedByUserId: user.id,
             completedByName:

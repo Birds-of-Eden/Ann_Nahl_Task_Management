@@ -391,6 +391,7 @@ model Task {
   actualDurationMinutes Int?
   performanceRating     PerformanceRating?
   completionLink        String?
+  taskCompletionJson    Json?
   email                 String?
   password              String?
   username              String?
@@ -405,10 +406,6 @@ model Task {
   pauseReasons         Json? @default("[]")
   socialCommunications Json? @default("[]")
   dataEntryReport      Json?
-  contentWriting       Json?
-  reviewRemoval        Json?
-  backLinking          Json?
-  summaryReport        Json?
 
   assignment        Assignment?        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   client            Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)

@@ -130,7 +130,7 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
         body: JSON.stringify({
           status: "completed",
           completedAt: toLocalMiddayISOString(completedAt),
-          summaryReport: {
+          taskCompletionJson: {
             title: title.trim(),
             text,
             pdfFileName: pdfFile?.name ?? null,
@@ -188,7 +188,7 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col rounded-3xl border-0 bg-white shadow-2xl overflow-hidden">
+      <DialogContent className="sm:max-w-[90vw] max-h-[90vh] flex flex-col rounded-3xl border-0 bg-white shadow-2xl overflow-hidden">
         {/* Modern Header with Gradient */}
         <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 -m-6 mb-6 px-8 py-6">
           <DialogHeader>
