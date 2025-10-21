@@ -6,7 +6,6 @@ import { Download, Calendar as CalendarIcon, Loader2, Users, Package, BarChart3 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -449,7 +448,7 @@ export default function MonthlyAgentPackageMatrix({
                       </tbody>
                       <tfoot>
                         <tr className="bg-muted/50 font-semibold">
-                          <td className="px-4 py-3 border-r">Totals</td>
+                          <td className="px-4 py-3 border-r">Total Team Work</td>
                           {(["Posting", "Weekly", "Sheet"] as const).map((m) => (
                             <React.Fragment key={`tot-${m}`}>
                               {packageList.map((p) => {
