@@ -1,3 +1,5 @@
+// app/components/onboarding/articles-selection.tsx
+
 "use client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,7 +33,6 @@ export function ArticlesSelection({
       Array.isArray(formData.articleTopics) ? [...formData.articleTopics] : []
     );
   }, [formData.articleTopics]);
-
 
   const handleUpdateTopic = (index: number, value: string) => {
     setTopics((prev) =>
@@ -80,7 +81,8 @@ export function ArticlesSelection({
           Article Topics
         </h1>
         <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-          Manage your article topics to organize and categorize your content effectively.
+          Manage your article topics to organize and categorize your content
+          effectively.
         </p>
       </div>
 
@@ -92,14 +94,18 @@ export function ArticlesSelection({
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Your Topics</h2>
-            <p className="text-sm text-gray-600">Add and manage article topics</p>
+            <p className="text-sm text-gray-600">
+              Add and manage article topics
+            </p>
           </div>
         </div>
 
         {!hasTopics && (
           <div className="text-center py-12 border-2 border-dashed border-orange-200 rounded-xl bg-orange-50/50">
             <BookOpen className="w-12 h-12 text-orange-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium">No topics yet. Add topics to get started.</p>
+            <p className="text-gray-600 font-medium">
+              No topics yet. Add topics to get started.
+            </p>
           </div>
         )}
 
@@ -119,9 +125,7 @@ export function ArticlesSelection({
                     <textarea
                       className="w-full border-2 border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 rounded-xl px-4 py-3 transition-all duration-200 resize-none"
                       value={topic.topicname}
-                      onChange={(e) =>
-                        handleUpdateTopic(idx, e.target.value)
-                      }
+                      onChange={(e) => handleUpdateTopic(idx, e.target.value)}
                       placeholder="e.g. Leadership, Technology, Marketing..."
                       rows={2}
                     />
@@ -140,8 +144,8 @@ export function ArticlesSelection({
           </div>
         )}
         <div className="mt-6">
-          <Button 
-            onClick={handleAddTopic} 
+          <Button
+            onClick={handleAddTopic}
             className="w-full h-14 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -157,8 +161,18 @@ export function ArticlesSelection({
           onClick={onPrevious}
           className="px-8 py-6 text-lg font-semibold border-2 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 hover:text-orange-700 hover:border-orange-400 transition-all duration-200 rounded-xl"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          <svg
+            className="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 17l-5-5m0 0l5-5m-5 5h12"
+            />
           </svg>
           Previous
         </Button>
@@ -167,8 +181,18 @@ export function ArticlesSelection({
           className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-orange-600 via-red-600 to-rose-600 hover:from-orange-700 hover:via-red-700 hover:to-rose-700 text-white rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
         >
           Continue to Next Step
-          <svg className="w-5 h-5 ml-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          <svg
+            className="w-5 h-5 ml-2 inline-block"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 7l5 5m0 0l-5 5m5-5H6"
+            />
           </svg>
         </Button>
       </div>
