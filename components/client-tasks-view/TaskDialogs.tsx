@@ -36,13 +36,6 @@ export default function TaskDialogs({
   timerState,
   handleTaskCompletion,
   handleCompletionCancel,
-  isBulkCompletionOpen, // unused here but kept for props parity
-  setIsBulkCompletionOpen, // unused
-  bulkCompletionLink, // unused
-  setBulkCompletionLink, // unused
-  handleBulkCompletion, // unused
-  handleBulkCompletionCancel, // unused
-  tasks, // unused
   formatTimerDisplay,
 }: {
   isStatusModalOpen: boolean;
@@ -68,13 +61,6 @@ export default function TaskDialogs({
   timerState: TimerState | null;
   handleTaskCompletion: () => void;
   handleCompletionCancel: () => void;
-  isBulkCompletionOpen: boolean;
-  setIsBulkCompletionOpen: (b: boolean) => void;
-  bulkCompletionLink: string;
-  setBulkCompletionLink: (v: string) => void;
-  handleBulkCompletion: () => void;
-  handleBulkCompletionCancel: () => void;
-  tasks: Task[];
   formatTimerDisplay: (seconds: number) => string;
 }) {
   // ✅ Categories where only completion link should be shown (no credentials)
@@ -95,11 +81,6 @@ export default function TaskDialogs({
     ideal: number;
   } | null>(null);
 
-  /**
-   * Predict actual duration in minutes for the pending submission:
-   * - If the timer is for this task, compute from (total - remaining)
-   * - Else fallback to taskToComplete.actualDurationMinutes (if any)
-   */
   const predictActualMinutes = (): number | null => {
     if (!taskToComplete) return null;
     if (

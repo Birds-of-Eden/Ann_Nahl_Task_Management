@@ -86,6 +86,22 @@ export interface Task {
       image: string | null;
     } | null;
   }>;
+  qcTotalScore?: number | null;
+  qcReview?: {
+    timerScore?: number;
+    keyword?: number;
+    contentQuality?: number;
+    image?: number;
+    seo?: number;
+    grammar?: number;
+    humanization?: number;
+    total?: number;
+    reviewerId?: string | null;
+    reviewedAt?: string;
+    notes?: string | null;
+  } | null;
+  email?: string | null;
+  username?: string | null;
 }
 export interface TaskStats {
   total: number;
@@ -1269,6 +1285,7 @@ export function ClientTasksView({
         {/* Task Management Section */}
         <div className="max-w-full overflow-x-hidden">
           <TaskList
+            agentId={agentId}
             clientName={clientName}
             tasks={tasks}
             filteredTasks={filteredTasks}

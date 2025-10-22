@@ -40,15 +40,14 @@ import type { Task as BaseTask } from "./client-tasks-view";
 type Task = BaseTask & {
   // Additional properties specific to TaskList
   reassignNotes?: string;
-  username?: string;
+  username?: string | null;
   password?: string;
-  email?: string;
+  email?: string | null;
   // Add any other additional properties needed by TaskList
   timerState?: any;
   assetUrl?: string;
   url?: string;
-  actualDurationMinutes?: number; // ✅ NEW
-  qcTotalScore?: number; // added to avoid TS error when accessing task.qcTotalScore
+  actualDurationMinutes?: number | null; // ✅ NEW
 };
 import { PerformanceBadge } from "./PerformanceBadge";
 import {

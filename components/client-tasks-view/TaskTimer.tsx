@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Timer, Play, Pause, CheckCircle } from "lucide-react";
+import { Timer, Play, Pause, CheckCircle, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ export default function TaskTimer({
   pausedTimer, // 👈 new
   onStartTimer,
   onPauseTimer,
+  onResetTimer,
   onRequestComplete,
   formatTimerDisplay,
 }: {
@@ -47,6 +48,7 @@ export default function TaskTimer({
   pausedTimer: TimerState | null; // 👈 new
   onStartTimer: (taskId: string) => void;
   onPauseTimer: (taskId: string) => void;
+  onResetTimer: (taskId: string) => void;
   onRequestComplete: (task: Task) => void;
   formatTimerDisplay: (seconds: number) => string;
 }) {
@@ -228,6 +230,18 @@ export default function TaskTimer({
             title="Pause timer"
           >
             <Pause className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          </Button>
+        )}
+
+        {isActive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onResetTimer(task.id)}
+            className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800/40"
+            title="Reset timer"
+          >
+            <RotateCcw className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </Button>
         )}
 
