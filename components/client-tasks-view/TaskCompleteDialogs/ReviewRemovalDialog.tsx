@@ -41,6 +41,7 @@ interface ReviewRemovalModalProps {
     id: string;
     name: string;
     dueDate?: string | null;
+    idealDurationMinutes?: number | null;
   } | null;
   clientId?: string;
   onSuccess?: () => void;
@@ -98,6 +99,36 @@ export default function ReviewRemovalModal({
     if (open) loadAgents();
   }, [open]);
 
+  // Calculate timer information from TaskTimer data
+  const calculateTimerInfo = () => {
+    if (!task?.idealDurationMinutes) return null;
+
+    const total = task.idealDurationMinutes * 60;
+    const isActive = timerState?.taskId === task.id;
+    const isPausedHere = !isActive && pausedTimer?.taskId === task.id && !pausedTimer?.isRunning;
+
+    let elapsedSeconds = 0;
+    let remainingSeconds = total;
+    let displayTime = total;
+
+    if (isActive && timerState) {
+      remainingSeconds = timerState.remainingSeconds;
+      elapsedSeconds = Math.max(0, total - remainingSeconds);
+      displayTime = Math.abs(remainingSeconds);
+    } else if (isPausedHere && pausedTimer) {
+      remainingSeconds = pausedTimer.remainingSeconds;
+      elapsedSeconds = Math.max(0, total - remainingSeconds);
+      displayTime = Math.abs(remainingSeconds);
+    }
+
+    return {
+      elapsedSeconds,
+      formatDisplayTime: formatTimerDisplay ? formatTimerDisplay(displayTime) : `${Math.floor(displayTime / 60)}:${(displayTime % 60).toString().padStart(2, '0')}`
+    };
+  };
+
+  const timerInfo = calculateTimerInfo();
+
   const addLink = () => setLinks([...links, ""]);
   const removeLink = (index: number) => {
     if (links.length === 1) return;
@@ -138,6 +169,35 @@ export default function ReviewRemovalModal({
 
     setIsSubmitting(true);
     try {
+      // Calculate actual duration and performance rating if timer is available
+      let actualDurationMinutes: number | undefined;
+      let performanceRating: "Excellent" | "Good" | "Average" | "Poor" | "Lazy" = "Average";
+
+      if (timerInfo && task?.idealDurationMinutes) {
+        const total = task.idealDurationMinutes * 60;
+        const isActive = timerState?.taskId === task.id;
+        const isPausedHere = !isActive && pausedTimer?.taskId === task.id && !pausedTimer?.isRunning;
+
+        let elapsedSeconds = 0;
+        if (isActive && timerState) {
+          elapsedSeconds = Math.max(0, total - timerState.remainingSeconds);
+        } else if (isPausedHere && pausedTimer) {
+          elapsedSeconds = Math.max(0, total - pausedTimer.remainingSeconds);
+        }
+
+        actualDurationMinutes = Math.ceil(elapsedSeconds / 60);
+
+        // Calculate performance rating based on time ratio
+        if (actualDurationMinutes > 0) {
+          const ratio = actualDurationMinutes / task.idealDurationMinutes;
+          if (ratio <= 1.2) performanceRating = "Excellent";
+          else if (ratio <= 1.5) performanceRating = "Good";
+          else if (ratio <= 2.0) performanceRating = "Average";
+          else if (ratio <= 3.0) performanceRating = "Poor";
+          else performanceRating = "Lazy";
+        }
+      }
+
       // 1) Mark task as completed without setting completionLink (should remain null)
       const completionResponse = await fetch(`/api/tasks/agents/${user.id}`, {
         method: "PATCH",
@@ -151,24 +211,32 @@ export default function ReviewRemovalModal({
         throw new Error("Failed to submit review removal data");
 
       // 2) Update task details
+      const updateData: any = {
+        status: "completed",
+        completedAt: toLocalMiddayISOString(completedAt),
+        taskCompletionJson: {
+          reviewRemoval: links,
+        },
+        dataEntryReport: {
+          completedByUserId: user.id,
+          completedByName:
+            (user as any)?.name || (user as any)?.email || user.id,
+          completedBy: new Date().toISOString(),
+          status: "Review removal submitted",
+          doneByAgentId: doneBy || undefined,
+        },
+      };
+
+      // Add performance data if calculated
+      if (actualDurationMinutes !== undefined) {
+        updateData.actualDurationMinutes = actualDurationMinutes;
+        updateData.performanceRating = performanceRating;
+      }
+
       const updateResponse = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          completedAt: toLocalMiddayISOString(completedAt),
-          taskCompletionJson: {
-            reviewRemoval: links,
-          },
-          dataEntryReport: {
-            completedByUserId: user.id,
-            completedByName:
-              (user as any)?.name || (user as any)?.email || user.id,
-            completedBy: new Date().toISOString(),
-            status: "Review removal submitted",
-            doneByAgentId: doneBy || undefined,
-          },
-        }),
+        body: JSON.stringify(updateData),
       });
       if (!updateResponse.ok) throw new Error("Failed to update task");
 
@@ -229,8 +297,16 @@ export default function ReviewRemovalModal({
                 <div className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-1">
                   Submit Review Removal
                 </div>
-                <div className="text-white font-black text-xl truncate">
-                  {task?.name}
+                <div className="flex items-center justify-between">
+                  <div className="text-white font-black text-xl truncate flex-1">
+                    {task?.name}
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 backdrop-blur-sm">
+                    <Calendar className="h-4 w-4 text-white/80" />
+                    <span className="text-white font-mono font-bold text-sm">
+                      {timerInfo?.formatDisplayTime || "00:00"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </DialogTitle>
@@ -241,6 +317,33 @@ export default function ReviewRemovalModal({
         </div>
 
         <div className="px-6 pb-6 space-y-6">
+          {/* Timer Display */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-500 p-2 rounded-xl">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wide">
+                    Time Tracking
+                  </h3>
+                  <p className="text-xs text-blue-600 font-medium">
+                    Time spent on this completion
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-mono font-black text-blue-700">
+                  {timerInfo ? `${Math.floor(timerInfo.elapsedSeconds / 60)}:${(timerInfo.elapsedSeconds % 60).toString().padStart(2, '0')}` : "00:00"}
+                </div>
+                <div className="text-xs text-blue-600 font-medium">
+                  {timerInfo ? Math.ceil(timerInfo.elapsedSeconds / 60) : 0} minutes
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Links Input Section */}
           <div className="space-y-3">
             <label className="text-sm font-bold text-slate-700 flex items-center gap-2 uppercase tracking-wide">
@@ -391,7 +494,7 @@ export default function ReviewRemovalModal({
             className="ml-2 bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 hover:from-red-600 hover:via-pink-600 hover:to-orange-600 rounded-2xl h-14 font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all px-8"
           >
             <Save className="h-5 w-5 mr-2" />
-            {isSubmitting ? "Submitting..." : "Submit Review Removal"}
+            {isSubmitting ? "Submitting..." : `Submit Review Removal (${timerInfo?.formatDisplayTime || "00:00"})`}
           </Button>
         </DialogFooter>
       </DialogContent>

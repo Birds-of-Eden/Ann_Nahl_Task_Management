@@ -164,6 +164,22 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
 
     setSubmitting(true);
     try {
+      // Calculate actual duration and performance rating if timer is available
+      let actualDurationMinutes: number | undefined;
+      let performanceRating: "Excellent" | "Good" | "Average" | "Poor" | "Lazy" = "Average";
+
+      if (timerInfo && task?.idealDurationMinutes) {
+        actualDurationMinutes = Math.ceil(timerInfo.elapsedSeconds / 60);
+
+        // Calculate performance rating based on time ratio
+        const ratio = actualDurationMinutes / task.idealDurationMinutes;
+        if (ratio <= 1.2) performanceRating = "Excellent";
+        else if (ratio <= 1.5) performanceRating = "Good";
+        else if (ratio <= 2.0) performanceRating = "Average";
+        else if (ratio <= 3.0) performanceRating = "Poor";
+        else performanceRating = "Lazy";
+      }
+
       // 1) Mark completed for the agent
       const r1 = await fetch(`/api/tasks/agents/${user.id}`, {
         method: "PATCH",
@@ -173,27 +189,35 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
       if (!r1.ok) throw new Error("Failed to mark task completed");
 
       // 2) Update task with summaryReport and dataEntryReport
+      const updateData: any = {
+        status: "completed",
+        completedAt: toLocalMiddayISOString(completedAt),
+        taskCompletionJson: {
+          title: title.trim(),
+          text,
+          pdfFileName: pdfFile?.name ?? null,
+          clientId,
+          updatedAt: new Date().toISOString(),
+        },
+        dataEntryReport: {
+          completedByUserId: user.id,
+          completedByName: (user as any)?.name || (user as any)?.email || user.id,
+          completedBy: new Date().toISOString(),
+          status: "Summary report submitted",
+          doneByAgentId: doneBy || undefined,
+        },
+      };
+
+      // Add performance data if calculated
+      if (actualDurationMinutes !== undefined) {
+        updateData.actualDurationMinutes = actualDurationMinutes;
+        updateData.performanceRating = performanceRating;
+      }
+
       const r2 = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          completedAt: toLocalMiddayISOString(completedAt),
-          taskCompletionJson: {
-            title: title.trim(),
-            text,
-            pdfFileName: pdfFile?.name ?? null,
-            clientId,
-            updatedAt: new Date().toISOString(),
-          },
-          dataEntryReport: {
-            completedByUserId: user.id,
-            completedByName: (user as any)?.name || (user as any)?.email || user.id,
-            completedBy: new Date().toISOString(),
-            status: "Summary report submitted",
-            doneByAgentId: doneBy || undefined,
-          },
-        }),
+        body: JSON.stringify(updateData),
       });
       if (!r2.ok) throw new Error("Failed to update task with summary report");
 

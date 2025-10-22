@@ -177,6 +177,35 @@ export default function ContentWritingModal({
     }
     setIsSubmitting(true);
     try {
+      // Calculate actual duration and performance rating if timer is available
+      let actualDurationMinutes: number | undefined;
+      let performanceRating: "Excellent" | "Good" | "Average" | "Poor" | "Lazy" = "Average";
+
+      if (timerInfo && task?.idealDurationMinutes) {
+        const total = task.idealDurationMinutes * 60;
+        const isActive = timerState?.taskId === task.id;
+        const isPausedHere = !isActive && pausedTimer?.taskId === task.id && !pausedTimer?.isRunning;
+
+        let elapsedSeconds = 0;
+        if (isActive && timerState) {
+          elapsedSeconds = Math.max(0, total - timerState.remainingSeconds);
+        } else if (isPausedHere && pausedTimer) {
+          elapsedSeconds = Math.max(0, total - pausedTimer.remainingSeconds);
+        }
+
+        actualDurationMinutes = Math.ceil(elapsedSeconds / 60);
+
+        // Calculate performance rating based on time ratio
+        if (actualDurationMinutes > 0) {
+          const ratio = actualDurationMinutes / task.idealDurationMinutes;
+          if (ratio <= 1.2) performanceRating = "Excellent";
+          else if (ratio <= 1.5) performanceRating = "Good";
+          else if (ratio <= 2.0) performanceRating = "Average";
+          else if (ratio <= 3.0) performanceRating = "Poor";
+          else performanceRating = "Lazy";
+        }
+      }
+
       // Format the content for submission
       const formattedContent = contentSections.map((section) => ({
         title: section.title,
@@ -205,32 +234,40 @@ export default function ContentWritingModal({
       }
 
       // 2) Update task status and add data entry report
+      const updateData: any = {
+        status: "completed",
+        completedAt: completedAt.toISOString(),
+        taskCompletionJson: {
+          contentWriting: formattedContent,
+        },
+        dataEntryReport: {
+          completedByUserId: user.id,
+          completedByName:
+            (user as any)?.name || (user as any)?.email || user.id,
+          completedBy: new Date().toISOString(),
+          status: (task?.category?.name || "")
+            .toLowerCase()
+            .includes("guest posting")
+            ? "Guest Posting Content submitted by data entry"
+            : (task?.category?.name || "")
+                .toLowerCase()
+                .includes("content writing")
+            ? "Content Writing Content submitted by data entry"
+            : "Content submitted by data entry",
+          doneByAgentId: doneBy || undefined,
+        },
+      };
+
+      // Add performance data if calculated
+      if (actualDurationMinutes !== undefined) {
+        updateData.actualDurationMinutes = actualDurationMinutes;
+        updateData.performanceRating = performanceRating;
+      }
+
       const taskUpdateResponse = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          completedAt: completedAt.toISOString(),
-          taskCompletionJson: {
-            contentWriting: formattedContent,
-          },
-          dataEntryReport: {
-            completedByUserId: user.id,
-            completedByName:
-              (user as any)?.name || (user as any)?.email || user.id,
-            completedBy: new Date().toISOString(),
-            status: (task?.category?.name || "")
-              .toLowerCase()
-              .includes("guest posting")
-              ? "Guest Posting Content submitted by data entry"
-              : (task?.category?.name || "")
-                  .toLowerCase()
-                  .includes("content writing")
-              ? "Content Writing Content submitted by data entry"
-              : "Content submitted by data entry",
-            doneByAgentId: doneBy || undefined,
-          },
-        }),
+        body: JSON.stringify(updateData),
       });
 
       // 2.5) reassign to the selected 'doneBy' agent (if provided) so the task ownership reflects who actually did it

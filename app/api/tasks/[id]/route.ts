@@ -103,7 +103,12 @@ export async function PUT(
         clientId: body.clientId,
         assignedToId: body.assignedToId,
         completionLink: body.completionLink,
-        completedAt: body.completedAt ? new Date(body.completedAt) : null,
+        // Only update completedAt if provided; don't overwrite existing when omitted
+        completedAt: body.completedAt !== undefined ? (body.completedAt ? new Date(body.completedAt) : null) : undefined,
+        // Persist timing/performance fields if provided
+        idealDurationMinutes: body.idealDurationMinutes ?? undefined,
+        actualDurationMinutes: body.actualDurationMinutes ?? undefined,
+        performanceRating: body.performanceRating ?? undefined,
         taskCompletionJson: body.taskCompletionJson ?? undefined,
       },
       include: { assignedTo: true },

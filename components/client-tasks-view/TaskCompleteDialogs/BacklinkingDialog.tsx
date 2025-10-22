@@ -154,12 +154,33 @@ export default function BacklinkingModal({
 
     setIsSubmitting(true);
     try {
+      // Calculate actual duration and performance rating
+      const actualDurationMinutes = timerInfo
+        ? Math.ceil(timerInfo.elapsedSeconds / 60)
+        : 0;
+
+      let performanceRating: "Excellent" | "Good" | "Average" | "Poor" | "Lazy" = "Average";
+      if (timerInfo && task?.idealDurationMinutes) {
+        const ratio = actualDurationMinutes / task.idealDurationMinutes;
+
+        if (ratio <= 1.2) performanceRating = "Excellent"; // Within 20% of ideal
+        else if (ratio <= 1.5) performanceRating = "Good"; // Within 50% of ideal
+        else if (ratio <= 2.0) performanceRating = "Average"; // Within 100% of ideal
+        else if (ratio <= 3.0) performanceRating = "Poor"; // 100-200% over ideal
+        else performanceRating = "Lazy"; // More than 200% over ideal
+      }
+
       // Update task details with backlinking data (saved in Task.taskCompletionJson)
       const updateResponse = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: "completed",
+          // Persist timing/performance fields
+          completedAt: new Date().toISOString(),
+          idealDurationMinutes: task?.idealDurationMinutes ?? undefined,
+          actualDurationMinutes,
+          performanceRating,
           taskCompletionJson: {
             backlinkingLinks: links,
             orderDate: toLocalMiddayISOString(orderDate),
@@ -170,6 +191,9 @@ export default function BacklinkingModal({
         }),
       });
       if (!updateResponse.ok) throw new Error("Failed to update task");
+
+      // Now trigger parent submission flow to stop timer and update local state
+      await Promise.resolve(submit());
 
       toast.success("Backlinking submitted successfully!");
       resetModal();
