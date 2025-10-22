@@ -46,11 +46,11 @@ import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
 import CreateTasksButton from "./CreateTasksButton";
 import CreateNextTask from "./CreateNextTask";
-import ContentWritingModal from "../TaskCompleteDialogs/contentWritingDialog";
-import ReviewRemovalModal from "../TaskCompleteDialogs/ReviewRemovalDialog";
-import BacklinkingModal from "../TaskCompleteDialogs/BacklinkingDialog";
-import SummaryReportModal from "../TaskCompleteDialogs/SummaryReportDialog";
-import CompletionDialog from "../TaskCompleteDialogs/CompletionDialog";
+import ContentWritingModal from "./contentWritingDialog";
+import ReviewRemovalModal from "./ReviewRemovalDialog";
+import BacklinkingModal from "./BacklinkingDialog";
+import SummaryReportModal from "./SummaryReportDialog";
+import CompletionDialog from "./CompletionDialog";
 
 export type DETask = {
   id: string;
