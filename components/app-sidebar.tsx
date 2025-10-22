@@ -451,7 +451,7 @@ export function AppSidebar({ className }: { className?: string }) {
     user?: {
       id?: string;
       role?: string | null;
-      roleId?: string | null; // 🎭 IMPERSONATION FIX: Target user এর role ID (permission fetch এর জন্য প্রয়োজন)
+      roleId?: string | null; // 🎭 IMPERSONATION FIX: Target user's role ID (required for permission fetching)
       name?: string | null;
       email?: string;
       image?: string | null;
@@ -471,8 +471,8 @@ export function AppSidebar({ className }: { className?: string }) {
   const actingRole: Role =
     ((me?.user?.role as Role) || null) ?? sessionRole ?? "user";
   
-  // 🎭 IMPERSONATION FIX: Impersonated user এর role ID extract করা হচ্ছে
-  // এটি /api/auth/me থেকে আসে যেখানে getAuthUser() impersonated user এর পূর্ণ তথ্য দেয়
+  // 🎭 IMPERSONATION FIX: Extracting the impersonated user's role ID
+  // This comes from /api/auth/me where getAuthUser() returns the full impersonated user data
   const actingRoleId: string | null =
     (me?.user?.roleId as string | undefined) ?? null;
   
@@ -540,9 +540,9 @@ export function AppSidebar({ className }: { className?: string }) {
     prevChatCountRef.current = chatUnread;
   }, [chatUnread, chatSoundEnabled]);
 
-  // 🎭 IMPERSONATION FIX: Permission fetch করার সময় role ID ব্যবহার করা হচ্ছে
-  // আগে role name ব্যবহার হচ্ছিল (যেমন: "manager"), কিন্তু API endpoint role ID (UUID) expect করে
-  // এখন impersonation এর সময় target user এর role ID দিয়ে সঠিক permissions পাওয়া যাবে
+  // 🎭 IMPERSONATION FIX: Using role ID for permission fetching
+  // Previously used role name (e.g., "manager"), but API endpoint expects role ID (UUID)
+  // Now during impersonation, correct permissions are fetched using target user's role ID
   const permKey =
     actingUserId && actingRoleId
       ? `/api/role-permissions/${actingRoleId}?uid=${actingUserId}`

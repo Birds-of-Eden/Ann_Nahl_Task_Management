@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
 
     const secure = isSecure(req);
 
-    // 🎭 IMPERSONATION FIX: সব impersonation cookies ক্লিয়ার করা হচ্ছে
-    // impersonation-target: Target user এর ID
+    // 🎭 IMPERSONATION FIX: Clear all impersonation cookies
+    // impersonation-target: Target user's ID
     res.cookies.set("impersonation-target", "", {
       httpOnly: true,
       secure,
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       maxAge: 0,
     });
     
-    // impersonation-origin: Original admin/AM user এর ID
+    // impersonation-origin: Original admin/AM user's ID
     res.cookies.set("impersonation-origin", "", {
       httpOnly: true,
       secure,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       maxAge: 0,
     });
     
-    // impersonation-role: Target user এর role (middleware route access control এর জন্য)
+    // impersonation-role: Target user's role (for middleware route access control)
     res.cookies.set("impersonation-role", "", {
       httpOnly: true,
       secure,
