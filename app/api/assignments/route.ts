@@ -1,5 +1,12 @@
+// app/api/assignments/route.ts
+
 import { type NextRequest, NextResponse } from "next/server";
-import { TaskStatus, TaskPriority, SiteAssetType, PeriodType } from "@prisma/client";
+import {
+  TaskStatus,
+  TaskPriority,
+  SiteAssetType,
+  PeriodType,
+} from "@prisma/client";
 import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 
@@ -59,11 +66,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clientId, templateId, status = "pending", agentIds = [] } = body as {
+    const {
+      clientId,
+      templateId,
+      status = "pending",
+      agentIds = [],
+    } = body as {
       clientId?: string;
       templateId?: string | null;
       status?: string;
@@ -71,7 +82,10 @@ export async function POST(request: NextRequest) {
     };
 
     if (!clientId) {
-      return NextResponse.json({ message: "Client ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Client ID is required" },
+        { status: 400 }
+      );
     }
 
     // ---- helpers (scoped to this handler) ----
@@ -115,7 +129,9 @@ export async function POST(request: NextRequest) {
     // ---- 1) Create assignment ----
     const assignment = await prisma.assignment.create({
       data: {
-        id: `assignment_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        id: `assignment_${Date.now()}_${Math.random()
+          .toString(36)
+          .slice(2, 9)}`,
         clientId,
         templateId: !templateId || templateId === "none" ? null : templateId,
         status,
@@ -136,7 +152,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (!template) {
-        return NextResponse.json({ message: "Template not found" }, { status: 404 });
+        return NextResponse.json(
+          { message: "Template not found" },
+          { status: 404 }
+        );
       }
 
       if (template.sitesAssets.length > 0) {
@@ -171,9 +190,12 @@ export async function POST(request: NextRequest) {
           idealDurationMinutes: site.defaultIdealDurationMinutes ?? null,
         }));
 
-        if (tasksToCreate.length) await prisma.task.createMany({ data: tasksToCreate });
+        if (tasksToCreate.length)
+          await prisma.task.createMany({ data: tasksToCreate });
         if (settingsToCreate.length)
-          await prisma.assignmentSiteAssetSetting.createMany({ data: settingsToCreate });
+          await prisma.assignmentSiteAssetSetting.createMany({
+            data: settingsToCreate,
+          });
       }
     }
 
@@ -209,7 +231,9 @@ export async function POST(request: NextRequest) {
             const agent = agents.find((a) => a.id === agentId);
             const label =
               agent?.name ||
-              `${(agent?.firstName ?? "").trim()} ${(agent?.lastName ?? "").trim()}`.trim() ||
+              `${(agent?.firstName ?? "").trim()} ${(
+                agent?.lastName ?? ""
+              ).trim()}`.trim() ||
               `Agent ${agentId}`;
             return {
               id: randomUUID(),
@@ -251,7 +275,11 @@ export async function POST(request: NextRequest) {
           },
         },
         tasks: {
-          include: { assignedTo: true, category: true, templateSiteAsset: true },
+          include: {
+            assignedTo: true,
+            category: true,
+            templateSiteAsset: true,
+          },
           orderBy: { createdAt: "desc" },
         },
         siteAssetSettings: true,

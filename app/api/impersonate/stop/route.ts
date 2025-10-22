@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
 
     const secure = isSecure(req);
 
-    // কুকি ক্লিয়ার
+    // 🎭 IMPERSONATION FIX: Clear all impersonation cookies
+    // impersonation-target: Target user's ID
     res.cookies.set("impersonation-target", "", {
       httpOnly: true,
       secure,
@@ -54,7 +55,18 @@ export async function POST(req: NextRequest) {
       path: "/",
       maxAge: 0,
     });
+    
+    // impersonation-origin: Original admin/AM user's ID
     res.cookies.set("impersonation-origin", "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    
+    // impersonation-role: Target user's role (for middleware route access control)
+    res.cookies.set("impersonation-role", "", {
       httpOnly: true,
       secure,
       sameSite: "lax",

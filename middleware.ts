@@ -74,6 +74,11 @@ export async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   }) as DecodedToken | null;
 
+  // 🎭 IMPERSONATION FIX: Check for impersonation cookies
+  // These cookies are set by /api/impersonate/start API
+  const impersonationTarget = req.cookies.get("impersonation-target")?.value;
+  const impersonationOrigin = req.cookies.get("impersonation-origin")?.value;
+
   // ✅ Handle /auth/* routes
   if (path.startsWith("/auth")) {
     const res = NextResponse.next();
@@ -111,7 +116,19 @@ export async function middleware(req: NextRequest) {
   }
 
   // ✅ Get role from token (should be set in jwt callback)
-  const role = token?.role ?? "user";
+  let role = token?.role ?? "user";
+
+  // 🎭 IMPERSONATION FIX: If impersonation is active, read target user's role from cookie
+  // Reason:
+  // 1. Middleware runs in Edge Runtime where Prisma/Database access is not available
+  // 2. JWT token contains the original admin/AM user's role
+  // 3. But route access control requires the impersonated user's role
+  // 4. Therefore, "impersonation-role" cookie is set in /api/impersonate/start
+  // 5. Reading role from this cookie enables proper route access control
+  const impersonationRole = req.cookies.get("impersonation-role")?.value;
+  if (impersonationTarget && impersonationOrigin && token?.sub === impersonationOrigin && impersonationRole) {
+    role = impersonationRole.toLowerCase() as Role;
+  }
 
   // ⚠️ If role is missing from token, this is a config issue
   if (!role || role === "user") {

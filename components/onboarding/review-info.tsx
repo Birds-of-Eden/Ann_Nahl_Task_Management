@@ -1,3 +1,5 @@
+// app/components/onboarding/review-info.tsx
+
 "use client";
 
 import { useEffect, useMemo, useState, FC, ReactNode } from "react";
@@ -346,11 +348,13 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
         icon: FileText,
         title: "Article Topics",
         gradient: "from-purple-50 to-indigo-50",
-        items: formData.articleTopics.map((topic: ArticleTopic, index: number) => ({
-          label: `Topic ${index + 1}`,
-          value: topic.topicname,
-          icon: FileText,
-        })),
+        items: formData.articleTopics.map(
+          (topic: ArticleTopic, index: number) => ({
+            label: `Topic ${index + 1}`,
+            value: topic.topicname,
+            icon: FileText,
+          })
+        ),
       });
     }
 

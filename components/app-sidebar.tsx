@@ -451,6 +451,7 @@ export function AppSidebar({ className }: { className?: string }) {
     user?: {
       id?: string;
       role?: string | null;
+      roleId?: string | null; // 🎭 IMPERSONATION FIX: Target user's role ID (required for permission fetching)
       name?: string | null;
       email?: string;
       image?: string | null;
@@ -469,6 +470,12 @@ export function AppSidebar({ className }: { className?: string }) {
   // Primary role/user is from /api/auth/me; fallback to session
   const actingRole: Role =
     ((me?.user?.role as Role) || null) ?? sessionRole ?? "user";
+  
+  // 🎭 IMPERSONATION FIX: Extracting the impersonated user's role ID
+  // This comes from /api/auth/me where getAuthUser() returns the full impersonated user data
+  const actingRoleId: string | null =
+    (me?.user?.roleId as string | undefined) ?? null;
+  
   const actingUserId: string | null =
     (me?.user?.id as string | undefined) ?? sessionUserId;
 
@@ -533,10 +540,12 @@ export function AppSidebar({ className }: { className?: string }) {
     prevChatCountRef.current = chatUnread;
   }, [chatUnread, chatSoundEnabled]);
 
-  // Permissions (use acting role + acting user id)
+  // 🎭 IMPERSONATION FIX: Using role ID for permission fetching
+  // Previously used role name (e.g., "manager"), but API endpoint expects role ID (UUID)
+  // Now during impersonation, correct permissions are fetched using target user's role ID
   const permKey =
-    actingUserId && actingRole
-      ? `/api/role-permissions/${actingRole}?uid=${actingUserId}`
+    actingUserId && actingRoleId
+      ? `/api/role-permissions/${actingRoleId}?uid=${actingUserId}`
       : null;
 
   const { data: rolePermData } = useSWR<RolePermResponse>(permKey, fetcher, {

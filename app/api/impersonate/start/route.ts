@@ -126,6 +126,18 @@ export async function POST(req: NextRequest) {
       maxAge,
     });
 
+    // 🎭 IMPERSONATION FIX: Store target user's role in cookie
+    // Reason: Middleware runs in Edge Runtime where Prisma/Database access is not available
+    // Therefore, middleware can read the impersonated user's role directly from cookie
+    // This enables proper route access control and fixes menu navigation issues
+    res.cookies.set("impersonation-role", targetRole, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge,
+    });
+
     return res;
   } catch (e) {
     console.error("impersonate/start error:", e);
