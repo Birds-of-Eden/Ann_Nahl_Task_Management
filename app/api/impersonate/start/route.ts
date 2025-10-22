@@ -126,7 +126,10 @@ export async function POST(req: NextRequest) {
       maxAge,
     });
 
-    // 🎭 টার্গেট ইউজারের রোল সেট (middleware-এর জন্য)
+    // 🎭 IMPERSONATION FIX: Target user এর role cookie-তে সংরক্ষণ করা হচ্ছে
+    // কারণ: Middleware Edge Runtime-এ চলে যেখানে Prisma/Database access নেই
+    // তাই middleware সরাসরি cookie থেকে impersonated user এর role পড়তে পারবে
+    // এতে route access control সঠিকভাবে কাজ করবে এবং menu navigation সমস্যা হবে না
     res.cookies.set("impersonation-role", targetRole, {
       httpOnly: true,
       secure,
