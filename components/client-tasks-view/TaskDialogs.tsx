@@ -8,7 +8,7 @@ import StatusUpdateDialog from "./TaskCompleteDialogs/StatusUpdateDialog";
 import ShortDurationConfirmDialog from "./TaskCompleteDialogs/ShortDurationConfirmDialog";
 import SummaryReportDialog from "./TaskCompleteDialogs/SummaryReportDialog";
 import BacklinkingModal from "./TaskCompleteDialogs/BacklinkingDialog";
-import ContentWritingModal from "./TaskCompleteDialogs/contentWritingDialog";
+import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 import ReviewRemovalModal from "./TaskCompleteDialogs/ReviewRemovalDialog";
 
 export default function TaskDialogs({
@@ -33,13 +33,6 @@ export default function TaskDialogs({
   handleTaskCompletion,
   handleCompletionCancel,
   formatTimerDisplay,
-  isBulkCompletionOpen,
-  setIsBulkCompletionOpen,
-  bulkCompletionLink,
-  setBulkCompletionLink,
-  handleBulkCompletion,
-  handleBulkCompletionCancel,
-  tasks,
   clientId,
   pausedTimer,
 }: {
@@ -164,6 +157,8 @@ export default function TaskDialogs({
               task={taskToComplete}
               clientId={clientId}
               onSuccess={() => setIsCompletionConfirmOpen(false)}
+              submit={handleTaskCompletion}
+              resetModal={handleCompletionCancel}
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Task, TimerState } from "../client-tasks-view/client-tasks-view";
+import { toast } from "sonner";
 
 const PAUSE_REASONS = [
   { id: "rest", label: "Rest Break" },
@@ -130,10 +131,19 @@ export default function TaskTimer({
         setIsPauseModalOpen(false);
         setSelectedReason("");
       } else {
-        console.error("Failed to pause task with reason");
+        const errorText = await response.text();
+        console.error("Failed to pause task:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          taskId: task.id,
+          reason: selectedReason
+        });
+        toast.error(`Failed to pause task: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error("Error pausing task:", error);
+      toast.error(`Error pausing task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
