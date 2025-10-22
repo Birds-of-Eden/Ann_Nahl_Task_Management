@@ -1348,6 +1348,8 @@ export function ClientTasksView({
           handleBulkCompletionCancel={handleBulkCompletionCancel}
           tasks={tasks}
           formatTimerDisplay={formatTimerDisplay}
+          clientId={clientId}
+          pausedTimer={pausedTimer}
         />
       </div>
     </div>
