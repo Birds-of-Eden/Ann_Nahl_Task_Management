@@ -47,20 +47,17 @@ interface BacklinkingModalProps {
   formatTimerDisplay?: (seconds: number) => string; // Format function
   resetModal: () => void;
   submit: () => void;
-  isSimpleTask: (task: any) => boolean;
 }
 
 export default function BacklinkingModal({
   open,
   onOpenChange,
   task,
-  clientId,
   timerState,
   pausedTimer,
   formatTimerDisplay,
   resetModal,
   submit,
-  isSimpleTask,
 }: BacklinkingModalProps) {
   const { user } = useUserSession();
   const [links, setLinks] = useState<string[]>([""]);

@@ -182,7 +182,6 @@ export default function TaskDialogs({
               formatTimerDisplay={formatTimerDisplay}
               resetModal={handleCompletionCancel}
               submit={handleTaskCompletion}
-              isSimpleTask={isSimpleTask}
             />
           );
         }
@@ -192,11 +191,11 @@ export default function TaskDialogs({
               open={isCompletionConfirmOpen}
               onOpenChange={setIsCompletionConfirmOpen}
               task={taskToComplete as any}
-              clientId={clientId}
-              onSuccess={() => setIsCompletionConfirmOpen(false)}
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
+              resetModal={handleCompletionCancel}
+              submit={handleTaskCompletion}
             />
           );
         }
@@ -211,6 +210,8 @@ export default function TaskDialogs({
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
+              resetModal={handleCompletionCancel}
+              submit={handleTaskCompletion}
             />
           );
         }
