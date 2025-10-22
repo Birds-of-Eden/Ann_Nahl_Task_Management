@@ -20,7 +20,13 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import DatePicker from "react-datepicker";
 
 interface CompletionDialogProps {
@@ -96,7 +102,8 @@ const CompletionDialog: React.FC<CompletionDialogProps> = ({
               </div>
             </DialogTitle>
             <DialogDescription className="text-white/90 text-sm pt-2 pl-16 font-medium">
-              Provide completion details below. This task will be auto-approved upon submission.
+              Provide completion details below. This task will be auto-approved
+              upon submission.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -133,7 +140,9 @@ const CompletionDialog: React.FC<CompletionDialogProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Email</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+                    Email
+                  </label>
                   <Input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -143,7 +152,9 @@ const CompletionDialog: React.FC<CompletionDialogProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Username</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+                    Username
+                  </label>
                   <Input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -153,7 +164,9 @@ const CompletionDialog: React.FC<CompletionDialogProps> = ({
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">Password</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+                    Password
+                  </label>
                   <div className="relative">
                     <Input
                       value={password}
@@ -223,8 +236,7 @@ const CompletionDialog: React.FC<CompletionDialogProps> = ({
                       .filter((agent) => {
                         const search = agentSearchTerm.toLowerCase();
                         return (
-                          !search ||
-                          agent.name?.toLowerCase().includes(search)
+                          !search || agent.name?.toLowerCase().includes(search)
                         );
                       })
                       .sort((a, b) => {

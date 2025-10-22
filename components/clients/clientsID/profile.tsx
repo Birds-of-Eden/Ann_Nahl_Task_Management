@@ -663,24 +663,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
 
   return (
     <>
-      {/* Top toolbar */}
-      <div className="flex items-center justify-end mb-4">
-        {!isClient && (
-          <Button
-            variant="outline"
-            onClick={onOpenEdit}
-            title={
-              isClient
-                ? "Clients cannot edit the profile"
-                : "Edit client profile"
-            }
-            className="gap-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600 text-white hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <PencilLine className="h-4 w-4" />
-            Edit Profile
-          </Button>
-        )}
-      </div>
+      
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information */}
