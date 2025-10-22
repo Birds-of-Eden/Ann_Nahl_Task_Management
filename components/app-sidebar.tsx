@@ -451,6 +451,7 @@ export function AppSidebar({ className }: { className?: string }) {
     user?: {
       id?: string;
       role?: string | null;
+      roleId?: string | null;
       name?: string | null;
       email?: string;
       image?: string | null;
@@ -469,6 +470,8 @@ export function AppSidebar({ className }: { className?: string }) {
   // Primary role/user is from /api/auth/me; fallback to session
   const actingRole: Role =
     ((me?.user?.role as Role) || null) ?? sessionRole ?? "user";
+  const actingRoleId: string | null =
+    (me?.user?.roleId as string | undefined) ?? null;
   const actingUserId: string | null =
     (me?.user?.id as string | undefined) ?? sessionUserId;
 
@@ -533,10 +536,10 @@ export function AppSidebar({ className }: { className?: string }) {
     prevChatCountRef.current = chatUnread;
   }, [chatUnread, chatSoundEnabled]);
 
-  // Permissions (use acting role + acting user id)
+  // Permissions (use acting roleId + acting user id)
   const permKey =
-    actingUserId && actingRole
-      ? `/api/role-permissions/${actingRole}?uid=${actingUserId}`
+    actingUserId && actingRoleId
+      ? `/api/role-permissions/${actingRoleId}?uid=${actingUserId}`
       : null;
 
   const { data: rolePermData } = useSWR<RolePermResponse>(permKey, fetcher, {

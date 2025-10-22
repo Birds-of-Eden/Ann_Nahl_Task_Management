@@ -126,6 +126,15 @@ export async function POST(req: NextRequest) {
       maxAge,
     });
 
+    // 🎭 টার্গেট ইউজারের রোল সেট (middleware-এর জন্য)
+    res.cookies.set("impersonation-role", targetRole, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge,
+    });
+
     return res;
   } catch (e) {
     console.error("impersonate/start error:", e);

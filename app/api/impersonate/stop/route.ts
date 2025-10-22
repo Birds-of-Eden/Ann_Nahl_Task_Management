@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     const secure = isSecure(req);
 
-    // কুকি ক্লিয়ার
+    // কুকি ক্লিয়ার
     res.cookies.set("impersonation-target", "", {
       httpOnly: true,
       secure,
@@ -55,6 +55,13 @@ export async function POST(req: NextRequest) {
       maxAge: 0,
     });
     res.cookies.set("impersonation-origin", "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+    res.cookies.set("impersonation-role", "", {
       httpOnly: true,
       secure,
       sameSite: "lax",

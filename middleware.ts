@@ -74,6 +74,10 @@ export async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   }) as DecodedToken | null;
 
+  // 🎭 Check for impersonation cookies
+  const impersonationTarget = req.cookies.get("impersonation-target")?.value;
+  const impersonationOrigin = req.cookies.get("impersonation-origin")?.value;
+
   // ✅ Handle /auth/* routes
   if (path.startsWith("/auth")) {
     const res = NextResponse.next();
@@ -111,7 +115,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // ✅ Get role from token (should be set in jwt callback)
-  const role = token?.role ?? "user";
+  let role = token?.role ?? "user";
+
+  // 🎭 If impersonating, use the role from cookie (set during impersonation start)
+  const impersonationRole = req.cookies.get("impersonation-role")?.value;
+  if (impersonationTarget && impersonationOrigin && token?.sub === impersonationOrigin && impersonationRole) {
+    role = impersonationRole.toLowerCase() as Role;
+  }
 
   // ⚠️ If role is missing from token, this is a config issue
   if (!role || role === "user") {
