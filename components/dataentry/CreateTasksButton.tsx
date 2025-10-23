@@ -135,6 +135,11 @@ export default function CreateTasksButton({
         toast.warning("Tasks created, but auto-assignment failed");
       }
 
+      // Set localStorage flag to hide button after creation
+      try {
+        localStorage.setItem(`tasksCreated:${clientId}`, "1");
+      } catch {}
+
       if (onTaskCreationComplete) onTaskCreationComplete();
       setOpen(false);
       window.location.reload();
@@ -145,6 +150,25 @@ export default function CreateTasksButton({
       setIsCreating(false);
     }
   };
+
+  // Check localStorage to hide button if tasks already created
+  const [tasksAlreadyCreated, setTasksAlreadyCreated] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && clientId) {
+        const v = localStorage.getItem(`tasksCreated:${clientId}`);
+        setTasksAlreadyCreated(!!v);
+      }
+    } catch {
+      setTasksAlreadyCreated(false);
+    }
+  }, [clientId]);
+
+  // Don't render if tasks already created
+  if (tasksAlreadyCreated) {
+    return null;
+  }
 
   return (
     <>
@@ -158,7 +182,7 @@ export default function CreateTasksButton({
         title={
           disabled
             ? "Tasks already created"
-            : "Create posting tasks for this client"
+            : "Create posting tasks for this client (button will hide after creation)"
         }
       >
         {isCreating ? (
