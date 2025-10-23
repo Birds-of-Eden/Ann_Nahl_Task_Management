@@ -20,15 +20,20 @@ export default function CreateNextTask({
     if (!clientId) return;
     setIsLoading(true);
     try {
-      const res = await fetch("/api/tasks/remain-tasks-create-and-distrubution", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId }),
-      });
+      const res = await fetch(
+        "/api/tasks/remain-tasks-create-and-distrubution",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId }),
+        }
+      );
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json?.message || json?.error || "Failed to create remaining tasks");
+        throw new Error(
+          json?.message || json?.error || "Failed to create remaining tasks"
+        );
       }
 
       const createdCount = Number(json?.created ?? 0);

@@ -184,7 +184,8 @@ export default function CreateTasksButton({
               Manual Task Generator
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Select asset types and specify how many task cycles to create for each.
+              Select asset types and specify how many task cycles to create for
+              each.
             </DialogDescription>
           </DialogHeader>
 
