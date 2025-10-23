@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Task, TimerState } from "../client-tasks-view/client-tasks-view";
+import { toast } from "sonner";
 
 const PAUSE_REASONS = [
   { id: "rest", label: "Rest Break" },
@@ -39,7 +40,6 @@ export default function TaskTimer({
   pausedTimer, // 👈 new
   onStartTimer,
   onPauseTimer,
-  onResetTimer,
   onRequestComplete,
   formatTimerDisplay,
 }: {
@@ -48,7 +48,6 @@ export default function TaskTimer({
   pausedTimer: TimerState | null; // 👈 new
   onStartTimer: (taskId: string) => void;
   onPauseTimer: (taskId: string) => void;
-  onResetTimer: (taskId: string) => void;
   onRequestComplete: (task: Task) => void;
   formatTimerDisplay: (seconds: number) => string;
 }) {
@@ -132,10 +131,19 @@ export default function TaskTimer({
         setIsPauseModalOpen(false);
         setSelectedReason("");
       } else {
-        console.error("Failed to pause task with reason");
+        const errorText = await response.text();
+        console.error("Failed to pause task:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          taskId: task.id,
+          reason: selectedReason
+        });
+        toast.error(`Failed to pause task: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error("Error pausing task:", error);
+      toast.error(`Error pausing task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -230,18 +238,6 @@ export default function TaskTimer({
             title="Pause timer"
           >
             <Pause className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          </Button>
-        )}
-
-        {isActive && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onResetTimer(task.id)}
-            className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800/40"
-            title="Reset timer"
-          >
-            <RotateCcw className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </Button>
         )}
 

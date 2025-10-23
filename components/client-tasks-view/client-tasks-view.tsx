@@ -801,6 +801,8 @@ export function ClientTasksView({
 
     // ➊ আগে থেকে duration হিসাব করে রাখুন (কারণ এখনই timer বন্ধ করবো)
     let actualDurationMinutes = taskToComplete.actualDurationMinutes;
+    let performanceRating: "Excellent" | "Good" | "Average" | "Poor" | "Lazy" = "Average";
+
     if (
       timerState?.taskId === taskToComplete.id &&
       taskToComplete.idealDurationMinutes
@@ -809,6 +811,14 @@ export function ClientTasksView({
         (timerState.totalSeconds || 0) - (timerState.remainingSeconds || 0);
       const mins = Math.ceil(totalTimeUsedSeconds / 60);
       actualDurationMinutes = Math.max(1, mins || 0);
+
+      // Calculate performance rating based on time ratio
+      const ratio = actualDurationMinutes / taskToComplete.idealDurationMinutes;
+      if (ratio <= 1.2) performanceRating = "Excellent"; // Within 20% of ideal
+      else if (ratio <= 1.5) performanceRating = "Good"; // Within 50% of ideal
+      else if (ratio <= 2.0) performanceRating = "Average"; // Within 100% of ideal
+      else if (ratio <= 3.0) performanceRating = "Poor"; // 100-200% over ideal
+      else performanceRating = "Lazy"; // More than 200% over ideal
     }
 
     // ➋ সাথে সাথে টাইমার থামান (optimistic)
@@ -826,6 +836,7 @@ export function ClientTasksView({
       if (password?.trim()) updates.password = password;
       if (typeof actualDurationMinutes === "number") {
         updates.actualDurationMinutes = actualDurationMinutes;
+        updates.performanceRating = performanceRating;
       }
 
       await handleUpdateTask(taskToComplete.id, updates);
@@ -931,8 +942,17 @@ export function ClientTasksView({
                 const actualDurationMinutes = Math.ceil(
                   totalTimeUsedSeconds / 60
                 );
+
                 if (actualDurationMinutes > 0) {
                   updates.actualDurationMinutes = actualDurationMinutes;
+
+                  // Calculate performance rating based on time ratio
+                  const ratio = actualDurationMinutes / task.idealDurationMinutes;
+                  if (ratio <= 1.2) updates.performanceRating = "Excellent";
+                  else if (ratio <= 1.5) updates.performanceRating = "Good";
+                  else if (ratio <= 2.0) updates.performanceRating = "Average";
+                  else if (ratio <= 3.0) updates.performanceRating = "Poor";
+                  else updates.performanceRating = "Lazy";
                 }
               }
             }
@@ -1348,6 +1368,8 @@ export function ClientTasksView({
           handleBulkCompletionCancel={handleBulkCompletionCancel}
           tasks={tasks}
           formatTimerDisplay={formatTimerDisplay}
+          clientId={clientId}
+          pausedTimer={pausedTimer}
         />
       </div>
     </div>
