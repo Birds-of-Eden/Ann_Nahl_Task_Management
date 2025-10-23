@@ -100,8 +100,7 @@ export default function DataEntryCompleteTasksPanel({
     Array<{ id: string; name?: string | null; email?: string | null }>
   >([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
-  // Track whether "Create & Assign Next Task" has already been used for this client
-  const [nextTasksAlreadyCreated, setNextTasksAlreadyCreated] = useState(false);
+  // Removed nextTasksAlreadyCreated state - CreateNextTask now handles localStorage internally
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
     completed: 0,
@@ -333,20 +332,6 @@ export default function DataEntryCompleteTasksPanel({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, user?.id]);
-
-  // On mount/clientId change, read flag to hide CreateNextTask button after first use
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined" && clientId) {
-        const v = localStorage.getItem(`nextTasksCreated:${clientId}`);
-        setNextTasksAlreadyCreated(!!v);
-      } else {
-        setNextTasksAlreadyCreated(false);
-      }
-    } catch {
-      setNextTasksAlreadyCreated(false);
-    }
-  }, [clientId]);
 
   // Count tasks completed by the current Data Entry user
   const dataEntryCompletedCount = useMemo(() => {
@@ -878,7 +863,6 @@ export default function DataEntryCompleteTasksPanel({
             </div>
             <CreateTasksButton
               clientId={clientId}
-              disabled={hasCreatedTasks}
               onTaskCreationComplete={() => {
                 setHasCreatedTasks(true);
                 load();
@@ -960,23 +944,9 @@ export default function DataEntryCompleteTasksPanel({
                               criteria
                             </p>
                           </div>
-                          {!nextTasksAlreadyCreated && (
                             <CreateNextTask
                               clientId={clientId}
-                              onCreated={() => {
-                                try {
-                                  if (typeof window !== "undefined") {
-                                    localStorage.setItem(
-                                      `nextTasksCreated:${clientId}`,
-                                      "1"
-                                    );
-                                  }
-                                } catch {}
-                                setNextTasksAlreadyCreated(true);
-                                load();
-                              }}
                             />
-                          )}
                         </div>
                         {q ||
                         statusFilter !== "all" ||

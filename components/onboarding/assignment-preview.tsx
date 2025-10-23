@@ -155,29 +155,6 @@ export function AssignmentPreview({ templateId, packageId, templateName }: Assig
           </div>
         )}
 
-        {/* Team Members */}
-        {templateDetails.templateTeamMembers && templateDetails.templateTeamMembers.length > 0 && (
-          <div className="bg-white p-6 rounded-xl border-2 border-green-200">
-            <h4 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-900">
-              <Users className="w-5 h-5 text-green-500" />
-              Team Members ({templateDetails.templateTeamMembers.length})
-            </h4>
-            <div className="space-y-3">
-              {templateDetails.templateTeamMembers.map((member, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-green-50 rounded-xl border-2 border-green-200 hover:shadow-lg transition-shadow">
-                  <div>
-                    <span className="font-bold text-sm text-gray-900">{member.agent.name}</span>
-                    <span className="text-sm text-gray-600 ml-2">{member.agent.email}</span>
-                  </div>
-                  <Badge variant="outline" className="text-xs font-semibold bg-white">
-                    {member.role}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Assignment Info */}
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border-2 border-indigo-200">
           <div className="flex items-center gap-3 mb-4">
