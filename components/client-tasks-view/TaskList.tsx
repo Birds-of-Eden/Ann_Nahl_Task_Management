@@ -20,7 +20,9 @@ import {
   Check,
   Eye,
   EyeOff,
-  Info,
+  Calendar,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import {
   Select,
@@ -29,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import TaskTimer from "./TaskTimer";
 import ReassignNoteModal from "./ReassignNoteModal";
@@ -47,7 +50,8 @@ type Task = BaseTask & {
   timerState?: any;
   assetUrl?: string;
   url?: string;
-  actualDurationMinutes?: number | null; // ✅ NEW
+  actualDurationMinutes?: number | null;
+  dueDate?: string;
 };
 import { PerformanceBadge } from "./PerformanceBadge";
 import {
@@ -58,12 +62,9 @@ import {
 } from "../ui/tooltip";
 
 export default function TaskList({
-  agentId, // ✅ NEW
   clientName,
   tasks,
   filteredTasks,
-  selectedTasks = [],
-  setSelectedTasks,
   overdueCount,
   searchTerm,
   setSearchTerm,
@@ -78,23 +79,19 @@ export default function TaskList({
   isTaskDisabled,
   viewMode,
   setViewMode,
-  onOpenStatusModal,
-  taskToComplete,
   setTaskToComplete,
-  isCompletionConfirmOpen,
   setIsCompletionConfirmOpen,
-  onTaskComplete,
   getStatusBadge,
   getPriorityBadge,
   formatTimerDisplay,
   pausedTimer,
 }: {
-  agentId: string; // ✅ NEW
+  agentId: string;
   clientName: string;
   tasks: Task[];
   filteredTasks: Task[];
-  selectedTasks?: string[]; // Array of task IDs
-  setSelectedTasks: React.Dispatch<React.SetStateAction<string[]>>; // Matches useState setter type
+  selectedTasks?: string[];
+  setSelectedTasks: React.Dispatch<React.SetStateAction<string[]>>;
   overdueCount: number;
   searchTerm: string;
   setSearchTerm: (v: string) => void;
@@ -118,7 +115,7 @@ export default function TaskList({
   getStatusBadge: (status: string) => React.ReactElement;
   getPriorityBadge: (priority: string) => React.ReactElement;
   formatTimerDisplay: (seconds: number) => string;
-  pausedTimer: TimerState | null; // 👈 new
+  pausedTimer: TimerState | null;
 }) {
   // 🔒 completed / qc_approved = read-only
   const isLocked = (t: Task) =>
@@ -134,9 +131,6 @@ export default function TaskList({
     const isTimerActive =
       timerState?.taskId === task.id && timerState?.isRunning;
     if (!isTimerActive) {
-      // Optional: gentle UX nudge; keep silent if you prefer
-      // You can integrate your toast here if available:
-      // toast.error("Start the timer for this task to submit.");
       return;
     }
     setTaskToComplete(task);
@@ -159,10 +153,6 @@ export default function TaskList({
   const isSocialActivity = (t: Task) =>
     (t.category?.name ?? "").toLowerCase() === "social activity";
 
-  /**
-   * ✅ URL resolve:
-   * 1) completionLink > 2) (social হলে completionLink) > 3) templateSiteAsset.url > assetUrl/url
-   */
   const computeUrl = (t: Task): string | null => {
     const cl = (t.completionLink ?? "").trim();
     if (cl) return cl;
@@ -171,16 +161,12 @@ export default function TaskList({
       t.templateSiteAsset?.url ?? (t as any).assetUrl ?? (t as any).url ?? null
     );
   };
-
-  // ✅ সবগুলো assetless হলে Asset সেকশন hide
   const hideAssetSection = useMemo(
     () =>
       filteredTasks.length > 0 &&
       filteredTasks.every((t) => isAssetlessCategory(t)),
     [filteredTasks]
   );
-
-  // ✅ Copy + Password visibility
   const [copied, setCopied] = useState<{
     id: string;
     type: "url" | "password" | "email" | "username";
@@ -193,9 +179,9 @@ export default function TaskList({
     text: string,
     id: string,
     type: "url" | "password" | "email" | "username",
-    revealAllowed?: boolean // ✅ নতুন প্যারাম
+    revealAllowed?: boolean
   ) => {
-    if (!text || revealAllowed === false) return; // ⛔ hidden হলে কপি নয়
+    if (!text || revealAllowed === false) return;
     try {
       await navigator.clipboard.writeText(text);
       setCopied({ id, type });
@@ -210,10 +196,6 @@ export default function TaskList({
       s.has(id) ? s.delete(id) : s.add(id);
       return s;
     });
-
-  /**
-   * 🧲 Sticky URL cache — timer action-এ nested relation হারালেও URL যেন না হারায়
-   */
   const [lastKnownUrl, setLastKnownUrl] = useState<Map<string, string>>(
     new Map()
   );
@@ -228,23 +210,65 @@ export default function TaskList({
       }
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTasks]);
 
   const getDisplayUrl = (t: Task) =>
     computeUrl(t) ?? lastKnownUrl.get(t.id) ?? null;
-
-  // 🧩 helper: কোন টাস্কে data দেখা যাবে?
   const canReveal = (t: Task, timer: TimerState | null) => {
     const isActive = timer?.taskId === t.id && timer?.isRunning;
-    // pending হলে কেবল timer চালু থাকলে দেখাবে; অন্য status আগের মতই দেখাবে
     return t.status !== "pending" || isActive;
   };
-
-  // 🧩 helper: mask করা টেক্সট (তুমি চাইলে সবসময় "****" ফিরিয়েও দিতে পার)
   const mask = (s?: string | null) => (s ? "*********" : "N/A");
 
-  // --- helpers (for showing score tooltip ) ---
+  // তারিখ ভিত্তিক টাস্ক গ্রুপিং
+  const groupTasksByDate = (tasks: Task[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const dayAfterTomorrow = new Date(today);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+
+    const groups = {
+      today: [] as Task[],
+      tomorrow: [] as Task[],
+      upcoming: [] as Task[],
+      completed: [] as Task[],
+    };
+
+    tasks.forEach(task => {
+      if (task.status === "completed" || task.status === "qc_approved") {
+        groups.completed.push(task);
+        return;
+      }
+
+      if (!task.dueDate) {
+        groups.upcoming.push(task);
+        return;
+      }
+
+      const dueDate = new Date(task.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (dueDate.getTime() === today.getTime()) {
+        groups.today.push(task);
+      } else if (dueDate.getTime() === tomorrow.getTime()) {
+        groups.tomorrow.push(task);
+      } else if (dueDate.getTime() > tomorrow.getTime()) {
+        groups.upcoming.push(task);
+      } else {
+        groups.upcoming.push(task);
+      }
+    });
+
+    return groups;
+  };
+
+  const taskGroups = groupTasksByDate(filteredTasks);
+  const [activeTab, setActiveTab] = useState("today");
+
   function ScorePill({
     label,
     value,
@@ -264,6 +288,7 @@ export default function TaskList({
       </div>
     );
   }
+
   function fmt(dt?: string) {
     if (!dt) return "—";
     try {
@@ -273,10 +298,36 @@ export default function TaskList({
     }
   }
 
-  // ListView Component (no multi-select, no checkbox)
-  const renderListView = () => (
+  // তারিখ ফরম্যাট ফাংশন
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const getTasksForCurrentTab = () => {
+    switch (activeTab) {
+      case "today":
+        return taskGroups.today;
+      case "tomorrow":
+        return taskGroups.tomorrow;
+      case "upcoming":
+        return taskGroups.upcoming;
+      case "completed":
+        return taskGroups.completed;
+      default:
+        return filteredTasks;
+    }
+  };
+
+  const currentTasks = getTasksForCurrentTab();
+
+  const renderListView = (tasksToRender: Task[]) => (
     <div className="space-y-4">
-      {filteredTasks.map((task) => {
+      {tasksToRender.map((task) => {
         const isTimerActive =
           timerState?.taskId === task.id && timerState?.isRunning;
         const displayUrl = getDisplayUrl(task);
@@ -300,7 +351,6 @@ export default function TaskList({
           >
             <div className="p-6 w-full">
               <div className="flex flex-col lg:flex-row gap-10 items-start lg:items-center w-full">
-                {/* Left: Basic Info */}
                 <div className="flex items-start gap-4 min-w-0">
                   <div className="flex-1 min-w-0 space-y-4">
                     <div className="flex items-center gap-3">
@@ -332,7 +382,6 @@ export default function TaskList({
 
                                 return (
                                   <div className="p-4 space-y-3">
-                                    {/* Header */}
                                     <div className="flex items-center justify-between border-b border-gray-600 pb-2">
                                       <div className="text-xs font-semibold uppercase tracking-wide text-gray-100">
                                         QC Review
@@ -341,8 +390,6 @@ export default function TaskList({
                                         {fmt(r.reviewedAt)}
                                       </div>
                                     </div>
-
-                                    {/* Total Score */}
                                     <div>
                                       <div className="flex items-center justify-between mb-1">
                                         <span className="text-sm font-semibold">
@@ -364,18 +411,13 @@ export default function TaskList({
                                         />
                                       </div>
                                     </div>
-
-                                    {/* Grid of scores */}
                                     <div className="grid grid-cols-2 gap-2">
                                       <ScorePill
                                         label="Timer"
                                         value={r.timerScore}
                                       />
                                       <ScorePill label="SEO" value={r.seo} />
-                                      <ScorePill
-                                        label="Image"
-                                        value={r.image}
-                                      />
+                                      <ScorePill label="Image" value={r.image} />
                                       <ScorePill
                                         label="Grammar"
                                         value={r.grammar}
@@ -395,7 +437,6 @@ export default function TaskList({
                                       />
                                     </div>
 
-                                    {/* Notes */}
                                     {r.notes && (
                                       <div className="rounded-lg bg-gray-700 p-3 border border-gray-600">
                                         <div className="text-xs font-semibold text-gray-300 mb-1">
@@ -407,7 +448,6 @@ export default function TaskList({
                                       </div>
                                     )}
 
-                                    {/* Footer */}
                                     <div className="text-xs text-gray-200 border-t border-gray-600 pt-2">
                                       Reviewer ID:{" "}
                                       <span className="font-mono text-gray-300">
@@ -480,8 +520,6 @@ export default function TaskList({
                     )}
                   </div>
                 </div>
-
-                {/* Center: Credentials & URL */}
                 <div className="flex-1 min-w-0 w-full lg:w-auto">
                   <div className="space-y-3 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50 rounded-xl p-4 border-2 border-gray-200 dark:border-gray-700">
                     <div className="text-sm flex items-center gap-2">
@@ -691,13 +729,11 @@ export default function TaskList({
                     )}
                   </div>
                 </div>
-
-                {/* Right: Timer (Complete button triggers onRequestComplete; gate keeps by timer running) */}
                 <div className="w-full lg:w-auto lg:min-w-[120px]">
                   <TaskTimer
                     task={task}
                     timerState={timerState}
-                    pausedTimer={pausedTimer} // 👈 new
+                    pausedTimer={pausedTimer}
                     onStartTimer={isLocked(task) ? () => {} : handleStartTimer}
                     onPauseTimer={isLocked(task) ? () => {} : handlePauseTimer}
                     onResetTimer={isLocked(task) ? () => {} : handleResetTimer}
@@ -713,11 +749,9 @@ export default function TaskList({
     </div>
   );
 
-  // GridView Component (no multi-select, no checkbox)
-  // ⬇️ Replace your existing renderGridView with this one
-  const renderGridView = () => (
+  const renderGridView = (tasksToRender: Task[]) => (
     <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-      {filteredTasks.map((task) => {
+      {tasksToRender.map((task) => {
         const isTimerActive =
           timerState?.taskId === task.id && timerState?.isRunning;
 
@@ -731,8 +765,6 @@ export default function TaskList({
         const locked = isLocked(task);
         const isThisTaskDisabled = locked || isTaskDisabled(task.id);
         const performanceRating = task.performanceRating;
-
-        // ✅ reveal only if NOT pending OR (pending + timer is active)
         const reveal = task.status !== "pending" || isTimerActive;
 
         return (
@@ -742,11 +774,8 @@ export default function TaskList({
               isThisTaskDisabled ? "opacity-70" : ""
             }`}
           >
-            {/* Card content wrapper */}
             <div className="p-6 h-full flex flex-col">
-              {/* ===== Top/Main content ===== */}
               <div className="flex-1 flex flex-col space-y-6">
-                {/* Title + Active badge */}
                 <div className="flex items-start gap-4 w-full">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-3 mb-4">
@@ -761,11 +790,8 @@ export default function TaskList({
                           </span>
                         </div>
                       )}
-
                       <PerformanceBadge rating={performanceRating as any} />
                     </div>
-
-                    {/* Status / Priority / Category */}
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-1">
                         {getStatusBadge(task.status)}
@@ -827,7 +853,6 @@ export default function TaskList({
                             </span>
                           </a>
                         ) : (
-                          // keep visual weight similar (no design change)
                           <span
                             className="text-blue-600 dark:text-blue-400 truncate underline underline-offset-2 font-medium"
                             title="Start timer to view"
@@ -984,14 +1009,12 @@ export default function TaskList({
                   </div>
                 </div>
               </div>
-
-              {/* ===== Bottom Action Section (separate) ===== */}
               <div className="mt-6 -mx-6 -mb-8 px-8 py-5 bg-gradient-to-r from-violet-50/70 to-purple-50/70 dark:from-violet-900/20 dark:to-purple-900/20 border-t-2 border-violet-200/70 dark:border-violet-700/70 backdrop-blur-sm">
                 <div className="flex justify-between mt-3">
                   <TaskTimer
                     task={task}
                     timerState={timerState}
-                    pausedTimer={pausedTimer} // 👈 new
+                    pausedTimer={pausedTimer}
                     onStartTimer={isLocked(task) ? () => {} : handleStartTimer}
                     onPauseTimer={isLocked(task) ? () => {} : handlePauseTimer}
                     onResetTimer={isLocked(task) ? () => {} : handleResetTimer}
@@ -1023,7 +1046,6 @@ export default function TaskList({
 
                             return (
                               <div className="p-4 space-y-3">
-                                {/* Header */}
                                 <div className="flex items-center justify-between border-b border-gray-600 pb-2">
                                   <div className="text-xs font-semibold uppercase tracking-wide text-gray-100">
                                     QC Review
@@ -1033,7 +1055,6 @@ export default function TaskList({
                                   </div>
                                 </div>
 
-                                {/* Total Score */}
                                 <div>
                                   <div className="flex items-center justify-between mb-1">
                                     <span className="text-sm font-semibold">
@@ -1056,7 +1077,6 @@ export default function TaskList({
                                   </div>
                                 </div>
 
-                                {/* Grid of scores */}
                                 <div className="grid grid-cols-2 gap-2">
                                   <ScorePill
                                     label="Timer"
@@ -1083,7 +1103,6 @@ export default function TaskList({
                                   />
                                 </div>
 
-                                {/* Notes */}
                                 {r.notes && (
                                   <div className="rounded-lg bg-gray-700 p-3 border border-gray-600">
                                     <div className="text-xs font-semibold text-gray-300 mb-1">
@@ -1095,7 +1114,6 @@ export default function TaskList({
                                   </div>
                                 )}
 
-                                {/* Footer */}
                                 <div className="text-xs text-gray-200 border-t border-gray-600 pt-2">
                                   Reviewer ID:{" "}
                                   <span className="font-mono text-gray-300">
@@ -1123,15 +1141,10 @@ export default function TaskList({
       <Card className="border-0 shadow-2xl bg-white dark:bg-gray-900 overflow-hidden">
         <div className="bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-violet-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border-b border-violet-100 dark:border-violet-800/50">
           <CardHeader className="pb-8">
-            {/* Header */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-center w-full">
               <div className="col-span-2 flex items-center space-x-4 min-w-0">
                 <div className="p-4 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl">
-                  {viewMode === "list" ? (
-                    <List className="h-8 w-8 text-white" />
-                  ) : (
-                    <Grid3X3 className="h-8 w-8 text-white" />
-                  )}
+                  <Calendar className="h-8 w-8 text-white" />
                 </div>
                 <div>
                   <CardTitle className="text-3xl font-bold bg-gradient-to-r from-violet-900 via-purple-900 to-pink-900 dark:from-violet-100 dark:via-purple-100 dark:to-pink-100 bg-clip-text text-transparent break-words">
@@ -1146,7 +1159,6 @@ export default function TaskList({
                 </div>
               </div>
 
-              {/* View Mode Toggle */}
               <div className="col-span-3 flex justify-end">
                 <div className="flex items-center bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 border-2 border-violet-200 dark:border-violet-700 rounded-2xl p-2 shadow-lg">
                   <Button
@@ -1178,10 +1190,8 @@ export default function TaskList({
             </div>
           </CardHeader>
         </div>
-
-        <CardContent className="p-8 max-w-full overflow-x-hidden">
-          {/* Filters */}
-          <div className="flex flex-col xl:flex-row gap-6 mb-8 items-start">
+          {/* সার্চ এবং ফিল্টার */}
+          <div className="flex flex-col xl:flex-row mt-5 gap-6 mb-8 items-start">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-violet-400 h-5 w-5" />
               <Input
@@ -1221,43 +1231,193 @@ export default function TaskList({
               </Select>
             </div>
           </div>
+        <CardContent className="p-8 max-w-full overflow-x-hidden">
+          {/* তারিখ ভিত্তিক ট্যাব */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-8">
+            <TabsList className="grid w-full grid-cols-4 h-14 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border-2 border-violet-200 dark:border-violet-700 rounded-2xl p-1">
+              <TabsTrigger 
+                value="today" 
+                className="flex items-center gap-2 rounded-xl text-base font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:via-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300"
+              >
+                <Clock className="h-4 w-4" />
+                Today
+                {taskGroups.today.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-white text-violet-600">
+                    {taskGroups.today.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="tomorrow" 
+                className="flex items-center gap-2 rounded-xl text-base font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:via-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300"
+              >
+                <Calendar className="h-4 w-4" />
+                Tomorrow
+                {taskGroups.tomorrow.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-white text-violet-600">
+                    {taskGroups.tomorrow.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="upcoming" 
+                className="flex items-center gap-2 rounded-xl text-base font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:via-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300"
+              >
+                <Calendar className="h-4 w-4" />
+                Upcoming
+                {taskGroups.upcoming.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-white text-violet-600">
+                    {taskGroups.upcoming.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger 
+                value="completed" 
+                className="flex items-center gap-2 rounded-xl text-base font-semibold data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:via-purple-600 data-[state=active]:to-pink-600 data-[state=active]:text-white transition-all duration-300"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Completed
+                {taskGroups.completed.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-white text-violet-600">
+                    {taskGroups.completed.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Task Content */}
-          <div className="w-full">
-            {filteredTasks.length > 0 ? (
-              viewMode === "list" ? (
-                renderListView()
-              ) : (
-                renderGridView()
-              )
-            ) : (
-              <div className="py-24 text-center">
-                <div className="mx-auto w-40 h-40 bg-gradient-to-br from-violet-100 via-purple-100 to-pink-100 dark:from-violet-800/30 dark:via-purple-800/30 dark:to-pink-800/30 rounded-3xl flex items-center justify-center mb-8 shadow-2xl border-2 border-violet-200 dark:border-violet-700">
-                  {viewMode === "list" ? (
-                    <List className="h-16 w-16 text-violet-500" />
-                  ) : (
-                    <Grid3X3 className="h-16 w-16 text-violet-500" />
-                  )}
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 text-2xl font-bold mb-3">
-                  No tasks found
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  Try adjusting your search or filter criteria
+            {/* ট্যাব কন্টেন্ট */}
+            <TabsContent value="today" className="mt-6">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Today's Tasks - {formatDate(new Date())}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Tasks due for today
                 </p>
               </div>
-            )}
-          </div>
+              {currentTasks.length > 0 ? (
+                viewMode === "list" ? (
+                  renderListView(currentTasks)
+                ) : (
+                  renderGridView(currentTasks)
+                )
+              ) : (
+                <div className="py-16 text-center">
+                  <div className="mx-auto w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-800/30 dark:to-emerald-800/30 rounded-3xl flex items-center justify-center mb-6 shadow-2xl border-2 border-green-200 dark:border-green-700">
+                    <CheckCircle className="h-12 w-12 text-green-500" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-xl font-bold mb-2">
+                    No tasks for today!
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    You're all caught up for today.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
 
-          {/* Summary (no selection UI) */}
-          {filteredTasks.length > 0 && (
+            <TabsContent value="tomorrow" className="mt-6">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Tomorrow's Tasks - {formatDate(new Date(new Date().setDate(new Date().getDate() + 1)))}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Tasks scheduled for tomorrow
+                </p>
+              </div>
+              {currentTasks.length > 0 ? (
+                viewMode === "list" ? (
+                  renderListView(currentTasks)
+                ) : (
+                  renderGridView(currentTasks)
+                )
+              ) : (
+                <div className="py-16 text-center">
+                  <div className="mx-auto w-32 h-32 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-800/30 dark:to-cyan-800/30 rounded-3xl flex items-center justify-center mb-6 shadow-2xl border-2 border-blue-200 dark:border-blue-700">
+                    <Calendar className="h-12 w-12 text-blue-500" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-xl font-bold mb-2">
+                    No tasks for tomorrow!
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Enjoy your day off tomorrow.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="upcoming" className="mt-6">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Upcoming Tasks
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Tasks scheduled for future dates
+                </p>
+              </div>
+              {currentTasks.length > 0 ? (
+                viewMode === "list" ? (
+                  renderListView(currentTasks)
+                ) : (
+                  renderGridView(currentTasks)
+                )
+              ) : (
+                <div className="py-16 text-center">
+                  <div className="mx-auto w-32 h-32 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-800/30 dark:to-amber-800/30 rounded-3xl flex items-center justify-center mb-6 shadow-2xl border-2 border-orange-200 dark:border-orange-700">
+                    <Calendar className="h-12 w-12 text-orange-500" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-xl font-bold mb-2">
+                    No upcoming tasks!
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    All your tasks are well organized.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="completed" className="mt-6">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                  Completed Tasks
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Tasks that have been completed or QC approved
+                </p>
+              </div>
+              {currentTasks.length > 0 ? (
+                viewMode === "list" ? (
+                  renderListView(currentTasks)
+                ) : (
+                  renderGridView(currentTasks)
+                )
+              ) : (
+                <div className="py-16 text-center">
+                  <div className="mx-auto w-32 h-32 bg-gradient-to-br from-gray-100 to-slate-100 dark:from-gray-800/30 dark:to-slate-800/30 rounded-3xl flex items-center justify-center mb-6 shadow-2xl border-2 border-gray-200 dark:border-gray-700">
+                    <CheckCircle className="h-12 w-12 text-gray-500" />
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 text-xl font-bold mb-2">
+                    No completed tasks yet!
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Complete some tasks to see them here.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
+          
+
+          {/* টাস্ক কাউন্টার */}
+          {currentTasks.length > 0 && (
             <div className="max-w-full flex flex-col lg:flex-row items-start lg:items-center justify-between pt-8 mt-8 border-t-2 border-gradient-to-r from-violet-200 to-purple-200 dark:from-violet-800 dark:to-purple-800 gap-6">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 px-4 py-3 rounded-2xl border-2 border-violet-200 dark:border-violet-700 shadow-lg">
                   <p className="text-lg font-bold text-gray-700 dark:text-gray-300">
                     Showing{" "}
                     <span className="text-violet-700 dark:text-violet-400 text-xl">
-                      {filteredTasks.length}
+                      {currentTasks.length}
                     </span>{" "}
                     of{" "}
                     <span className="text-gray-900 dark:text-gray-50 text-xl">
@@ -1266,7 +1426,7 @@ export default function TaskList({
                     tasks
                   </p>
                 </div>
-                {overdueCount > 0 && (
+                {overdueCount > 0 && activeTab === "today" && (
                   <Badge
                     variant="destructive"
                     className="text-base font-bold px-4 py-2 rounded-xl shadow-lg border-2 border-red-300"
