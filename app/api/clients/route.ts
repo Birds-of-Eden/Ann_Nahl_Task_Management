@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-
 // Helper to normalize platform values
 const normalizePlatform = (input: unknown): string => {
   const raw = String(input ?? "").trim();
@@ -47,7 +46,11 @@ const normalizeArticleTopics = (input: unknown): ArticleTopic[] => {
       // usedCount normalization
       let usedCount: number | undefined = undefined;
       const rawCount = (item as any)?.usedCount;
-      if (rawCount !== undefined && rawCount !== null && !Number.isNaN(Number(rawCount))) {
+      if (
+        rawCount !== undefined &&
+        rawCount !== null &&
+        !Number.isNaN(Number(rawCount))
+      ) {
         usedCount = Math.max(0, Number(rawCount));
       } else {
         // derive from status if not explicitly provided
@@ -228,7 +231,10 @@ export async function POST(req: NextRequest) {
     if (packageId) {
       const pkg = await prisma.package.findUnique({ where: { id: packageId } });
       if (!pkg) {
-        return NextResponse.json({ error: "Invalid packageId" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid packageId" },
+          { status: 400 }
+        );
       }
     }
 
@@ -363,9 +369,7 @@ export async function POST(req: NextRequest) {
         try {
           await prisma.activityLog.create({
             data: {
-              id: `log_${Date.now()}_${Math.random()
-                .toString(36)
-                .slice(2, 9)}`,
+              id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
               entityType: "client",
               entityId: String(client.id),
               action: "onboarded",
@@ -414,7 +418,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
 
 // PUT /api/clients?id=CLIENT_ID - Update existing client (including otherField and socialMedias)
 export async function PUT(req: NextRequest) {
@@ -485,9 +488,11 @@ export async function PUT(req: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : null,
         otherField: Array.isArray(otherField) ? otherField : [],
         // Only update articleTopics when provided in payload
-        articleTopics: articleTopics !== undefined ? normalizeArticleTopics(articleTopics) : undefined,
+        articleTopics:
+          articleTopics !== undefined
+            ? normalizeArticleTopics(articleTopics)
+            : undefined,
         amId: amId ?? null,
-       
       },
       include: {
         accountManager: { select: { id: true, name: true, email: true } },
@@ -564,7 +569,9 @@ export async function DELETE(req: NextRequest) {
         await tx.assignmentSiteAssetSetting.deleteMany({
           where: { assignmentId: { in: assignmentIds } },
         });
-        await tx.assignment.deleteMany({ where: { id: { in: assignmentIds } } });
+        await tx.assignment.deleteMany({
+          where: { id: { in: assignmentIds } },
+        });
       }
 
       // 5) Other client-owned records
