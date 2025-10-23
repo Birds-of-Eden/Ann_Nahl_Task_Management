@@ -58,27 +58,23 @@ function normalizeTaskPriority(v: unknown): TaskPriority {
   }
 }
 
-function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
-  switch (assetType) {
-    case "web2_site":
-      return CAT_BLOG_POSTING;
-    case "social_site":
-      return CAT_SOCIAL_ACTIVITY;
-    case "content_writing":
-      return CAT_CONTENT_WRITING;
-    case "guest_posting":
-      return CAT_GUEST_POSTING;
-    case "backlinks":
-      return CAT_BACKLINKS;
-    case "review_removal":
-      return CAT_REVIEW_REMOVAL;
-    case "summary_report":
-      return CAT_SUMMARY_REPORT;
-    case "other_asset":
-    default:
-      return CAT_SOCIAL_ACTIVITY;
-  }
-}
+// Simple mapping (no function) from SiteAssetType -> Category Name
+const TYPE_TO_CATEGORY: Record<SiteAssetType, string> = {
+  social_site: CAT_SOCIAL_ACTIVITY,
+  web2_site: CAT_BLOG_POSTING,
+  other_asset: CAT_SOCIAL_ACTIVITY,
+  graphics_design: CAT_SOCIAL_ACTIVITY,
+  image_optimization: CAT_SOCIAL_ACTIVITY,
+  content_studio: CAT_CONTENT_WRITING,
+  content_writing: CAT_CONTENT_WRITING,
+  backlinks: CAT_BACKLINKS,
+  completed_com: CAT_SOCIAL_COMMUNICATION,
+  youtube_video_optimization: CAT_SOCIAL_ACTIVITY,
+  monitoring: CAT_SUMMARY_REPORT,
+  review_removal: CAT_REVIEW_REMOVAL,
+  summary_report: CAT_SUMMARY_REPORT,
+  guest_posting: CAT_GUEST_POSTING,
+};
 
 function baseNameOf(name: string): string {
   return String(name)
@@ -105,46 +101,9 @@ function fail(stage: string, err: unknown, http = 500) {
   );
 }
 
-// ================== WORKING-DAY HELPERS ==================
-// Saturday = 6, Sunday = 0
-function isWeekend(date: Date): boolean {
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
-
+// ================== DATE HELPERS (trimmed; no cycle/cadence calc) ==================
 function dateOnly(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function toLocalMiddayISOString(d: Date): string {
-  const local = new Date(d);
-  local.setHours(12, 0, 0, 0);
-  return local.toISOString();
-}
-
-function addDays(startDate: Date, days: number): Date {
-  const copy = new Date(startDate);
-  copy.setDate(copy.getDate() + days);
-  return dateOnly(copy);
-}
-
-function addWorkingDays(startDate: Date, workingDays: number): Date {
-  const result = dateOnly(startDate);
-  let daysToAdd = workingDays;
-  while (daysToAdd > 0) {
-    result.setDate(result.getDate() + 1);
-    if (!isWeekend(result)) {
-      daysToAdd--;
-    }
-  }
-  return dateOnly(result);
-}
-// 👇 Inclusive month count: counts the start month and end month if any overlap
-function monthsBetweenInclusive(d1: Date, d2: Date): number {
-  const a = new Date(d1.getFullYear(), d1.getMonth(), 1);
-  const b = new Date(d2.getFullYear(), d2.getMonth(), 1);
-  const diff = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-  return Math.max(diff + 1, 0);
 }
 function normalizeStr(str: string) {
   return String(str).toLowerCase().replace(/\s+/g, " ").trim();
@@ -243,6 +202,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const clientId: string | undefined = body?.clientId;
+    const counts: Record<string, number> | undefined = body?.counts; // legacy: category -> count
+    const countsByType: Partial<Record<SiteAssetType, number>> | undefined = body?.countsByType; // new: type -> count
     const templateIdRaw: string | undefined = body?.templateId;
     const onlyType: SiteAssetType | undefined = body?.onlyType;
     const overridePriority = body?.priority
@@ -263,353 +224,301 @@ export async function POST(req: NextRequest) {
       return fail("POST.db-preflight", e);
     }
 
-    // Assignee (this API creates up to today → you auto-assign data_entry at UI — keep select here too if needed)
+    // Assignee (UI performs actual assignment after creation)
     const topAgent = await findTopAgentForClient(clientId);
     // (We don't use topAgent here for assignment; your UI distributes to data_entry. Keeping it only for response context.)
 
-    // Client dates
+    // Client existence
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { id: true, startDate: true, dueDate: true },
+      select: { id: true },
     });
 
     if (!client) return NextResponse.json({ message: "Client not found" }, { status: 404 });
-    if (!client.startDate)
-      return NextResponse.json({ message: "Client start date is required" }, { status: 400 });
-    if (!client.dueDate)
-      return NextResponse.json({ message: "Client due date is required" }, { status: 400 });
 
-    const startDate = dateOnly(new Date(client.startDate));
-    const dueDate = dateOnly(new Date(client.dueDate));
-
-    const todayOnly = dateOnly(new Date());
-    const cutoff = todayOnly <= dueDate ? todayOnly : dueDate;
-
-    // Assignment
-    const templateId = templateIdRaw === "none" ? null : templateIdRaw;
-    const assignment = await prisma.assignment.findFirst({
-      where: {
-        clientId,
-        ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}),
-      },
-      orderBy: { assignedAt: "desc" },
-      select: { id: true },
-    });
-    if (!assignment) {
-      return NextResponse.json(
-        { message: "No existing assignment found for this client." },
-        { status: 404 }
-      );
-    }
-
-    // Source (qc_approved only) + type filter
-    const sourceTasks = await prisma.task.findMany({
-      where: {
-        assignmentId: assignment.id,
-        status: "qc_approved",
-        templateSiteAsset: {
-          is: {
-            ...(onlyType ? { type: onlyType } : { type: { in: ALLOWED_ASSET_TYPES } }),
-          },
+    // ================== SIMPLE COUNTS-BASED CREATION (derive from template site assets) ==================
+    // ================== NEW: TYPE-COUNTS-BASED CREATION ==================
+    if (countsByType && typeof countsByType === "object" && Object.keys(countsByType).length > 0) {
+      const templateId = templateIdRaw === "none" ? null : templateIdRaw;
+      const assignment = await prisma.assignment.findFirst({
+        where: {
+          clientId,
+          ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}),
         },
-      },
-      select: {
-        id: true,
-        name: true,
-        priority: true,
-        idealDurationMinutes: true,
-        completionLink: true,
-        email: true,
-        password: true,
-        username: true,
-        notes: true,
-        templateSiteAsset: {
-          select: { id: true, type: true, name: true, defaultPostingFrequency: true },
+        orderBy: { assignedAt: "desc" },
+        select: { id: true },
+      });
+      if (!assignment) {
+        return NextResponse.json(
+          { message: "No existing assignment found for this client." },
+          { status: 404 }
+        );
+      }
+
+      // Fetch qc_approved template source tasks for ONLY the requested types
+      const requestedTypes = Object.entries(countsByType)
+        .filter(([_, v]) => Number(v || 0) > 0)
+        .map(([k]) => k as SiteAssetType);
+
+      if (requestedTypes.length === 0) {
+        return NextResponse.json(
+          { message: "No non-zero counts provided.", created: 0, tasks: [] },
+          { status: 200 }
+        );
+      }
+
+      const sourceTasks = await prisma.task.findMany({
+        where: {
+          assignmentId: assignment.id,
+          status: "qc_approved",
+          templateSiteAsset: { is: { type: { in: requestedTypes } } },
         },
-      },
-    });
+        select: {
+          id: true,
+          name: true,
+          priority: true,
+          idealDurationMinutes: true,
+          completionLink: true,
+          email: true,
+          password: true,
+          username: true,
+          notes: true,
+          templateSiteAsset: { select: { type: true, name: true } },
+        },
+      });
 
-    if (!sourceTasks.length) {
-      return NextResponse.json(
-        { message: "No qc_approved source tasks found to copy.", created: 0, tasks: [] },
-        { status: 200 }
+      if (!sourceTasks.length) {
+        return NextResponse.json(
+          { message: "No qc_approved source tasks found to copy.", created: 0, tasks: [] },
+          { status: 200 }
+        );
+      }
+
+      // Ensure categories for all types we might use
+      const catNames = Array.from(new Set(requestedTypes.map((t) => TYPE_TO_CATEGORY[t])));
+      const ensured = await Promise.all(
+        catNames.map((n) =>
+          prisma.taskCategory.upsert({
+            where: { name: n },
+            update: {},
+            create: { name: n },
+            select: { id: true, name: true },
+          })
+        )
       );
-    }
+      const categoryIdByName = new Map<string, string>(ensured.map((c) => [c.name, c.id] as const));
 
-    // Ensure categories
-    const ensureCategory = async (name: string) => {
-      const found = await prisma.taskCategory.findFirst({ where: { name }, select: { id: true, name: true } });
-      if (found) return found;
-      try {
-        return await prisma.taskCategory.create({ data: { name }, select: { id: true, name: true } });
-      } catch {
-        const again = await prisma.taskCategory.findFirst({ where: { name }, select: { id: true, name: true } });
-        if (again) return again;
-        throw new Error(`Failed to ensure category: ${name}`);
+      // Group sources by type
+      const byType = new Map<SiteAssetType, typeof sourceTasks>();
+      for (const s of sourceTasks) {
+        const t = s.templateSiteAsset?.type as SiteAssetType | undefined;
+        if (!t) continue;
+        const arr = byType.get(t) ?? [];
+        arr.push(s);
+        byType.set(t, arr);
       }
-    };
 
-    // Ensure all categories that can be used
-    const ALL_CATEGORY_NAMES = [
-      CAT_SOCIAL_ACTIVITY,
-      CAT_BLOG_POSTING,
-      CAT_SOCIAL_COMMUNICATION,
-      CAT_CONTENT_WRITING,
-      CAT_GUEST_POSTING,
-      CAT_BACKLINKS,
-      CAT_REVIEW_REMOVAL,
-      CAT_SUMMARY_REPORT,
-    ];
-    const ensured = await Promise.all(ALL_CATEGORY_NAMES.map((n) => ensureCategory(n)));
-    const categoryIdByName = new Map<string, string>(ensured.map((c) => [c.name, c.id] as const));
+      const payloads: Parameters<typeof prisma.task.create>[0]["data"][] = [];
 
-    // Web2 creds for SC (kept same)
-    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+      for (const t of requestedTypes) {
+        const count = Number(countsByType[t] || 0);
+        if (count <= 0) continue;
+        const srcList = byType.get(t) ?? [];
+        if (!srcList.length) continue;
+        const catName = TYPE_TO_CATEGORY[t];
+        const catId = categoryIdByName.get(catName);
+        if (!catId) continue;
 
-    const CUSTOM_SCHEDULE_OFFSETS: Record<string, number[]> = {
-      [CAT_CONTENT_WRITING]: [30, 60, 90],
-      [CAT_BACKLINKS]: [30, 60],
-      [CAT_REVIEW_REMOVAL]: [30, 60, 90],
-      [CAT_SUMMARY_REPORT]: [30, 60, 90],
-      [CAT_GUEST_POSTING]: [30, 60, 90],
-    };
-
-    // 👇 NEW: per-month capped schedule builder (first = +15WD, then +7WD), cut at `cutoff`
-    function* cadenceDates(from: Date) {
-      let cur = addWorkingDays(from, 15);
-      yield cur;
-      while (true) {
-        cur = addWorkingDays(cur, 7);
-        yield cur;
-      }
-    }
-
-    type FutureItem = {
-      src: (typeof sourceTasks)[number];
-      catName: string;
-      base: string;
-      name: string;
-      dueDate: Date;
-      seqIndex: number;
-    };
-
-    const future: FutureItem[] = [];
-
-    for (const src of sourceTasks) {
-      const catName = resolveCategoryFromType(src.templateSiteAsset?.type);
-      const base = baseNameOf(src.name);
-
-      const customOffsets = CUSTOM_SCHEDULE_OFFSETS[catName];
-      if (customOffsets) {
-        const customDates = customOffsets
-          .map((offset) => addDays(startDate, offset))
-          .filter((date) => date.getTime() <= cutoff.getTime() && date.getTime() <= dueDate.getTime());
-
-        customDates.forEach((dueDateForTask, idx) => {
-          future.push({
-            src,
-            catName,
-            base,
-            name: `${base} -${idx + 1}`,
-            dueDate: dueDateForTask,
-            seqIndex: idx + 1,
+        for (let i = 0; i < count; i++) {
+          const src = srcList[i % srcList.length];
+          const base = baseNameOf(src.name);
+          const name = `${base} - ${i + 1}`;
+          payloads.push({
+            id: makeId(),
+            name,
+            status: "pending" as TaskStatus,
+            priority: src.priority as TaskPriority,
+            idealDurationMinutes: src.idealDurationMinutes ?? undefined,
+            completionLink: src.completionLink ?? undefined,
+            email: src.email ?? undefined,
+            password: src.password ?? undefined,
+            username: src.username ?? undefined,
+            notes: src.notes ?? undefined,
+            assignment: { connect: { id: assignment.id } },
+            client: { connect: { id: clientId } },
+            category: { connect: { id: catId } },
           });
-        });
-        continue;
-      }
-
-      const freqPerMonthRaw = src.templateSiteAsset?.defaultPostingFrequency ?? 1;
-      const freqPerMonth = Math.max(1, Number(freqPerMonthRaw) || 1);
-
-      // মোট লাগবে: inclusive month count × freqPerMonth
-      const totalMonths = monthsBetweenInclusive(startDate, dueDate);
-      const totalNeeded = totalMonths * freqPerMonth;
-
-      // প্রতি মাসে cap ধরে, cutoff পর্যন্ত fill
-      const perMonthCount = new Map<string, number>(); // "YYYY-MM" -> count for THIS src
-      let accepted = 0;
-
-      for (const d of cadenceDates(startDate)) {
-        const dOnly = dateOnly(d);
-        if (dOnly.getTime() > cutoff.getTime()) break; // এই API cutoff পর্যন্তই বানাবে
-
-        const key = `${dOnly.getFullYear()}-${String(dOnly.getMonth() + 1).padStart(2, "0")}`;
-        const used = perMonthCount.get(key) ?? 0;
-
-        if (used < freqPerMonth) {
-          perMonthCount.set(key, used + 1);
-          accepted++;
-
-          // নাম্বারিং: ক্যাম্পেইন স্টার্ট থেকে ধারাবাহিক -1, -2, ...
-          // seqIndex = already accepted overall for this src
-          const seqIndex = accepted;
-          future.push({
-            src,
-            catName,
-            base,
-            name: `${base} -${seqIndex}`,
-            dueDate: dOnly,
-            seqIndex,
-          });
-
-          if (accepted >= totalNeeded) break; // theoretical guard; practically cutoff-এ থামবে
         }
       }
-      // নোট: যদি accepted < totalNeeded হয়, বাকি অংশ remain-tasks API dueDate-এর পর extend করে পূরণ করবে।
-    }
 
-    if (future.length === 0) {
-      return NextResponse.json(
-        {
-          message: "No occurrences fall within the requested window (start+15WD to cutoff).",
-          created: 0,
-          cutoff,
-          scheduleCount: 0,
-        },
-        { status: 200 }
-      );
-    }
-
-    // Skip duplicates
-    const namesToCheck = Array.from(new Set(future.map((f) => f.name)));
-    const existingTasks = namesToCheck.length
-      ? await prisma.task.findMany({
-          where: {
-            assignmentId: assignment.id,
-            name: { in: namesToCheck },
-            category: { name: { in: ALL_CATEGORY_NAMES } },
-          },
-          select: { name: true },
-        })
-      : [];
-    const skipNameSet = new Set(existingTasks.map((t) => t.name));
-
-    // Create payloads
-    type TaskCreate = Parameters<typeof prisma.task.create>[0]["data"];
-    const payloads: TaskCreate[] = [];
-
-    for (const item of future) {
-      if (skipNameSet.has(item.name)) continue;
-      const catId = categoryIdByName.get(item.catName);
-      if (!catId) continue;
-
-      payloads.push({
-        id: makeId(),
-        name: item.name,
-        status: "pending" as TaskStatus,
-        priority: overridePriority ?? item.src.priority,
-        idealDurationMinutes: item.src.idealDurationMinutes ?? undefined,
-        dueDate: toLocalMiddayISOString(item.dueDate),
-        completionLink: item.src.completionLink ?? undefined,
-        email: item.src.email ?? undefined,
-        password: item.src.password ?? undefined,
-        username: item.src.username ?? undefined,
-        notes: item.src.notes ?? undefined,
-        assignment: { connect: { id: assignment.id } },
-        client: { connect: { id: clientId } },
-        category: { connect: { id: catId } },
-        // ⛳️ আপনি UI থেকে data_entry এ অ্যাসাইন করছেন; এখানে assign করছি না
-      });
-    }
-
-    // Social Communication (optional): latestDue = সর্বশেষ তৈরি ডিউডেট (এই রান)
-    const createdDates = future
-      .filter((f) => !skipNameSet.has(f.name))
-      .map((f) => f.dueDate.getTime());
-    const latestDue = createdDates.length
-      ? new Date(Math.max(...createdDates))
-      : cutoff;
-
-    const socialBases = Array.from(
-      new Set(
-        sourceTasks
-          .filter((s) => s.templateSiteAsset?.type === "social_site")
-          .map((s) => baseNameOf(s.name) || "Social")
-      )
-    );
-
-    const scNames = socialBases.map((b) => `${b} - ${CAT_SOCIAL_COMMUNICATION}`);
-    const web2SCNames = WEB2_FIXED_PLATFORMS
-      .filter((p) => web2PlatformCreds.get(p))
-      .map((p) => `${PLATFORM_META[p].label} - ${CAT_SOCIAL_COMMUNICATION}`);
-
-    const scExisting = await prisma.task.findMany({
-      where: {
-        assignmentId: assignment.id,
-        name: { in: [...scNames, ...web2SCNames] },
-        category: { name: CAT_SOCIAL_COMMUNICATION },
-      },
-      select: { name: true },
-    });
-    const scSkip = new Set(scExisting.map((t) => t.name));
-    const scCatId = categoryIdByName.get(CAT_SOCIAL_COMMUNICATION);
-
-    if (scCatId) {
-      // per-base SC
-      for (const base of socialBases) {
-        const scName = `${base} - ${CAT_SOCIAL_COMMUNICATION}`;
-        if (scSkip.has(scName)) continue;
-        const src = sourceTasks.find(
-          (s) => s.templateSiteAsset?.type === "social_site" && baseNameOf(s.name) === base
+      if (!payloads.length) {
+        return NextResponse.json(
+          { message: "No matching template types or zero counts provided.", created: 0, tasks: [] },
+          { status: 200 }
         );
-        payloads.push({
-          id: makeId(),
-          name: scName,
-          status: "pending",
-          priority: overridePriority ?? (src?.priority ?? "medium"),
-          dueDate: latestDue.toISOString(),
-          completionLink: src?.completionLink ?? undefined,
-          email: src?.email ?? undefined,
-          password: src?.password ?? undefined,
-          username: src?.username ?? undefined,
-          notes: src?.notes ?? undefined,
-          assignment: { connect: { id: assignment.id } },
-          client: { connect: { id: clientId } },
-          category: { connect: { id: scCatId } },
-        });
       }
 
-      // Web2 fixed SC
-      for (const p of WEB2_FIXED_PLATFORMS) {
-        const creds = web2PlatformCreds.get(p);
-        if (!creds) continue;
-        const scName = `${PLATFORM_META[p].label} - ${CAT_SOCIAL_COMMUNICATION}`;
-        if (scSkip.has(scName)) continue;
+      const created = await prisma.$transaction(
+        payloads.map((data) =>
+          prisma.task.create({
+            data,
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              priority: true,
+              createdAt: true,
+              dueDate: true,
+              idealDurationMinutes: true,
+              completionLink: true,
+              email: true,
+              password: true,
+              username: true,
+              notes: true,
+              assignedTo: { select: { id: true, name: true, email: true } },
+              assignment: { select: { id: true } },
+              category: { select: { id: true, name: true } },
+              templateSiteAsset: { select: { id: true, name: true, type: true } },
+            },
+          })
+        )
+      );
 
-        payloads.push({
-          id: makeId(),
-          name: scName,
-          status: "pending",
-          priority: overridePriority ?? "medium",
-          dueDate: latestDue.toISOString(),
-          username: creds.username,
-          email: creds.email,
-          password: creds.password,
-          completionLink: creds.url,
-          idealDurationMinutes: creds.idealDurationMinutes ?? undefined,
-          assignment: { connect: { id: assignment.id } },
-          client: { connect: { id: clientId } },
-          category: { connect: { id: scCatId } },
-        });
-      }
-    }
-
-    if (payloads.length === 0) {
       return NextResponse.json(
         {
-          message: "All scheduled tasks already exist for this window.",
-          created: 0,
-          cutoff,
-          scheduleCount: 0,
-          tasks: [],
+          message: `Created ${created.length} task(s) successfully from template types.`,
+          created: created.length,
+          tasks: created,
         },
-        { status: 200 }
+        { status: 201 }
       );
     }
 
-    const created = await prisma.$transaction(
-      payloads.map((data) =>
-        prisma.task.create({
+    // ================== LEGACY: CATEGORY-COUNTS-BASED CREATION ==================
+    if (counts && typeof counts === "object") {
+      // Find latest assignment first
+      const templateId = templateIdRaw === "none" ? null : templateIdRaw;
+      const assignment = await prisma.assignment.findFirst({
+        where: {
+          clientId,
+          ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}),
+        },
+        orderBy: { assignedAt: "desc" },
+        select: { id: true },
+      });
+      if (!assignment) {
+        return NextResponse.json(
+          { message: "No existing assignment found for this client." },
+          { status: 404 }
+        );
+      }
+
+      // Fetch qc_approved template source tasks
+      const sourceTasks = await prisma.task.findMany({
+        where: {
+          assignmentId: assignment.id,
+          status: "qc_approved",
+          templateSiteAsset: { isNot: null },
+        },
+        select: {
+          id: true,
+          name: true,
+          priority: true,
+          idealDurationMinutes: true,
+          completionLink: true,
+          email: true,
+          password: true,
+          username: true,
+          notes: true,
+          templateSiteAsset: { select: { type: true, name: true } },
+        },
+      });
+
+      if (!sourceTasks.length) {
+        return NextResponse.json(
+          { message: "No qc_approved source tasks found to copy.", created: 0, tasks: [] },
+          { status: 200 }
+        );
+      }
+
+      // Ensure categories used by templates
+      const ALL_CATEGORY_NAMES = [
+        CAT_SOCIAL_ACTIVITY,
+        CAT_BLOG_POSTING,
+        CAT_SOCIAL_COMMUNICATION,
+        CAT_CONTENT_WRITING,
+        CAT_GUEST_POSTING,
+        CAT_BACKLINKS,
+        CAT_REVIEW_REMOVAL,
+        CAT_SUMMARY_REPORT,
+      ];
+      const ensured = await Promise.all(
+        ALL_CATEGORY_NAMES.map((n) =>
+          prisma.taskCategory.upsert({
+            where: { name: n },
+            update: {},
+            create: { name: n },
+            select: { id: true, name: true },
+          })
+        )
+      );
+      const categoryIdByName = new Map<string, string>(
+        ensured.map((c) => [c.name, c.id] as const)
+      );
+
+      // Group sources by category via TYPE_TO_CATEGORY
+      const byCategory = new Map<string, typeof sourceTasks>();
+      for (const s of sourceTasks) {
+        const t = s.templateSiteAsset?.type as SiteAssetType | undefined;
+        const cat = t ? TYPE_TO_CATEGORY[t] : CAT_SOCIAL_ACTIVITY;
+        const arr = byCategory.get(cat) ?? [];
+        arr.push(s);
+        byCategory.set(cat, arr);
+      }
+
+      const payloads: Parameters<typeof prisma.task.create>[0]["data"][] = [];
+
+      for (const [catNameRaw, countRaw] of Object.entries(counts)) {
+        const count = Number(countRaw || 0);
+        if (count <= 0) continue;
+
+        const catName = catNameRaw; // UI should send names matching resolved categories
+        const srcList = byCategory.get(catName) ?? [];
+        const catId = categoryIdByName.get(catName);
+        if (!catId) continue;
+        if (!srcList.length) continue;
+
+        for (let i = 0; i < count; i++) {
+          const src = srcList[i % srcList.length];
+          const base = baseNameOf(src.name);
+          const name = `${base} - ${i + 1}`;
+          payloads.push({
+            id: makeId(),
+            name,
+            status: "pending" as TaskStatus,
+            priority: src.priority as TaskPriority,
+            idealDurationMinutes: src.idealDurationMinutes ?? undefined,
+            completionLink: src.completionLink ?? undefined,
+            email: src.email ?? undefined,
+            password: src.password ?? undefined,
+            username: src.username ?? undefined,
+            notes: src.notes ?? undefined,
+            assignment: { connect: { id: assignment.id } },
+            client: { connect: { id: clientId } },
+            category: { connect: { id: catId } },
+          });
+        }
+      }
+
+      if (!payloads.length) {
+        return NextResponse.json(
+          { message: "No matching template categories or zero counts provided.", created: 0, tasks: [] },
+          { status: 200 }
+        );
+      }
+
+      const created = await prisma.$transaction(
+        payloads.map((data) => prisma.task.create({
           data,
           select: {
             id: true,
@@ -629,22 +538,23 @@ export async function POST(req: NextRequest) {
             category: { select: { id: true, name: true } },
             templateSiteAsset: { select: { id: true, name: true, type: true } },
           },
-        })
-      )
-    );
+        }))
+      );
 
+      return NextResponse.json(
+        {
+          message: `Created ${created.length} task(s) successfully from templates.`,
+          created: created.length,
+          tasks: created,
+        },
+        { status: 201 }
+      );
+    }
+
+    // If neither payload provided
     return NextResponse.json(
-      {
-        message: `Created ${created.length} task(s) up to cutoff with per-month caps.`,
-        created: created.length,
-        cutoff,
-        scheduleCount: created.length, // count actually created
-        assignedTo: null, // UI assigns to data_entry after creation
-        assignmentId: assignment.id,
-        cadence: "first at startDate + 15 working days, then every +7 working days (per-month capped)",
-        tasks: created,
-      },
-      { status: 201 }
+      { message: "Provide countsByType (preferred) or counts.", created: 0, tasks: [] },
+      { status: 400 }
     );
   } catch (err) {
     return fail("POST.catch", err);
