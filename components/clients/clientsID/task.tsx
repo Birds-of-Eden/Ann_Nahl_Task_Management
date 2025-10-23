@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Client } from "@/types/client"
+import { PostingTaskStatus } from "./posting-task-status"
 
 // ---------- Small UI Helpers ----------
 const Pill = ({ children }: { children: React.ReactNode }) => (
@@ -679,6 +680,20 @@ export function Tasks({ clientData }: TasksProps) {
                                 )
                               })()}
                             </div>
+
+                            {/* NEW: Posting Task Status for QC tasks */}
+                            {(task.category?.name?.toLowerCase().includes("qc") || 
+                              task.category?.name?.toLowerCase().includes("quality")) && (
+                              <PostingTaskStatus
+                                qcTaskId={task.id}
+                                qcTaskName={task.name || "QC Task"}
+                                assetName={task.templateSiteAsset?.name || platform}
+                                assignmentId={task.assignmentId || ""}
+                                clientName={clientData.name}
+                                templateSiteAssetId={task.templateSiteAssetId || undefined}
+                                isCompleted={status === "completed"}
+                              />
+                            )}
                           </div>
                         )
                       })}

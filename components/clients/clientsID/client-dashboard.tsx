@@ -18,6 +18,7 @@ import { Client } from "@/types/client";
 import { OtherInformation } from "./otherInformation";
 import { ArticleTopics } from "./articleTopics";
 import ExportClientTxtButton from "@/components/ExportClientTxtButton";
+import { TemplateManagement } from "./template-management";
 
 interface ClientDashboardProps {
   clientData: Client;
@@ -284,7 +285,7 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-7 bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
+          <TabsList className="grid w-full grid-cols-8 bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
             <TabsTrigger
               value="profile"
               className="data-[state=active]:bg-blue-500 data-[state=active]:text-white"
@@ -320,6 +321,12 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
               className="data-[state=active]:bg-blue-500 data-[state=active]:text-white"
             >
               Social Profile
+            </TabsTrigger>
+            <TabsTrigger
+              value="template"
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white"
+            >
+              Template
             </TabsTrigger>
             <TabsTrigger
               value="tasks"
@@ -376,6 +383,10 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
 
           <TabsContent value="social-profile">
             <SocialProfile clientData={clientData} />
+          </TabsContent>
+
+          <TabsContent value="template">
+            <TemplateManagement clientData={clientData} />
           </TabsContent>
 
           <TabsContent value="tasks">
