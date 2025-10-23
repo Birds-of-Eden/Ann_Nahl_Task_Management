@@ -108,6 +108,7 @@ export async function PUT(
         actualDurationMinutes: body.actualDurationMinutes ?? undefined,
         performanceRating: body.performanceRating ?? undefined,
         taskCompletionJson: body.taskCompletionJson ?? undefined,
+        dataEntryReport: body.dataEntryReport ?? undefined,
       },
       include: { assignedTo: true },
     });
