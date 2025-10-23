@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import type { TaskPriority, TaskStatus, SiteAssetType } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { extractCycleNumber } from "@/utils/working-days";
 
 // ================== CONSTANTS ==================
 // Allow ALL asset types defined in prisma enum
@@ -329,10 +330,43 @@ export async function POST(req: NextRequest) {
         const catId = categoryIdByName.get(catName);
         if (!catId) continue;
 
+        // Build a map of next cycle index per base by checking existing tasks
+        const bases = Array.from(new Set(srcList.map((s) => baseNameOf(s.name))));
+        const nextIndexByBase = new Map<string, number>();
+        if (bases.length > 0) {
+          const existing = await prisma.task.findMany({
+            where: {
+              clientId,
+              category: { is: { name: catName } },
+              name: { in: bases.map((b) => `${b} - 1`).concat(bases.map((b) => `${b}`)) },
+            },
+            select: { name: true },
+          });
+          // Also fetch all tasks for these bases (startsWith) to capture any cycle number
+          const existingAll = await prisma.task.findMany({
+            where: {
+              clientId,
+              category: { is: { name: catName } },
+              OR: bases.map((b) => ({ name: { startsWith: `${b} -` } })),
+            },
+            select: { name: true },
+          });
+          const combined = [...existing, ...existingAll];
+          for (const b of bases) {
+            const related = combined.filter((t) => t.name === b || t.name.startsWith(`${b} -`));
+            const maxCycle = related.reduce((max, t) => {
+              const n = extractCycleNumber(t.name);
+              return Number.isFinite(n) && n > max ? n : max;
+            }, 0);
+            nextIndexByBase.set(b, Math.max(1, maxCycle + 1));
+          }
+        }
+
         for (let i = 0; i < count; i++) {
           const src = srcList[i % srcList.length];
           const base = baseNameOf(src.name);
-          const name = `${base} - ${i + 1}`;
+          const start = nextIndexByBase.get(base) ?? 1;
+          const name = `${base} - ${start + i}`;
           payloads.push({
             id: makeId(),
             name,
@@ -488,10 +522,33 @@ export async function POST(req: NextRequest) {
         if (!catId) continue;
         if (!srcList.length) continue;
 
+        // Build a map of next cycle index per base by checking existing tasks for this category
+        const bases = Array.from(new Set(srcList.map((s) => baseNameOf(s.name))));
+        const nextIndexByBase = new Map<string, number>();
+        if (bases.length > 0) {
+          const existing = await prisma.task.findMany({
+            where: {
+              clientId,
+              category: { is: { name: catName } },
+              OR: bases.map((b) => ({ name: { startsWith: b } })),
+            },
+            select: { name: true },
+          });
+          for (const b of bases) {
+            const related = existing.filter((t) => t.name === b || t.name.startsWith(`${b} -`));
+            const maxCycle = related.reduce((max, t) => {
+              const n = extractCycleNumber(t.name);
+              return Number.isFinite(n) && n > max ? n : max;
+            }, 0);
+            nextIndexByBase.set(b, Math.max(1, maxCycle + 1));
+          }
+        }
+
         for (let i = 0; i < count; i++) {
           const src = srcList[i % srcList.length];
           const base = baseNameOf(src.name);
-          const name = `${base} - ${i + 1}`;
+          const start = nextIndexByBase.get(base) ?? 1;
+          const name = `${base} - ${start + i}`;
           payloads.push({
             id: makeId(),
             name,
