@@ -6,19 +6,6 @@ import { SiteAssetType } from "@prisma/client";
 import { logActivity } from "@/lib/logActivity";
 import { diffChanges } from "@/utils/audit"; // না থাকলে নিচের লোকাল fallback ব্যবহার করো
 
-// --- Fallback (যদি utils/audit না থাকে) ---
-// const diffChanges = (before: any, after: any, ignore: string[] = []) => {
-//   const changed: Record<string, { from: any; to: any }> = {};
-//   const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
-//   keys.forEach((k) => {
-//     if (ignore.includes(k)) return;
-//     const bv = before?.[k];
-//     const av = after?.[k];
-//     if (JSON.stringify(bv) !== JSON.stringify(av)) changed[k] = { from: bv, to: av };
-//   });
-//   return changed;
-// };
-
 const mapSiteAssetType = (frontendType: string): SiteAssetType => {
   switch (frontendType) {
     case "social_site":
