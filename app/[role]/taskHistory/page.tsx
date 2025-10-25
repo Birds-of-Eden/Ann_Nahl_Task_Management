@@ -13,20 +13,19 @@ const fetcher = (u: string) =>
   fetch(u, { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
 
 export default function Page() {
-  // 1) লগইনকরা এজেন্টের id নাও
+  
   const { data: me, isLoading: meLoading, error: meError } = useSWR<MeResponse>("/api/auth/me", fetcher, {
     revalidateOnFocus: true,
   });
   const agentId = me?.user?.id;
 
-  // 2) agentId পাওয়া গেলে টাস্ক হিস্টোরি ফেচ করো
+  // Fetch Task History BY AgentID
   const { data: rows, isLoading: rowsLoading, error: rowsError } = useSWR<TaskHistoryRow[]>(
     agentId ? `/api/tasks/history/${agentId}` : null,
     fetcher,
     { revalidateOnFocus: true }
   );
 
-  // 3) লোডিং/এরর স্টেট
   if (meLoading || (agentId && rowsLoading)) {
     return (
       <div className="min-h-[40vh] flex flex-col items-center justify-center gap-2">
@@ -51,6 +50,6 @@ export default function Page() {
     return <TaskHistory rows={[]} />;
   }
 
-  // 4) রেন্ডার
+
   return <TaskHistory rows={rows ?? []} />;
 }
