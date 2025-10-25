@@ -8,9 +8,8 @@ import StatusUpdateDialog from "./TaskCompleteDialogs/StatusUpdateDialog";
 import ShortDurationConfirmDialog from "./TaskCompleteDialogs/ShortDurationConfirmDialog";
 import SummaryReportDialog from "./TaskCompleteDialogs/SummaryReportDialog";
 import BacklinkingModal from "./TaskCompleteDialogs/BacklinkingDialog";
-// import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 import ReviewRemovalModal from "./TaskCompleteDialogs/ReviewRemovalDialog";
-import ContentWritingModal from "./TaskCompleteDialogs/contentWritingDialog";
+import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 
 export default function TaskDialogs({
   isStatusModalOpen,
@@ -114,6 +113,34 @@ export default function TaskDialogs({
       : null;
   };
 
+  const showShortDurationIfNeeded = (): boolean => {
+    if (!taskToComplete) return false;
+    const ideal =
+      typeof taskToComplete.idealDurationMinutes === "number"
+        ? taskToComplete.idealDurationMinutes
+        : null;
+    const actual = predictActualMinutes();
+    if (!ideal || actual == null) return false;
+    const threshold = Math.ceil(ideal * 0.5);
+    if (actual < threshold) {
+      setShortDurationInfo({ actual, ideal });
+      setIsShortDurationConfirmOpen(true);
+      return true;
+    }
+    return false;
+  };
+
+  const guardedSubmit = () => {
+    if (showShortDurationIfNeeded()) return;
+    handleTaskCompletion();
+  };
+
+  const resetAllCompletionModals = () => {
+    setIsShortDurationConfirmOpen(false);
+    setShortDurationInfo(null);
+    handleCompletionCancel();
+  };
+
   return (
     <>
       {/* Status Update Modal */}
@@ -159,8 +186,8 @@ export default function TaskDialogs({
               task={taskToComplete}
               clientId={clientId}
               onSuccess={() => setIsCompletionConfirmOpen(false)}
-              submit={handleTaskCompletion}
-              resetModal={handleCompletionCancel}
+              submit={guardedSubmit}
+              resetModal={resetAllCompletionModals}
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
@@ -177,8 +204,8 @@ export default function TaskDialogs({
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
-              resetModal={handleCompletionCancel}
-              submit={handleTaskCompletion}
+              resetModal={resetAllCompletionModals}
+              submit={guardedSubmit}
             />
           );
         }
@@ -191,8 +218,8 @@ export default function TaskDialogs({
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
-              resetModal={handleCompletionCancel}
-              submit={handleTaskCompletion}
+              resetModal={resetAllCompletionModals}
+              submit={guardedSubmit}
             />
           );
         }
@@ -207,8 +234,8 @@ export default function TaskDialogs({
               timerState={timerState}
               pausedTimer={pausedTimer}
               formatTimerDisplay={formatTimerDisplay}
-              resetModal={handleCompletionCancel}
-              submit={handleTaskCompletion}
+              resetModal={resetAllCompletionModals}
+              submit={guardedSubmit}
             />
           );
         }
@@ -226,8 +253,8 @@ export default function TaskDialogs({
             setEmail={setEmail}
             setUsername={setUsername}
             setPassword={setPassword}
-            resetModal={handleCompletionCancel}
-            submit={handleTaskCompletion}
+            resetModal={resetAllCompletionModals}
+            submit={guardedSubmit}
             isSimpleTask={isSimpleTask}
             timerState={timerState}
             pausedTimer={pausedTimer}
