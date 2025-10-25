@@ -9,7 +9,8 @@ import ShortDurationConfirmDialog from "./TaskCompleteDialogs/ShortDurationConfi
 import SummaryReportDialog from "./TaskCompleteDialogs/SummaryReportDialog";
 import BacklinkingModal from "./TaskCompleteDialogs/BacklinkingDialog";
 import ReviewRemovalModal from "./TaskCompleteDialogs/ReviewRemovalDialog";
-import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
+import ContentWritingModal from "./TaskCompleteDialogs/contentWritingDialog";
+// import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 
 export default function TaskDialogs({
   isStatusModalOpen,
