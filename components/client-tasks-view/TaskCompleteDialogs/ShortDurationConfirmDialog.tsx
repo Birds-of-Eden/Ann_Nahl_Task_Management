@@ -46,7 +46,7 @@ export default function ShortDurationConfirmDialog({
 
             <div className="flex-1">
               <DialogDescription className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Your tracked time appears significantly lower than expected for this task. 
+                Your tracked time appears significantly lower than expected for this task.
                 Do you still want to submit it as completed?
               </DialogDescription>
             </div>
@@ -61,10 +61,10 @@ export default function ShortDurationConfirmDialog({
             </p>
           </div>
           <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white/70 dark:bg-amber-900/10 p-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">70% Threshold</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">50% Threshold</p>
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">
               {shortDurationInfo
-                ? Math.ceil(shortDurationInfo.ideal * 0.7)
+                ? Math.ceil(shortDurationInfo.ideal * 0.5)
                 : "--"}{" "}
               min
             </p>
@@ -81,8 +81,8 @@ export default function ShortDurationConfirmDialog({
 
         <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
           {shortDurationInfo
-            ? `Actual ${shortDurationInfo.actual} min is less than 70% of ideal (${Math.ceil(
-                shortDurationInfo.ideal * 0.7
+            ? `Actual ${shortDurationInfo.actual} min is less than 50% of ideal (${Math.ceil(
+                shortDurationInfo.ideal * 0.5
               )} of ${shortDurationInfo.ideal} min).`
             : "Actual time appears significantly lower than expected."}
         </div>
@@ -96,7 +96,7 @@ export default function ShortDurationConfirmDialog({
             Review
           </Button>
           <Button
-            className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700"
+            className="flex-1 rounded-xl bg-red-600 hover:bg-red-700"
             onClick={onConfirm}
           >
             Yes, Submit
