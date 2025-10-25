@@ -681,19 +681,35 @@ export function Tasks({ clientData }: TasksProps) {
                               })()}
                             </div>
 
-                            {/* NEW: Posting Task Status for QC tasks */}
-                            {(task.category?.name?.toLowerCase().includes("qc") || 
-                              task.category?.name?.toLowerCase().includes("quality")) && (
-                              <PostingTaskStatus
-                                qcTaskId={task.id}
-                                qcTaskName={task.name || "QC Task"}
-                                assetName={task.templateSiteAsset?.name || platform}
-                                assignmentId={task.assignmentId || ""}
-                                clientName={clientData.name}
-                                templateSiteAssetId={task.templateSiteAssetId || undefined}
-                                isCompleted={status === "completed"}
-                              />
-                            )}
+                            {/* NEW: Posting Task Status for tasks with assets */}
+                            {(() => {
+                              const categoryName = task.category?.name?.toLowerCase() || "";
+                              const shouldShowPosting = 
+                                categoryName.includes("qc") ||
+                                categoryName.includes("quality") ||
+                                categoryName.includes("asset creation") ||
+                                categoryName.includes("social asset") ||
+                                categoryName.includes("web2") ||
+                                categoryName.includes("content writing") ||
+                                categoryName.includes("graphics");
+                              
+                              const isTaskCompleted = 
+                                status === "completed" || 
+                                (task as any).status?.toLowerCase() === "qc_approved" ||
+                                (task as any).status?.toLowerCase().includes("approved");
+                              
+                              return shouldShowPosting && (
+                                <PostingTaskStatus
+                                  qcTaskId={task.id}
+                                  qcTaskName={task.name || "Task"}
+                                  assetName={task.templateSiteAsset?.name || platform}
+                                  assignmentId={task.assignmentId || ""}
+                                  clientName={clientData.name}
+                                  templateSiteAssetId={task.templateSiteAssetId || undefined}
+                                  isCompleted={isTaskCompleted}
+                                />
+                              );
+                            })()}
                           </div>
                         )
                       })}

@@ -96,7 +96,10 @@ export async function PUT(
         id: true,
         name: true,
         assignedToId: true,
+        assignmentId: true,
+        templateSiteAssetId: true,
         assignedTo: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true } },
       },
     });
     if (!existing) {
@@ -168,7 +171,86 @@ export async function PUT(
       });
     }
 
-    return NextResponse.json(updatedTask);
+    // ---- 🚀 Auto-trigger posting task generation for QC tasks ----
+    let postingResult: any = null;
+    let postingTriggered = false;
+
+    // Check if this is a task that should trigger posting
+    // Includes: QC tasks, Asset Creation tasks, etc.
+    const categoryName = existing.category?.name?.toLowerCase() || "";
+    
+    const shouldTriggerPosting =
+      categoryName.includes("qc") ||
+      categoryName.includes("quality") ||
+      categoryName.includes("asset creation") ||
+      categoryName.includes("social asset") ||
+      categoryName.includes("web2") ||
+      categoryName.includes("content writing") ||
+      categoryName.includes("graphics");
+
+    console.log("🔍 Posting Trigger Check:", {
+      taskId: id,
+      categoryName: existing.category?.name,
+      shouldTriggerPosting,
+      hasTemplateAsset: !!existing.templateSiteAssetId,
+      hasAssignment: !!existing.assignmentId,
+    });
+
+    if (shouldTriggerPosting && existing.templateSiteAssetId && existing.assignmentId) {
+      try {
+        console.log(`🚀 Attempting to trigger posting for QC task ${id}...`);
+        
+        // Trigger posting task generation
+        const response = await fetch(
+          `${request.nextUrl.origin}/api/tasks/${id}/trigger-posting`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": reviewerId || "",
+              "x-actor-id": reviewerId || "",
+            },
+            body: JSON.stringify({
+              actorId: reviewerId,
+              forceOverride: false,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          postingResult = await response.json();
+          postingTriggered = true;
+          console.log(
+            `✅ Auto-triggered posting for QC task ${id}:`,
+            postingResult.postingTasks?.length || 0,
+            "tasks created"
+          );
+        } else {
+          const errorData = await response.json();
+          console.warn(
+            `⚠️ Failed to auto-trigger posting for task ${id}:`,
+            errorData.message || errorData.error
+          );
+        }
+      } catch (error) {
+        console.error("❌ Error auto-triggering posting:", error);
+        // Don't fail the whole request if posting fails
+      }
+    } else if (shouldTriggerPosting) {
+      console.warn(`⚠️ Task ${id} missing required data for posting:`, {
+        hasTemplateAsset: !!existing.templateSiteAssetId,
+        hasAssignment: !!existing.assignmentId,
+      });
+    }
+
+    return NextResponse.json({
+      ...updatedTask,
+      autoTrigger: {
+        shouldTriggerPosting,
+        postingTriggered,
+        postingResult: postingTriggered ? postingResult : null,
+      },
+    });
   } catch (error) {
     console.error("Error approving task:", error);
     return NextResponse.json(

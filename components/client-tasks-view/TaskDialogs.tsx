@@ -8,8 +8,9 @@ import StatusUpdateDialog from "./TaskCompleteDialogs/StatusUpdateDialog";
 import ShortDurationConfirmDialog from "./TaskCompleteDialogs/ShortDurationConfirmDialog";
 import SummaryReportDialog from "./TaskCompleteDialogs/SummaryReportDialog";
 import BacklinkingModal from "./TaskCompleteDialogs/BacklinkingDialog";
-import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
+// import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 import ReviewRemovalModal from "./TaskCompleteDialogs/ReviewRemovalDialog";
+import ContentWritingModal from "./TaskCompleteDialogs/contentWritingDialog";
 
 export default function TaskDialogs({
   isStatusModalOpen,
@@ -146,7 +147,8 @@ export default function TaskDialogs({
         const cat = (taskToComplete?.category?.name ?? "").toLowerCase();
         const isSummary = cat.includes("summary report");
         const isBacklink = cat.includes("backlink");
-        const isContent = cat.includes("content writing") || cat.includes("guest posting");
+        const isContent =
+          cat.includes("content writing") || cat.includes("guest posting");
         const isReviewRemoval = cat.includes("review removal");
 
         if (isSummary) {

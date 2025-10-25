@@ -4,17 +4,18 @@ import prisma from "@/lib/prisma";
 import { TaskStatus } from "@prisma/client";
 
 /**
- * 🎯 Update Task Status (Manual Control)
+ * 🎯 Update Task Status with Auto-Triggers
+ * 
+ * Special behavior:
+ * - When QC task status → completed: Auto-trigger posting task generation
  * 
  * PATCH /api/tasks/{taskId}/update-status
  * Body: { 
  *   status: TaskStatus,
  *   actorId?: string,
- *   notes?: string
+ *   notes?: string,
+ *   autoTriggerPosting?: boolean (default: true for QC tasks)
  * }
- * 
- * Note: Posting task generation is MANUAL only.
- * Use /api/tasks/{taskId}/trigger-posting to create posting tasks.
  */
 export async function PATCH(
   request: NextRequest,
@@ -28,10 +29,12 @@ export async function PATCH(
       status,
       actorId,
       notes,
+      autoTriggerPosting = true,
     } = body as {
       status: TaskStatus;
       actorId?: string;
       notes?: string;
+      autoTriggerPosting?: boolean;
     };
 
     if (!status) {
@@ -69,6 +72,13 @@ export async function PATCH(
       }
 
       const oldStatus = currentTask.status;
+      
+      // Check if this is a QC task being completed
+      const isQcTask = 
+        currentTask.category?.name?.toLowerCase().includes("qc") ||
+        currentTask.category?.name?.toLowerCase().includes("quality");
+      
+      const isCompleting = oldStatus !== TaskStatus.completed && status === TaskStatus.completed;
 
       // 2) Update task status
       const updatedTask = await tx.task.update({
@@ -104,6 +114,7 @@ export async function PATCH(
             assignmentId: currentTask.assignmentId,
             clientId: currentTask.clientId,
             clientName: currentTask.assignment?.client?.name,
+            isQcTask,
           },
         },
       });
@@ -114,13 +125,66 @@ export async function PATCH(
           from: oldStatus,
           to: status,
         },
+        isQcTask,
+        isCompleting,
       };
     });
+
+    // 4) Auto-trigger posting task generation if conditions met
+    let postingResult: any = null;
+    let postingTriggered = false;
+    
+    if (result.isQcTask && result.isCompleting && autoTriggerPosting) {
+      try {
+        // Trigger posting task generation
+        const response = await fetch(
+          `${request.nextUrl.origin}/api/tasks/${taskId}/trigger-posting`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": actorId || "",
+              "x-actor-id": actorId || "",
+            },
+            body: JSON.stringify({
+              actorId,
+              forceOverride: false,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          postingResult = await response.json();
+          postingTriggered = true;
+          console.log(
+            `✅ Auto-triggered posting for QC task ${taskId}:`,
+            postingResult.postingTasks?.length || 0,
+            "tasks created"
+          );
+        } else {
+          const errorData = await response.json();
+          console.warn(
+            `⚠️ Failed to auto-trigger posting for task ${taskId}:`,
+            errorData.message
+          );
+          // Don't fail the whole request if posting fails
+        }
+      } catch (error) {
+        console.error("Error auto-triggering posting:", error);
+        // Don't fail the whole request if posting fails
+      }
+    }
 
     return NextResponse.json(
       {
         message: "Task status updated successfully",
-        ...result,
+        task: result.task,
+        statusChange: result.statusChange,
+        autoTrigger: {
+          isQcTask: result.isQcTask,
+          postingTriggered,
+          postingResult: postingTriggered ? postingResult : null,
+        },
       },
       { status: 200 }
     );

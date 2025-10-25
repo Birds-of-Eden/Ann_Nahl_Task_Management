@@ -1,3 +1,5 @@
+// app/[role]/distribution/client-agent/tasks/page.tsx
+
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -208,10 +210,10 @@ const categoryColor = (c?: string) =>
     "Content Writing": "bg-emerald-100 text-emerald-800 border-emerald-200",
     "Guest Posting": "bg-rose-100 text-rose-800 border-rose-200",
     "Content Studio": "bg-violet-100 text-violet-800 border-violet-200",
-    "Backlinks": "bg-amber-100 text-amber-800 border-amber-200",
+    Backlinks: "bg-amber-100 text-amber-800 border-amber-200",
     "Completed Communication": "bg-slate-100 text-slate-800 border-slate-200",
     "YouTube Video Optimization": "bg-red-100 text-red-800 border-red-200",
-    "Monitoring": "bg-teal-100 text-teal-800 border-teal-200",
+    Monitoring: "bg-teal-100 text-teal-800 border-teal-200",
     "Review Removal": "bg-lime-100 text-lime-800 border-lime-200",
     "Summary Report": "bg-pink-100 text-pink-800 border-pink-200",
   }[c ?? ""] || "bg-slate-100 text-slate-700 border-slate-200");
@@ -557,13 +559,21 @@ export default function CreatedTasksPage() {
                     Social Activity
                   </SelectItem>
                   <SelectItem value="Blog Posting">Blog Posting</SelectItem>
-                  <SelectItem value="Social Communication">Social Communication</SelectItem>
-                  <SelectItem value="Content Writing">Content Writing</SelectItem>
+                  <SelectItem value="Social Communication">
+                    Social Communication
+                  </SelectItem>
+                  <SelectItem value="Content Writing">
+                    Content Writing
+                  </SelectItem>
                   <SelectItem value="Guest Posting">Guest Posting</SelectItem>
                   <SelectItem value="Content Studio">Content Studio</SelectItem>
                   <SelectItem value="Backlinks">Backlinks</SelectItem>
-                  <SelectItem value="Completed Communication">Completed Communication</SelectItem>
-                  <SelectItem value="YouTube Video Optimization">YouTube Video Optimization</SelectItem>
+                  <SelectItem value="Completed Communication">
+                    Completed Communication
+                  </SelectItem>
+                  <SelectItem value="YouTube Video Optimization">
+                    YouTube Video Optimization
+                  </SelectItem>
                   <SelectItem value="Monitoring">Monitoring</SelectItem>
                   <SelectItem value="Review Removal">Review Removal</SelectItem>
                   <SelectItem value="Summary Report">Summary Report</SelectItem>
@@ -787,8 +797,8 @@ export default function CreatedTasksPage() {
                               <div className="p-6 bg-white">
                                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                                   {items.map((task) => {
-                                        const assignee = task.assignedTo;
-                                        const showPwd = !!showPasswordIds[task.id];
+                                    const assignee = task.assignedTo;
+                                    const showPwd = !!showPasswordIds[task.id];
 
                                     return (
                                       <Card
@@ -796,277 +806,277 @@ export default function CreatedTasksPage() {
                                         className="group border-2 hover:border-indigo-300 rounded-2xl transition-all bg-white/90"
                                       >
                                         <CardContent className="p-5">
-                                              {/* Title & Badges */}
-                                              <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                    <Badge
-                                                      variant="outline"
-                                                      className={cn(
-                                                        "border",
-                                                        categoryColor(
-                                                          task.category?.name
-                                                        )
-                                                      )}
-                                                    >
-                                                      <Bookmark className="h-3 w-3 mr-1" />
-                                                      {task.category?.name ??
-                                                        "Uncategorized"}
-                                                    </Badge>
-                                                    <Badge
-                                                      variant="outline"
-                                                      className={cn(
-                                                        "border capitalize",
-                                                        statusColor(task.status)
-                                                      )}
-                                                    >
-                                                      {task.status.replaceAll(
-                                                        "_",
-                                                        " "
-                                                      )}
-                                                    </Badge>
-                                                    <Badge
-                                                      variant="outline"
-                                                      className={cn(
-                                                        "border",
-                                                        priorityColor(task.priority)
-                                                      )}
-                                                    >
-                                                      {task.priority}
-                                                    </Badge>
-                                                  </div>
-                                                  <div
-                                                    className="font-semibold text-slate-900 text-base truncate"
-                                                    title={task.name}
-                                                  >
-                                                    {task.name}
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              {/* Meta */}
-                                              <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
-                                                <div className="flex items-center gap-2">
-                                                  <CalendarDays className="h-4 w-4" />
-                                                  <span title={task.dueDate ?? ""}>
-                                                    Due: {formatDate(task.dueDate)}
-                                                  </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                  <Clock className="h-4 w-4" />
-                                                  <span>
-                                                    Created:{" "}
-                                                    {formatDate(task.createdAt)}
-                                                  </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                  <Timer className="h-4 w-4" />
-                                                  <span>
-                                                    Duration:{" "}
-                                                    {task.idealDurationMinutes ??
-                                                      "—"}{" "}
-                                                    min
-                                                  </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                  <User className="h-4 w-4" />
-                                                  {assignee ? (
-                                                    <span
-                                                      className="truncate"
-                                                      title={assignee.email ?? ""}
-                                                    >
-                                                      {assignee.name ??
-                                                        assignee.email ??
-                                                        "—"}
-                                                    </span>
-                                                  ) : (
-                                                    <span>Unassigned</span>
+                                          {/* Title & Badges */}
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                <Badge
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "border",
+                                                    categoryColor(
+                                                      task.category?.name
+                                                    )
                                                   )}
-                                                </div>
+                                                >
+                                                  <Bookmark className="h-3 w-3 mr-1" />
+                                                  {task.category?.name ??
+                                                    "Uncategorized"}
+                                                </Badge>
+                                                <Badge
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "border capitalize",
+                                                    statusColor(task.status)
+                                                  )}
+                                                >
+                                                  {task.status.replaceAll(
+                                                    "_",
+                                                    " "
+                                                  )}
+                                                </Badge>
+                                                <Badge
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "border",
+                                                    priorityColor(task.priority)
+                                                  )}
+                                                >
+                                                  {task.priority}
+                                                </Badge>
                                               </div>
+                                              <div
+                                                className="font-semibold text-slate-900 text-base truncate"
+                                                title={task.name}
+                                              >
+                                                {task.name}
+                                              </div>
+                                            </div>
+                                          </div>
 
-                                              {/* Credentials (URL / Username / Email / Password) */}
-                                              <div className="mt-4 space-y-2 text-sm">
-                                                <div className="flex items-center justify-between gap-2">
-                                                  <span className="text-slate-500">
-                                                    URL
-                                                  </span>
-                                                  <div className="flex items-center gap-2">
-                                                    {task.completionLink ? (
-                                                      <>
-                                                        <a
-                                                          href={task.completionLink}
-                                                          target="_blank"
-                                                          rel="noreferrer"
-                                                          className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
-                                                        >
-                                                          <Link2 className="h-4 w-4 mr-1" />
-                                                          Open
-                                                        </a>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className="h-8 w-8"
-                                                          onClick={() =>
-                                                            copyToClipboard(
-                                                              task.completionLink,
-                                                              "URL copied"
-                                                            )
-                                                          }
-                                                          title="Copy URL"
-                                                        >
-                                                          <ClipboardCopy className="h-4 w-4" />
-                                                        </Button>
-                                                      </>
-                                                    ) : (
-                                                      <span className="text-slate-400">
-                                                        —
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </div>
+                                          {/* Meta */}
+                                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600">
+                                            <div className="flex items-center gap-2">
+                                              <CalendarDays className="h-4 w-4" />
+                                              <span title={task.dueDate ?? ""}>
+                                                Due: {formatDate(task.dueDate)}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="h-4 w-4" />
+                                              <span>
+                                                Created:{" "}
+                                                {formatDate(task.createdAt)}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Timer className="h-4 w-4" />
+                                              <span>
+                                                Duration:{" "}
+                                                {task.idealDurationMinutes ??
+                                                  "—"}{" "}
+                                                min
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <User className="h-4 w-4" />
+                                              {assignee ? (
+                                                <span
+                                                  className="truncate"
+                                                  title={assignee.email ?? ""}
+                                                >
+                                                  {assignee.name ??
+                                                    assignee.email ??
+                                                    "—"}
+                                                </span>
+                                              ) : (
+                                                <span>Unassigned</span>
+                                              )}
+                                            </div>
+                                          </div>
 
-                                                <div className="flex items-center justify-between gap-2">
-                                                  <span className="text-slate-500">
-                                                    Username
-                                                  </span>
-                                                  <div className="flex items-center gap-2">
-                                                    <span
-                                                      className="truncate max-w-[170px]"
-                                                      title={task.username ?? ""}
+                                          {/* Credentials (URL / Username / Email / Password) */}
+                                          <div className="mt-4 space-y-2 text-sm">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="text-slate-500">
+                                                URL
+                                              </span>
+                                              <div className="flex items-center gap-2">
+                                                {task.completionLink ? (
+                                                  <>
+                                                    <a
+                                                      href={task.completionLink}
+                                                      target="_blank"
+                                                      rel="noreferrer"
+                                                      className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
                                                     >
-                                                      {task.username ?? "—"}
-                                                    </span>
-                                                    {task.username && (
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() =>
-                                                          copyToClipboard(
-                                                            task.username!,
-                                                            "Username copied"
-                                                          )
-                                                        }
-                                                        title="Copy username"
-                                                      >
-                                                        <ClipboardCopy className="h-4 w-4" />
-                                                      </Button>
-                                                    )}
-                                                  </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between gap-2">
-                                                  <span className="text-slate-500">
-                                                    Email
-                                                  </span>
-                                                  <div className="flex items-center gap-2">
-                                                    <span
-                                                      className="truncate max-w-[170px]"
-                                                      title={task.email ?? ""}
+                                                      <Link2 className="h-4 w-4 mr-1" />
+                                                      Open
+                                                    </a>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-8 w-8"
+                                                      onClick={() =>
+                                                        copyToClipboard(
+                                                          task.completionLink,
+                                                          "URL copied"
+                                                        )
+                                                      }
+                                                      title="Copy URL"
                                                     >
-                                                      {task.email ?? "—"}
-                                                    </span>
-                                                    {task.email && (
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() =>
-                                                          copyToClipboard(
-                                                            task.email!,
-                                                            "Email copied"
-                                                          )
-                                                        }
-                                                        title="Copy email"
-                                                      >
-                                                        <ClipboardCopy className="h-4 w-4" />
-                                                      </Button>
-                                                    )}
-                                                  </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between gap-2">
-                                                  <span className="text-slate-500">
-                                                    Password
+                                                      <ClipboardCopy className="h-4 w-4" />
+                                                    </Button>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-slate-400">
+                                                    —
                                                   </span>
-                                                  <div className="flex items-center gap-2">
-                                                    {task.password ? (
-                                                      <>
-                                                        <span className="font-mono">
-                                                          {showPwd
-                                                            ? task.password
-                                                            : "•".repeat(
-                                                                Math.min(
-                                                                  12,
-                                                                  Math.max(
-                                                                    6,
-                                                                    task.password
-                                                                      .length
-                                                                  )
-                                                                )
-                                                              )}
-                                                        </span>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className="h-8 w-8"
-                                                          onClick={() =>
-                                                            setShowPasswordIds(
-                                                              (s) => ({
-                                                                ...s,
-                                                                [task.id]:
-                                                                  !s[task.id],
-                                                              })
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="text-slate-500">
+                                                Username
+                                              </span>
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className="truncate max-w-[170px]"
+                                                  title={task.username ?? ""}
+                                                >
+                                                  {task.username ?? "—"}
+                                                </span>
+                                                {task.username && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    onClick={() =>
+                                                      copyToClipboard(
+                                                        task.username!,
+                                                        "Username copied"
+                                                      )
+                                                    }
+                                                    title="Copy username"
+                                                  >
+                                                    <ClipboardCopy className="h-4 w-4" />
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="text-slate-500">
+                                                Email
+                                              </span>
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className="truncate max-w-[170px]"
+                                                  title={task.email ?? ""}
+                                                >
+                                                  {task.email ?? "—"}
+                                                </span>
+                                                {task.email && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8"
+                                                    onClick={() =>
+                                                      copyToClipboard(
+                                                        task.email!,
+                                                        "Email copied"
+                                                      )
+                                                    }
+                                                    title="Copy email"
+                                                  >
+                                                    <ClipboardCopy className="h-4 w-4" />
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-2">
+                                              <span className="text-slate-500">
+                                                Password
+                                              </span>
+                                              <div className="flex items-center gap-2">
+                                                {task.password ? (
+                                                  <>
+                                                    <span className="font-mono">
+                                                      {showPwd
+                                                        ? task.password
+                                                        : "•".repeat(
+                                                            Math.min(
+                                                              12,
+                                                              Math.max(
+                                                                6,
+                                                                task.password
+                                                                  .length
+                                                              )
                                                             )
-                                                          }
-                                                          title={
-                                                            showPwd
-                                                              ? "Hide password"
-                                                              : "Reveal password"
-                                                          }
-                                                        >
-                                                          {showPwd ? (
-                                                            <EyeOff className="h-4 w-4" />
-                                                          ) : (
-                                                            <Eye className="h-4 w-4" />
                                                           )}
-                                                        </Button>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className="h-8 w-8"
-                                                          onClick={() =>
-                                                            copyToClipboard(
-                                                              task.password!,
-                                                              "Password copied"
-                                                            )
-                                                          }
-                                                          title="Copy password"
-                                                        >
-                                                          <ClipboardCopy className="h-4 w-4" />
-                                                        </Button>
-                                                      </>
-                                                    ) : (
-                                                      <span className="text-slate-400">
-                                                        —
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </div>
+                                                    </span>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-8 w-8"
+                                                      onClick={() =>
+                                                        setShowPasswordIds(
+                                                          (s) => ({
+                                                            ...s,
+                                                            [task.id]:
+                                                              !s[task.id],
+                                                          })
+                                                        )
+                                                      }
+                                                      title={
+                                                        showPwd
+                                                          ? "Hide password"
+                                                          : "Reveal password"
+                                                      }
+                                                    >
+                                                      {showPwd ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                      ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                      )}
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-8 w-8"
+                                                      onClick={() =>
+                                                        copyToClipboard(
+                                                          task.password!,
+                                                          "Password copied"
+                                                        )
+                                                      }
+                                                      title="Copy password"
+                                                    >
+                                                      <ClipboardCopy className="h-4 w-4" />
+                                                    </Button>
+                                                  </>
+                                                ) : (
+                                                  <span className="text-slate-400">
+                                                    —
+                                                  </span>
+                                                )}
                                               </div>
+                                            </div>
+                                          </div>
 
-                                              {/* Notes */}
-                                              {task.notes ? (
-                                                <div className="mt-4 text-sm text-slate-700">
-                                                  <div className="text-slate-500 mb-1">
-                                                    Notes
-                                                  </div>
-                                                  <div className="line-clamp-3">
-                                                    {task.notes}
-                                                  </div>
-                                                </div>
-                                              ) : null}
+                                          {/* Notes */}
+                                          {task.notes ? (
+                                            <div className="mt-4 text-sm text-slate-700">
+                                              <div className="text-slate-500 mb-1">
+                                                Notes
+                                              </div>
+                                              <div className="line-clamp-3">
+                                                {task.notes}
+                                              </div>
+                                            </div>
+                                          ) : null}
                                         </CardContent>
                                       </Card>
                                     );

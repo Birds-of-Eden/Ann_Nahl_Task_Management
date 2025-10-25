@@ -3,16 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { TaskStatus, TaskPriority, PeriodType } from "@prisma/client";
 import { randomUUID } from "crypto";
+import { calculateTaskDueDate, extractCycleNumber } from "@/utils/working-days";
 
 /**
  * 🎯 QC Approved → Posting Task Generation Trigger
- * 
+ *
  * When a QC task is approved, this generates posting tasks based on:
  * - Client-specific requiredFrequency (from AssignmentSiteAssetSetting)
  * - Fallback to template default if no client override
- * 
+ *
  * POST /api/tasks/{taskId}/trigger-posting
- * Body: { 
+ * Body: {
  *   actorId?: string,
  *   forceOverride?: boolean (regenerate even if already exists)
  * }
@@ -23,6 +24,8 @@ export async function POST(
 ) {
   const { id: taskId } = await params;
 
+  console.log(`📥 Trigger-posting called for task: ${taskId}`);
+
   try {
     const body = await request.json().catch(() => ({}));
     const { actorId, forceOverride = false } = body as {
@@ -30,14 +33,22 @@ export async function POST(
       forceOverride?: boolean;
     };
 
+    console.log(`📝 Request body:`, { actorId, forceOverride });
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1) Load the QC task with full context
+      // 1) Load the QC task with full context + package info
       const qcTask = await tx.task.findUnique({
         where: { id: taskId },
         include: {
           assignment: {
             include: {
-              client: true,
+              client: {
+                include: {
+                  package: {
+                    select: { totalMonths: true },
+                  },
+                },
+              },
               siteAssetSettings: {
                 where: {
                   // Filter to this specific asset
@@ -52,16 +63,48 @@ export async function POST(
       });
 
       if (!qcTask) {
+        console.error(`❌ Task not found: ${taskId}`);
         throw new Error("TASK_NOT_FOUND");
       }
 
-      // Verify this is a QC task
-      if (!qcTask.category?.name?.toLowerCase().includes("qc")) {
-        throw new Error("NOT_A_QC_TASK");
+      console.log(`✅ Task loaded:`, {
+        id: qcTask.id,
+        name: qcTask.name,
+        status: qcTask.status,
+        category: qcTask.category?.name,
+        templateSiteAssetId: qcTask.templateSiteAssetId,
+        assignmentId: qcTask.assignmentId,
+      });
+
+      // Verify this is a task that should generate posting tasks
+      const taskCategoryName = qcTask.category?.name?.toLowerCase() || "";
+
+      const shouldGeneratePosting =
+        taskCategoryName.includes("qc") ||
+        taskCategoryName.includes("quality") ||
+        taskCategoryName.includes("asset creation") ||
+        taskCategoryName.includes("social asset") ||
+        taskCategoryName.includes("web2") ||
+        taskCategoryName.includes("content writing") ||
+        taskCategoryName.includes("graphics");
+
+      console.log(
+        `🔍 Should generate posting: ${shouldGeneratePosting} (category: ${qcTask.category?.name})`
+      );
+
+      if (!shouldGeneratePosting) {
+        throw new Error("NOT_ELIGIBLE_FOR_POSTING");
       }
 
       // Verify QC task is approved/completed
-      if (qcTask.status !== TaskStatus.completed) {
+      const isApproved =
+        qcTask.status === TaskStatus.completed ||
+        qcTask.status === ("qc_approved" as any) ||
+        (qcTask.status as string)?.toLowerCase().includes("approved");
+
+      console.log(`✓ Is approved: ${isApproved} (status: ${qcTask.status})`);
+
+      if (!isApproved) {
         throw new Error("QC_NOT_APPROVED");
       }
 
@@ -94,7 +137,28 @@ export async function POST(
 
       const period = assetSetting?.period ?? PeriodType.monthly;
 
-      // 3) Check if posting tasks already exist (unless forceOverride)
+      // 🆕 Get package totalMonths for multiplication
+      const packageMonthsRaw = Number(
+        qcTask.assignment?.client?.package?.totalMonths ?? 1
+      );
+      const packageMonths =
+        Number.isFinite(packageMonthsRaw) && packageMonthsRaw > 0
+          ? Math.min(Math.floor(packageMonthsRaw), 120)
+          : 1;
+
+      // 🆕 Total tasks = frequency × package months (same as regular system)
+      const totalTasksToCreate = Math.max(1, requiredFrequency * packageMonths);
+
+      console.log(`📊 Posting settings:`, {
+        requiredFrequency,
+        packageMonths,
+        totalTasksToCreate,
+        idealDurationMinutes,
+        period,
+        hasClientOverride: !!assetSetting,
+      });
+
+      // 3) Check if posting tasks already exist (check Social Activity/Blog Posting)
       if (!forceOverride) {
         const existingPostingTasks = await tx.task.findMany({
           where: {
@@ -102,8 +166,7 @@ export async function POST(
             templateSiteAssetId: qcTask.templateSiteAssetId,
             category: {
               name: {
-                contains: "posting",
-                mode: "insensitive",
+                in: ["Social Activity", "Blog Posting"],
               },
             },
             status: {
@@ -112,63 +175,122 @@ export async function POST(
           },
         });
 
+        console.log(
+          `🔍 Existing posting tasks: ${existingPostingTasks.length}`
+        );
+
         if (existingPostingTasks.length > 0) {
+          console.log(`⏭️ Skipping: Posting tasks already exist`);
           return {
             message: "Posting tasks already exist for this asset",
             existingTasks: existingPostingTasks,
             skipped: true,
           };
         }
+      } else {
+        console.log(`🔄 Force override enabled, will create anyway`);
       }
 
-      // 4) Ensure Posting category exists
-      const postingCategory = await tx.taskCategory.upsert({
-        where: { name: "Posting" },
-        create: { name: "Posting" },
-        update: {},
+      // 4) 🆕 Resolve category based on asset type (same as regular system)
+      const assetType = qcTask.templateSiteAsset?.type;
+      const categoryName =
+        assetType === "web2_site" ? "Blog Posting" : "Social Activity";
+
+      console.log(`🔍 Asset Type Detection:`, {
+        assetId: qcTask.templateSiteAssetId,
+        assetName: qcTask.templateSiteAsset?.name,
+        assetType: assetType,
+        resolvedCategory: categoryName,
       });
 
-      // 5) Generate posting tasks based on requiredFrequency
-      const now = new Date();
+      // Ensure category exists
+      const ensureCategory = async (name: string) => {
+        const found = await tx.taskCategory.findFirst({
+          where: { name },
+          select: { id: true, name: true },
+        });
+        if (found) {
+          console.log(`✅ Found existing category: ${name} (${found.id})`);
+          return found;
+        }
+        try {
+          const created = await tx.taskCategory.create({
+            data: { name },
+            select: { id: true, name: true },
+          });
+          console.log(`✅ Created new category: ${name} (${created.id})`);
+          return created;
+        } catch (e) {
+          console.warn(`⚠️ Category creation failed, retrying find for: ${name}`);
+          const again = await tx.taskCategory.findFirst({
+            where: { name },
+            select: { id: true, name: true },
+          });
+          if (again) return again;
+          throw e;
+        }
+      };
+
+      const postingCategory = await ensureCategory(categoryName);
+
+      console.log(`✅ Category resolved: ${categoryName} (ID: ${postingCategory.id})`);
+
+      // 5) 🆕 Generate posting tasks: frequency × package months
+      // Use source task creation time as anchor (same as regular system)
+      const anchor = qcTask.createdAt || new Date();
       const postingTasks = [];
 
-      for (let i = 0; i < requiredFrequency; i++) {
-        const dueDate = new Date(now);
-        
-        // Spread posting tasks throughout the period
-        if (period === PeriodType.monthly) {
-          // Monthly: spread across 30 days
-          const daysOffset = Math.floor((30 / requiredFrequency) * i);
-          dueDate.setDate(now.getDate() + daysOffset);
-        } else if (period === PeriodType.weekly) {
-          // Weekly: spread across 7 days
-          const daysOffset = Math.floor((7 / requiredFrequency) * i);
-          dueDate.setDate(now.getDate() + daysOffset);
-        }
+      console.log(`🚀 Creating ${totalTasksToCreate} posting tasks (${requiredFrequency}/month × ${packageMonths} months)...`);
+      console.log(`📅 Using working-days calculation: 1st cycle=10 days, subsequent=+5 days each`);
 
+      for (let i = 0; i < totalTasksToCreate; i++) {
+        // 🆕 Calculate due date using working-days utility (same as regular system)
+        const cycleNumber = i + 1;
+        const dueDate = calculateTaskDueDate(anchor, cycleNumber);
+
+        const taskName = `${qcTask.templateSiteAsset?.name || "Asset"} -${cycleNumber}`;
+        
         const newTask = {
           id: randomUUID(),
-          name: `${qcTask.templateSiteAsset?.name || "Asset"} - Posting ${i + 1}/${requiredFrequency}`,
+          name: taskName,
           assignmentId: qcTask.assignmentId,
           clientId: qcTask.clientId,
           templateSiteAssetId: qcTask.templateSiteAssetId,
-          categoryId: postingCategory.id,
-          dueDate,
+          categoryId: postingCategory.id,  // ✅ This should be Social Activity or Blog Posting
+          dueDate: dueDate.toISOString(),  // Convert to ISO string for Prisma
           status: TaskStatus.pending,
           priority: TaskPriority.medium,
           idealDurationMinutes,
-          notes: `[AUTO-GENERATED] Triggered by QC Task: ${qcTask.name}\nFrequency: ${requiredFrequency}/${period}\nClient Override: ${assetSetting ? "Yes" : "No (using default)"}`,
+          notes: `[AUTO-GENERATED] Triggered by QC Task: ${
+            qcTask.name
+          }\nFrequency: ${requiredFrequency}/${period} × ${packageMonths} months = ${totalTasksToCreate} tasks\nCycle: ${cycleNumber}\nDue Date: Calculated using working-days (excludes weekends)\nClient Override: ${
+            assetSetting ? "Yes" : "No (using default)"
+          }`,
         };
 
         const created = await tx.task.create({ data: newTask });
         postingTasks.push(created);
+        
+        // Verify category was set correctly
+        const verifyCategory = await tx.taskCategory.findUnique({
+          where: { id: created.categoryId || "" },
+          select: { name: true },
+        });
+        
+        console.log(`  ✅ Created: ${created.name} | Category: ${verifyCategory?.name || "Unknown"} | ID: ${created.id}`);
       }
+
+      console.log(
+        `🎉 Successfully created ${postingTasks.length} posting tasks!`
+      );
 
       // 6) Update QC task with note about posting generation
       await tx.task.update({
         where: { id: taskId },
         data: {
-          notes: `${qcTask.notes || ""}\n\n[POSTING TRIGGERED] Generated ${requiredFrequency} posting tasks at ${now.toISOString()}`,
+          notes: `${
+            qcTask.notes || ""
+          }\n\n[POSTING TRIGGERED] Generated ${totalTasksToCreate} posting tasks at ${new Date().toISOString()}\nCategory: ${categoryName}\nUsing working-days calculation`,
         },
       });
 
@@ -185,12 +307,17 @@ export async function POST(
             qcTaskName: qcTask.name,
             assetId: qcTask.templateSiteAssetId,
             assetName: qcTask.templateSiteAsset?.name,
+            assetType: qcTask.templateSiteAsset?.type,
             assignmentId: qcTask.assignmentId,
             clientId: qcTask.clientId,
             clientName: qcTask.assignment?.client?.name,
             postingTasksCreated: postingTasks.length,
             requiredFrequency,
+            packageMonths,
+            totalTasks: totalTasksToCreate,
+            category: categoryName,  // ✅ Log which category was used
             period,
+            dueDateCalculation: "working-days",  // ✅ Log calculation method
             clientSpecificOverride: !!assetSetting,
             taskIds: postingTasks.map((t) => t.id),
           },
@@ -220,10 +347,7 @@ export async function POST(
     return NextResponse.json(result, { status: 200 });
   } catch (error: any) {
     if (error?.message === "TASK_NOT_FOUND") {
-      return NextResponse.json(
-        { message: "Task not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Task not found" }, { status: 404 });
     }
     if (error?.message === "NOT_A_QC_TASK") {
       return NextResponse.json(
@@ -286,10 +410,7 @@ export async function GET(
     });
 
     if (!qcTask) {
-      return NextResponse.json(
-        { message: "Task not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Task not found" }, { status: 404 });
     }
 
     if (!qcTask.templateSiteAssetId) {
@@ -340,8 +461,7 @@ export async function GET(
         clientOverride: !!assetSetting,
         existingPostingTasks,
         canTrigger:
-          qcTask.status === TaskStatus.completed &&
-          existingPostingTasks === 0,
+          qcTask.status === TaskStatus.completed && existingPostingTasks === 0,
       },
     });
   } catch (error: any) {

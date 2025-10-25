@@ -32,7 +32,7 @@ export function PostingTaskStatus({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!isCompleted || !templateSiteAssetId) {
+    if (!isCompleted) {
       setLoading(false);
       return;
     }
@@ -41,25 +41,39 @@ export function PostingTaskStatus({
       try {
         setLoading(true);
         // Fetch posting tasks related to this asset
-        const response = await fetch(
-          `/api/assignments/${assignmentId}`
-        );
+        const response = await fetch(`/api/assignments/${assignmentId}`);
         const data = await response.json();
 
         if (response.ok) {
           // Filter posting tasks for this asset
-          const posting = (data.tasks || []).filter(
-            (t: any) =>
-              t.templateSiteAssetId === templateSiteAssetId &&
-              (t.category?.name?.toLowerCase().includes("posting") ||
-                t.name?.toLowerCase().includes("posting"))
-          );
+          // 🆕 Look for Social Activity and Blog Posting categories (same as regular system)
+          let posting;
+          if (templateSiteAssetId) {
+            // Filter by specific asset
+            posting = (data.tasks || []).filter(
+              (t: any) =>
+                t.templateSiteAssetId === templateSiteAssetId &&
+                (t.category?.name === "Social Activity" ||
+                  t.category?.name === "Blog Posting" ||
+                  t.category?.name?.toLowerCase().includes("posting"))
+            );
+          } else {
+            // If no templateSiteAssetId, show all posting tasks
+            posting = (data.tasks || []).filter(
+              (t: any) =>
+                t.category?.name === "Social Activity" ||
+                t.category?.name === "Blog Posting" ||
+                t.category?.name?.toLowerCase().includes("posting")
+            );
+          }
           setPostingTasks(posting);
 
           // Get asset settings
-          const setting = (data.siteAssetSettings || []).find(
-            (s: any) => s.templateSiteAssetId === templateSiteAssetId
-          );
+          const setting = templateSiteAssetId
+            ? (data.siteAssetSettings || []).find(
+                (s: any) => s.templateSiteAssetId === templateSiteAssetId
+              )
+            : null;
           setSettings(setting);
         }
       } catch (error) {
@@ -124,7 +138,9 @@ export function PostingTaskStatus({
               <p>
                 • Recommended: {recommendedFrequency} posting tasks/month
                 {settings?.requiredFrequency && (
-                  <span className="ml-1 text-blue-600 dark:text-blue-400">⚡ Client Override</span>
+                  <span className="ml-1 text-blue-600 dark:text-blue-400">
+                    ⚡ Client Override
+                  </span>
                 )}
               </p>
             </div>
