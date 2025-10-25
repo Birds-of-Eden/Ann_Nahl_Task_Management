@@ -354,11 +354,11 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
                 </Button>
               </div>
             )}
-            {/* {isAgent && ( */}
+            {isAgent && (
             <div>
               <ExportClientTxtButton clientData={clientData} />
             </div>
-            {/* )} */}
+            )}
           </div>
 
           <TabsContent value="profile">
