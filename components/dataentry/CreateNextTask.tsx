@@ -59,10 +59,18 @@ export default function CreateNextTask({
         throw new Error(createJson?.message || "Failed to create tasks");
       }
 
-      const createdTasks: Array<{ id: string; dueDate?: string | null }> = Array.isArray(createJson?.tasks)
+      console.log("[CreateNextTask] created response", createJson);
+
+      const createdTasks: Array<{
+        id: string;
+        dueDate?: string | null;
+        category?: { id: string; name: string } | null;
+      }> = Array.isArray(createJson?.tasks)
         ? createJson.tasks
         : [];
       const createdCount = Number(createJson?.created ?? createdTasks.length);
+
+      console.log("[CreateNextTask] created tasks count", createdCount);
 
       if (createdTasks.length === 0) {
         toast.info(createJson?.message || "No new tasks created (all counts were 0)");
@@ -71,46 +79,111 @@ export default function CreateNextTask({
         return;
       }
 
-      // 2) Try to fetch last agent who completed Blog Posting or Social Activity for this client
-      const lastAgentRes = await fetch(`/api/tasks/last-agent-for-client?clientId=${encodeURIComponent(clientId)}`, {
-        cache: "no-store",
-      });
-      const lastAgentJson = await lastAgentRes.json().catch(() => ({}));
-      const agentId: string | undefined = lastAgentJson?.agent?.id;
+      // 2) Assign tasks per category to the agent who last completed a task in that category
+      const tasksByCategory = new Map<string, typeof createdTasks>();
+      for (const t of createdTasks) {
+        const catName = t.category?.name || "";
+        if (!catName) continue;
+        const arr = tasksByCategory.get(catName) ?? [];
+        arr.push(t);
+        tasksByCategory.set(catName, arr);
+      }
 
-      if (!agentId) {
-        toast.success(createJson?.message || `Created ${createdCount} task(s); no previous agent found, left unassigned`);
-      } else {
-        // 3) Assign created tasks to that agent
-        const assignments = createdTasks.map((t) => ({
-          taskId: t.id,
-          agentId,
-          note: "Auto-assigned to last agent of Blog Posting/Social Activity",
-          dueDate:
-            t?.dueDate && typeof t.dueDate === "string"
-              ? t.dueDate
-              : (() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + 7);
-                  return d.toISOString();
-                })(),
-        }));
+      console.log("[CreateNextTask] tasksByCategory keys", Array.from(tasksByCategory.keys()));
 
+      const assignments: Array<{ taskId: string; agentId: string; note?: string; dueDate?: string }> = [];
+
+      // Prepare a lazy global last-agent fetch (Blog Posting/Social Activity)
+      let cachedGlobalAgentId: string | null = null;
+      async function getGlobalAgentId(): Promise<string | null> {
+        if (cachedGlobalAgentId !== null) return cachedGlobalAgentId;
+        const res = await fetch(
+          `/api/tasks/last-agent-for-client?clientId=${encodeURIComponent(clientId)}`,
+          { cache: "no-store" }
+        );
+        const json = await res.json().catch(() => ({} as any));
+        cachedGlobalAgentId = json?.agent?.id || null;
+        console.log("[CreateNextTask] global agent", cachedGlobalAgentId);
+        return cachedGlobalAgentId;
+      }
+
+      // Assign per category with fallback to global agent
+      for (const [catName, list] of tasksByCategory.entries()) {
+        let agentId: string | null = null;
+        try {
+          const res = await fetch(
+            `/api/tasks/last-agent-for-client?clientId=${encodeURIComponent(clientId)}&category=${encodeURIComponent(catName)}`,
+            { cache: "no-store" }
+          );
+          const json = await res.json().catch(() => ({} as any));
+          agentId = json?.agent?.id || null;
+          console.log("[CreateNextTask] category agent", { catName, agentId, json });
+        } catch {}
+
+        if (!agentId) {
+          agentId = await getGlobalAgentId();
+        }
+        if (!agentId) continue;
+
+        for (const t of list) {
+          assignments.push({
+            taskId: t.id,
+            agentId,
+            note: `Auto-assigned to last agent${agentId ? ` (category: ${catName})` : ""}`,
+            dueDate:
+              t?.dueDate && typeof t.dueDate === "string"
+                ? t.dueDate
+                : (() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7);
+                    return d.toISOString();
+                  })(),
+          });
+        }
+      }
+
+      // Any tasks without category: try global last agent
+      const withoutCategory = createdTasks.filter((t) => !t.category?.name);
+      if (withoutCategory.length) {
+        const globalAgentId = await getGlobalAgentId();
+        if (globalAgentId) {
+          for (const t of withoutCategory) {
+            assignments.push({
+              taskId: t.id,
+              agentId: globalAgentId,
+              note: `Auto-assigned to last agent (no category)`,
+              dueDate:
+                t?.dueDate && typeof t.dueDate === "string"
+                  ? t.dueDate
+                  : (() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 7);
+                      return d.toISOString();
+                    })(),
+            });
+          }
+        }
+      }
+
+      if (assignments.length > 0) {
+        console.log("[CreateNextTask] assignments prepared", { count: assignments.length, sample: assignments.slice(0, 3) });
         const distRes = await fetch(`/api/tasks/dataentry-distribute`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ clientId, assignments }),
         });
-
+        console.log("[CreateNextTask] distribute status", distRes.status);
         if (distRes.ok) {
           toast.success(
-            createJson?.message || `Created ${createdCount} task(s) and assigned to last agent`
+            createJson?.message || `Created ${createdCount} task(s) and auto-assigned by category`
           );
         } else {
           const djson = await distRes.json().catch(() => ({}));
           console.error("Assignment failed:", djson);
           toast.warning(`Created ${createdCount} task(s), but auto-assignment failed`);
         }
+      } else {
+        toast.success(createJson?.message || `Created ${createdCount} task(s); no previous agents found per category`);
       }
 
       onCreated?.();

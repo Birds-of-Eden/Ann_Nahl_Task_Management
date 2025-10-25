@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { type NextRequest, NextResponse } from "next/server";
 import type { TaskPriority, TaskStatus, SiteAssetType } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { extractCycleNumber } from "@/utils/working-days";
+import { extractCycleNumber, addWorkingDays } from "@/utils/working-days";
 
 // ================== CONSTANTS ==================
 // Allow ALL asset types defined in prisma enum
@@ -237,6 +237,21 @@ export async function POST(req: NextRequest) {
 
     if (!client) return NextResponse.json({ message: "Client not found" }, { status: 404 });
 
+    // Compute common due date for new tasks: 7 working days after latest completedAt among
+    // client's tasks for social_site, web2_site, other_asset. If none, leave undefined.
+    const latestCompletedGlobal = await prisma.task.findFirst({
+      where: {
+        clientId,
+        completedAt: { not: null },
+        templateSiteAsset: { is: { type: { in: ["social_site", "web2_site", "other_asset"] } } },
+      },
+      orderBy: { completedAt: "desc" },
+      select: { completedAt: true },
+    });
+    const computedDueDate = latestCompletedGlobal?.completedAt
+      ? addWorkingDays(new Date(latestCompletedGlobal.completedAt), 7)
+      : undefined;
+
     // ================== SIMPLE COUNTS-BASED CREATION (derive from template site assets) ==================
     // ================== NEW: TYPE-COUNTS-BASED CREATION ==================
     if (countsByType && typeof countsByType === "object" && Object.keys(countsByType).length > 0) {
@@ -367,6 +382,8 @@ export async function POST(req: NextRequest) {
           const base = baseNameOf(src.name);
           const start = nextIndexByBase.get(base) ?? 1;
           const name = `${base} - ${start + i}`;
+          const scheduleForType = (t === "social_site" || t === "web2_site" || t === "other_asset") && !!computedDueDate;
+          const dueForThis = scheduleForType ? addWorkingDays(computedDueDate as Date, 7 * i) : undefined;
           payloads.push({
             id: makeId(),
             name,
@@ -378,6 +395,7 @@ export async function POST(req: NextRequest) {
             password: src.password ?? undefined,
             username: src.username ?? undefined,
             notes: src.notes ?? undefined,
+            dueDate: dueForThis ?? undefined,
             assignment: { connect: { id: assignment.id } },
             client: { connect: { id: clientId } },
             category: { connect: { id: catId } },
@@ -560,6 +578,7 @@ export async function POST(req: NextRequest) {
             password: src.password ?? undefined,
             username: src.username ?? undefined,
             notes: src.notes ?? undefined,
+            dueDate: computedDueDate ?? undefined,
             assignment: { connect: { id: assignment.id } },
             client: { connect: { id: clientId } },
             category: { connect: { id: catId } },
