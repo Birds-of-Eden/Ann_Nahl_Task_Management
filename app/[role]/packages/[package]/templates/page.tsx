@@ -626,23 +626,68 @@ export default function TemplateListPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredTemplates.map((template) => {
               const stats = getTemplateStats(template);
+              // Detect if this is a customized template
+              const isCustomized = template.description?.includes("Custom template for client:") || false;
+              const isMainTemplate = !isCustomized;
+              
               return (
                 <Card
                   key={template.id}
-                  className="group overflow-hidden bg-white/90 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 border-0 ring-1 ring-gray-200 hover:ring-blue-300 hover:scale-101"
+                  className={cn(
+                    "group overflow-hidden backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-300 border-0 ring-2 hover:scale-101",
+                    isCustomized 
+                      ? "bg-gradient-to-br from-purple-50 to-pink-50 ring-purple-300 hover:ring-purple-400"
+                      : "bg-white/90 ring-gray-200 hover:ring-blue-300"
+                  )}
                 >
-                  <CardHeader className="bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 pb-4 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+                  <CardHeader className={cn(
+                    "pb-4 relative overflow-hidden",
+                    isCustomized
+                      ? "bg-gradient-to-r from-purple-100 via-pink-100 to-purple-100"
+                      : "bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50"
+                  )}>
+                    <div className={cn(
+                      "absolute inset-0",
+                      isCustomized
+                        ? "bg-gradient-to-r from-purple-600/10 to-pink-600/10"
+                        : "bg-gradient-to-r from-blue-600/5 to-purple-600/5"
+                    )}></div>
                     <div className="relative">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-sm">
-                            <FileText className="w-5 h-5 text-white" />
+                          <div className={cn(
+                            "p-2 rounded-lg shadow-sm",
+                            isCustomized
+                              ? "bg-gradient-to-br from-purple-500 to-pink-600"
+                              : "bg-gradient-to-br from-blue-500 to-purple-600"
+                          )}>
+                            {isCustomized ? (
+                              <Sparkles className="w-5 h-5 text-white" />
+                            ) : (
+                              <FileText className="w-5 h-5 text-white" />
+                            )}
                           </div>
-                          <div>
-                            <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-lg leading-tight">
-                              {template.name}
-                            </h3>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className={cn(
+                                "font-bold group-hover:text-blue-600 transition-colors text-lg leading-tight",
+                                isCustomized ? "text-purple-900" : "text-gray-900"
+                              )}>
+                                {template.name}
+                              </h3>
+                              {isCustomized && (
+                                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  Customized
+                                </Badge>
+                              )}
+                              {isMainTemplate && (
+                                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 text-xs px-2 py-0.5 flex items-center gap-1">
+                                  <Star className="w-3 h-3" />
+                                  Main
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 mt-1">
                               Template ID: {template.id.slice(0, 8)}...
                             </p>
@@ -655,9 +700,27 @@ export default function TemplateListPage() {
 
                   <CardContent className="p-6 space-y-5">
                     {template.description ? (
-                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
-                        {template.description}
-                      </p>
+                      <div className="space-y-2">
+                        {isCustomized && (
+                          <div className="flex items-start gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                            <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-purple-900 mb-1">Customized Template</p>
+                              <p className="text-xs text-purple-700 leading-relaxed">
+                                {template.description.replace("Custom template for client: ", "").split(".")[0]}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {!isCustomized && (
+                          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <Star className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-blue-900 leading-relaxed line-clamp-2">
+                              {template.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-400 italic">
                         No description provided

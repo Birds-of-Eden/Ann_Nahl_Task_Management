@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Package, Sparkles, Clock, Users, FileText, Layers, TrendingUp } from "lucide-react";
+import { CheckCircle, Package, Sparkles, Clock, Users, FileText, Layers, TrendingUp, Star } from "lucide-react";
 import type { StepProps } from "@/types/onboarding";
 import { toast } from "sonner";
 
@@ -159,13 +159,21 @@ export function TemplateSelection({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {templates.map((template, index) => (
+          {templates.map((template, index) => {
+            // Detect if customized template
+            const isCustomized = template.description?.includes("Custom template for client:") || false;
+            
+            return (
             <Card
               key={template.id}
               className={`relative overflow-hidden cursor-pointer transition-all duration-500 group ${
                 selectedTemplate === template.id
-                  ? "ring-4 ring-purple-500 shadow-2xl scale-105 bg-gradient-to-br from-purple-50 via-fuchsia-50 to-pink-50"
-                  : "hover:shadow-xl hover:-translate-y-2 bg-white"
+                  ? isCustomized
+                    ? "ring-4 ring-purple-500 shadow-2xl scale-105 bg-gradient-to-br from-purple-100 via-pink-100 to-purple-100"
+                    : "ring-4 ring-blue-500 shadow-2xl scale-105 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50"
+                  : isCustomized
+                    ? "hover:shadow-xl hover:-translate-y-2 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200"
+                    : "hover:shadow-xl hover:-translate-y-2 bg-white border-2 border-blue-200"
               }`}
               onClick={() => handleTemplateSelect(template.id)}
               style={{ animationDelay: `${index * 100}ms` }}
@@ -173,27 +181,66 @@ export function TemplateSelection({
               {/* Selection Badge */}
               {selectedTemplate === template.id && (
                 <div className="absolute top-4 right-4 z-10 animate-in zoom-in duration-300">
-                  <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full p-2 shadow-lg">
+                  <div className={`rounded-full p-2 shadow-lg ${
+                    isCustomized
+                      ? "bg-gradient-to-br from-purple-500 to-pink-600"
+                      : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                  }`}>
                     <CheckCircle className="w-6 h-6 text-white" />
                   </div>
                 </div>
               )}
 
               {/* Top Gradient Bar */}
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500">
+              <div className={`absolute top-0 left-0 w-full h-3 ${
+                isCustomized
+                  ? "bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"
+                  : "bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500"
+              }`}>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
               </div>
 
-              {/* Glow Effect on Hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-400/0 to-pink-400/0 group-hover:from-purple-400/10 group-hover:to-pink-400/10 transition-all duration-500" />
+              {/* Template Type Badge */}
+              <div className="absolute top-6 left-4 z-10 animate-in zoom-in duration-300">
+                {isCustomized ? (
+                  <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 shadow-lg px-3 py-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="font-semibold">Customized</span>
+                  </Badge>
+                ) : (
+                  <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0 shadow-lg px-3 py-1 flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5" />
+                    <span className="font-semibold">Main Template</span>
+                  </Badge>
+                )}
+              </div>
 
-              <CardHeader className="pb-4 pt-6">
+              {/* Glow Effect on Hover */}
+              <div className={`absolute inset-0 transition-all duration-500 ${
+                isCustomized
+                  ? "bg-gradient-to-br from-purple-400/0 to-pink-400/0 group-hover:from-purple-400/10 group-hover:to-pink-400/10"
+                  : "bg-gradient-to-br from-blue-400/0 to-indigo-400/0 group-hover:from-blue-400/10 group-hover:to-indigo-400/10"
+              }`} />
+
+              <CardHeader className="pb-4 pt-10">
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Layers className="w-6 h-6 text-white" />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 ${
+                    isCustomized
+                      ? "bg-gradient-to-br from-purple-500 to-pink-600"
+                      : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                  }`}>
+                    {isCustomized ? (
+                      <Sparkles className="w-6 h-6 text-white" />
+                    ) : (
+                      <Layers className="w-6 h-6 text-white" />
+                    )}
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-xl font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">
+                    <CardTitle className={`text-xl font-bold mb-2 transition-colors ${
+                      isCustomized
+                        ? "text-purple-900 group-hover:text-purple-600"
+                        : "text-gray-900 group-hover:text-blue-600"
+                    }`}>
                       {template.name}
                     </CardTitle>
                     <div className="flex items-center gap-2 mb-2">
@@ -208,10 +255,29 @@ export function TemplateSelection({
                     </div>
                   </div>
                 </div>
-                <CardDescription className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                  {template.description ||
-                    "A comprehensive template designed to meet your project needs and deliver exceptional results."}
-                </CardDescription>
+                {isCustomized ? (
+                  <div className="p-3 bg-purple-50 border-l-4 border-purple-500 rounded-lg">
+                    <p className="text-xs font-semibold text-purple-900 mb-1 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Customized Template
+                    </p>
+                    <CardDescription className="text-sm text-purple-700 line-clamp-2 leading-relaxed">
+                      {template.description?.replace("Custom template for client: ", "").split(".")[0] ||
+                        "A customized template tailored for specific client needs."}
+                    </CardDescription>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                    <p className="text-xs font-semibold text-blue-900 mb-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5" />
+                      Main Template
+                    </p>
+                    <CardDescription className="text-sm text-blue-700 line-clamp-2 leading-relaxed">
+                      {template.description ||
+                        "A comprehensive template designed to meet your project needs and deliver exceptional results."}
+                    </CardDescription>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="pt-0 pb-6">
@@ -236,8 +302,12 @@ export function TemplateSelection({
                 <Button
                   className={`w-full h-12 font-semibold transition-all duration-300 ${
                     selectedTemplate === template.id
-                      ? "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 hover:from-purple-700 hover:via-fuchsia-700 hover:to-pink-700 text-white shadow-xl"
-                      : "bg-gradient-to-r from-gray-50 to-gray-100 hover:from-purple-50 hover:to-pink-50 text-gray-700 hover:text-purple-700 border-2 border-gray-200 hover:border-purple-300"
+                      ? isCustomized
+                        ? "bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:from-purple-700 hover:via-pink-700 hover:to-purple-700 text-white shadow-xl"
+                        : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-700 text-white shadow-xl"
+                      : isCustomized
+                        ? "bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 hover:text-purple-800 border-2 border-purple-200 hover:border-purple-300"
+                        : "bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 hover:text-blue-800 border-2 border-blue-200 hover:border-blue-300"
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -260,7 +330,8 @@ export function TemplateSelection({
                 </Button>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

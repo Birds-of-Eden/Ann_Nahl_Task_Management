@@ -29,6 +29,7 @@ import {
  *   newAssets?: Array<{ // New site assets to add
  *     type: SiteAssetType,
  *     name: string,
+ *     customName?: string, // Optional custom name that overrides default name
  *     url?: string,
  *     description?: string,
  *     isRequired: boolean,
@@ -78,6 +79,7 @@ export async function POST(
       newAssets?: Array<{
         type: SiteAssetType;
         name: string;
+        customName?: string;  // Optional custom name
         url?: string;
         description?: string;
         isRequired: boolean;
@@ -455,16 +457,19 @@ export async function POST(
 
       // 8) Add NEW assets to custom template
       for (const newAssetData of newAssets) {
+        // Use customName if provided, otherwise use default name
+        const finalAssetName = newAssetData.customName?.trim() || newAssetData.name;
+        
         const newAsset = await tx.templateSiteAsset.create({
           data: {
             templateId: customTemplate.id,
             type: newAssetData.type,
-            name: newAssetData.name,
+            name: finalAssetName,  // Use customName if provided
             url: newAssetData.url || null,
             description: newAssetData.description || null,
             isRequired: newAssetData.isRequired,
             defaultPostingFrequency:
-              newAssetData.defaultPostingFrequency ?? null,
+              newAssetData.defaultPostingFrequency ?? 3,  // Default to 3 instead of null
             defaultIdealDurationMinutes:
               newAssetData.defaultIdealDurationMinutes ?? null,
           },
@@ -474,6 +479,7 @@ export async function POST(
           assetId: newAsset.id,
           assetName: newAsset.name,
           assetType: newAsset.type,
+          customNameUsed: !!newAssetData.customName,
         });
 
         // Create task for new asset
@@ -483,7 +489,7 @@ export async function POST(
 
         const newTask = {
           id: randomUUID(),
-          name: `${newAsset.name} Task`,
+          name: `${newAsset.name} Task`,  // Will use the customName if it was provided
           assignmentId: assignment.id,
           clientId: assignment.clientId,
           templateSiteAssetId: newAsset.id,
