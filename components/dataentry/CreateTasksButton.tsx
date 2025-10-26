@@ -205,7 +205,7 @@ export default function CreateTasksButton({
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
                 <Target className="w-5 h-5 text-white" />
               </div>
-              Manual Task Generator
+              Task Generator
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Select asset types and specify how many task cycles to create for
