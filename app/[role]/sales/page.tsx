@@ -358,14 +358,14 @@ export default function AMCEOSalesPage() {
   /* ===================== UI ===================== */
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+      <div className="p-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               AM CEO — Package Sales
             </h1>
-            <p className="text-sm text-slate-600 font-medium">
+            <p className="text-sm text-slate-600 font-medium mb-2">
               Package performance, client status, and sales distribution
             </p>
           </div>

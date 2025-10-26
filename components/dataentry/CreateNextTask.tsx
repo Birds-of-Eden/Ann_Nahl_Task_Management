@@ -214,8 +214,22 @@ export default function CreateNextTask({
     }
   }, [clientId]);
 
-  // Don't render if tasks already created
-  if (tasksAlreadyCreated) {
+  // Also require that initial tasks were created at least once using CreateTasksButton
+  const [initialTasksCreated, setInitialTasksCreated] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && clientId) {
+        const v = localStorage.getItem(`tasksCreated:${clientId}`);
+        setInitialTasksCreated(!!v);
+      }
+    } catch {
+      setInitialTasksCreated(false);
+    }
+  }, [clientId]);
+
+  // Don't render if tasks already created via this button, or if initial tasks haven't been created yet
+  if (tasksAlreadyCreated || !initialTasksCreated) {
     return null;
   }
 
