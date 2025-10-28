@@ -1,3 +1,5 @@
+// app/%5Brole%5D/onboarding/package-info.tsx
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -12,7 +14,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, CheckCircle, Sparkles, Calendar, Clock, TrendingUp, Zap } from "lucide-react";
+import {
+  Package,
+  CheckCircle,
+  Sparkles,
+  Calendar,
+  Clock,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 
@@ -91,32 +101,69 @@ export function PackageInfo({
   };
 
   // Helper function to calculate and format duration text
-  const calculateDurationText = useCallback((startDateStr: string, endDateStr: string) => {
-    try {
-      const start = new Date(startDateStr);
-      const end = new Date(endDateStr);
-      
-      // Calculate difference in months
-      const months = (end.getFullYear() - start.getFullYear()) * 12 + 
-                    (end.getMonth() - start.getMonth());
-      
-      // Calculate remaining days
-      const startMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-      const daysInStartMonth = startMonth.getDate();
-      const days = end.getDate() - start.getDate();
-      
-      // Adjust for negative days
-      const adjustedDays = days < 0 ? days + daysInStartMonth : days;
-      
-      const monthsText = months > 0 ? `${months} month${months > 1 ? 's' : ''}` : '';
-      const daysText = adjustedDays > 0 ? `${adjustedDays} day${adjustedDays > 1 ? 's' : ''}` : '';
-      
-      return `(${monthsText}${months > 0 && days > 0 ? ' and ' : ''}${daysText})`;
-    } catch (error) {
-      console.error('Error calculating duration:', error);
-      return '';
+  const calculateDurationText = useCallback(
+    (startDateStr: string, endDateStr: string) => {
+      try {
+        const start = new Date(startDateStr);
+        const end = new Date(endDateStr);
+
+        // Calculate difference in months
+        const months =
+          (end.getFullYear() - start.getFullYear()) * 12 +
+          (end.getMonth() - start.getMonth());
+
+        // Calculate remaining days
+        const startMonth = new Date(
+          start.getFullYear(),
+          start.getMonth() + 1,
+          0
+        );
+        const daysInStartMonth = startMonth.getDate();
+        const days = end.getDate() - start.getDate();
+
+        // Adjust for negative days
+        const adjustedDays = days < 0 ? days + daysInStartMonth : days;
+
+        const monthsText =
+          months > 0 ? `${months} month${months > 1 ? "s" : ""}` : "";
+        const daysText =
+          adjustedDays > 0
+            ? `${adjustedDays} day${adjustedDays > 1 ? "s" : ""}`
+            : "";
+
+        return `(${monthsText}${
+          months > 0 && adjustedDays > 0 ? " and " : ""
+        }${daysText})`;
+      } catch (error) {
+        console.error("Error calculating duration:", error);
+        return "";
+      }
+    },
+    []
+  );
+
+  // ---- NEW: Proceed control & hard validation ----
+  const canProceed =
+    Boolean(selectedPackage) &&
+    Boolean(formData?.startDate) &&
+    Boolean(formData?.dueDate);
+
+  const handleNext = () => {
+    if (!selectedPackage) {
+      toast.error("Please select a package first.");
+      return;
     }
-  }, []);
+    if (!formData?.startDate) {
+      toast.error("Please select a project start date.");
+      return;
+    }
+    if (!formData?.dueDate) {
+      toast.error("Please select a project due date.");
+      return;
+    }
+    onNext();
+  };
+  // ------------------------------------------------
 
   if (loading) {
     return (
@@ -160,7 +207,8 @@ export function PackageInfo({
           Select Your Package
         </h1>
         <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-          Choose the perfect package that aligns with your project needs and business goals.
+          Choose the perfect package that aligns with your project needs and
+          business goals.
         </p>
       </div>
 
@@ -265,8 +313,18 @@ export function PackageInfo({
                   ) : (
                     <span className="flex items-center gap-2">
                       Select Package
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </span>
                   )}
@@ -279,22 +337,31 @@ export function PackageInfo({
 
       {/* Date Selection Card */}
       <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-xl border border-blue-100 p-8 space-y-6 hover:shadow-2xl transition-shadow duration-300">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg">
             <Calendar className="w-5 h-5 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Project Timeline</h2>
         </div>
+        <p className="text-sm text-gray-600 -mt-2">
+          <strong>Required:</strong> Start date and due date must be selected to
+          continue.
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="group">
-            <Label htmlFor="startDate" className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+            <Label
+              htmlFor="startDate"
+              className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2"
+            >
               <Calendar className="w-4 h-4 text-blue-500" />
               Start Date
             </Label>
             <DatePicker
               id="startDate"
-              selected={formData.startDate ? new Date(formData.startDate) : null}
+              selected={
+                formData.startDate ? new Date(formData.startDate) : null
+              }
               onChange={(date: Date | null) => {
                 if (!date) {
                   updateFormData({ startDate: "", dueDate: "" });
@@ -307,7 +374,9 @@ export function PackageInfo({
                 // If a package is selected, calculate due date based on package duration
                 if (selectedPackageData?.totalMonths) {
                   const due = new Date(date);
-                  due.setMonth(due.getMonth() + selectedPackageData.totalMonths);
+                  due.setMonth(
+                    due.getMonth() + selectedPackageData.totalMonths
+                  );
                   dueDate = due.toISOString();
                 }
 
@@ -322,7 +391,9 @@ export function PackageInfo({
               dropdownMode="select"
               placeholderText="Select start date"
               className="w-full h-12 border-2 border-gray-200 rounded-xl px-4 py-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200"
-              maxDate={formData.dueDate ? new Date(formData.dueDate) : undefined}
+              maxDate={
+                formData.dueDate ? new Date(formData.dueDate) : undefined
+              }
               disabled={!selectedPackage}
               required
             />
@@ -334,7 +405,10 @@ export function PackageInfo({
           </div>
 
           <div className="group">
-            <Label htmlFor="dueDate" className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+            <Label
+              htmlFor="dueDate"
+              className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2"
+            >
               <Clock className="w-4 h-4 text-blue-500" />
               Due Date
             </Label>
@@ -342,8 +416,8 @@ export function PackageInfo({
               id="dueDate"
               selected={formData.dueDate ? new Date(formData.dueDate) : null}
               onChange={(date: Date | null) => {
-                updateFormData({ 
-                  dueDate: date ? date.toISOString() : "" 
+                updateFormData({
+                  dueDate: date ? date.toISOString() : "",
                 });
               }}
               dateFormat="MMMM d, yyyy"
@@ -352,7 +426,11 @@ export function PackageInfo({
               dropdownMode="select"
               placeholderText="Select due date"
               className="w-full h-12 border-2 border-gray-200 rounded-xl px-4 py-2 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200"
-              minDate={formData.startDate ? new Date(formData.startDate) : new Date(new Date().setHours(0, 0, 0, 0))}
+              minDate={
+                formData.startDate
+                  ? new Date(formData.startDate)
+                  : new Date(new Date().setHours(0, 0, 0, 0))
+              }
               disabled={!formData.startDate}
               required
             />
@@ -364,23 +442,28 @@ export function PackageInfo({
           </div>
         </div>
 
-        {selectedPackageData?.totalMonths && formData.startDate && formData.dueDate && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Package Duration: {selectedPackageData.totalMonths} months
-                </p>
-                <p className="text-sm text-green-700 font-medium">
-                  {calculateDurationText(formData.startDate, formData.dueDate)}
-                </p>
+        {selectedPackageData?.totalMonths &&
+          formData.startDate &&
+          formData.dueDate && (
+            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 mb-1">
+                    Package Duration: {selectedPackageData.totalMonths} months
+                  </p>
+                  <p className="text-sm text-green-700 font-medium">
+                    {calculateDurationText(
+                      formData.startDate,
+                      formData.dueDate
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
 
       {/* Navigation */}
@@ -390,19 +473,39 @@ export function PackageInfo({
           onClick={onPrevious}
           className="px-8 py-6 text-lg font-semibold border-2 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-blue-700 hover:border-blue-400 transition-all duration-200 rounded-xl"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          <svg
+            className="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 17l-5-5m0 0l5-5m-5 5h12"
+            />
           </svg>
           Previous
         </Button>
         <Button
-          onClick={onNext}
-          disabled={!selectedPackage}
+          onClick={handleNext}
+          disabled={!canProceed}
           className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
           Continue to Next Step
-          <svg className="w-5 h-5 ml-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          <svg
+            className="w-5 h-5 ml-2 inline-block"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 7l5 5m0 0l-5 5m5-5H6"
+            />
           </svg>
         </Button>
       </div>
