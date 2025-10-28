@@ -377,29 +377,31 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        for (let i = 0; i < count; i++) {
-          const src = srcList[i % srcList.length];
+        // Create tasks as: for each source (site asset) -> for each cycle index
+        for (const src of srcList) {
           const base = baseNameOf(src.name);
           const start = nextIndexByBase.get(base) ?? 1;
-          const name = `${base} - ${start + i}`;
-          const scheduleForType = (t === "social_site" || t === "web2_site" || t === "other_asset") && !!computedDueDate;
-          const dueForThis = scheduleForType ? addWorkingDays(computedDueDate as Date, 7 * i) : undefined;
-          payloads.push({
-            id: makeId(),
-            name,
-            status: "pending" as TaskStatus,
-            priority: src.priority as TaskPriority,
-            idealDurationMinutes: src.idealDurationMinutes ?? undefined,
-            completionLink: src.completionLink ?? undefined,
-            email: src.email ?? undefined,
-            password: src.password ?? undefined,
-            username: src.username ?? undefined,
-            notes: src.notes ?? undefined,
-            dueDate: dueForThis ?? undefined,
-            assignment: { connect: { id: assignment.id } },
-            client: { connect: { id: clientId } },
-            category: { connect: { id: catId } },
-          });
+          for (let cycle = 0; cycle < count; cycle++) {
+            const name = `${base} - ${start + cycle}`;
+            const scheduleForType = (t === "social_site" || t === "web2_site" || t === "other_asset") && !!computedDueDate;
+            const dueForThis = scheduleForType ? addWorkingDays(computedDueDate as Date, 7 * cycle) : undefined;
+            payloads.push({
+              id: makeId(),
+              name,
+              status: "pending" as TaskStatus,
+              priority: src.priority as TaskPriority,
+              idealDurationMinutes: src.idealDurationMinutes ?? undefined,
+              completionLink: src.completionLink ?? undefined,
+              email: src.email ?? undefined,
+              password: src.password ?? undefined,
+              username: src.username ?? undefined,
+              notes: src.notes ?? undefined,
+              dueDate: dueForThis ?? undefined,
+              assignment: { connect: { id: assignment.id } },
+              client: { connect: { id: clientId } },
+              category: { connect: { id: catId } },
+            });
+          }
         }
       }
 
@@ -634,5 +636,62 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     return fail("POST.catch", err);
+  }
+}
+
+// ================== GET ==================
+// Returns counts of qc_approved source tasks per templateSiteAsset.type for the
+// client's latest assignment to support UI estimation of total tasks.
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const clientId = searchParams.get("clientId");
+    const templateIdRaw = searchParams.get("templateId") ?? undefined;
+
+    if (!clientId) {
+      return NextResponse.json(
+        { message: "clientId is required" },
+        { status: 400 }
+      );
+    }
+
+    const templateId = templateIdRaw === "none" ? null : templateIdRaw;
+    const assignment = await prisma.assignment.findFirst({
+      where: {
+        clientId,
+        ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}),
+      },
+      orderBy: { assignedAt: "desc" },
+      select: { id: true },
+    });
+    if (!assignment) {
+      return NextResponse.json(
+        { message: "No existing assignment found for this client.", byType: {} },
+        { status: 200 }
+      );
+    }
+
+    const sourceTasks = await prisma.task.findMany({
+      where: {
+        assignmentId: assignment.id,
+        status: "qc_approved",
+        templateSiteAsset: { isNot: null },
+      },
+      select: { id: true, templateSiteAsset: { select: { type: true } } },
+    });
+
+    const byType: Record<string, number> = {};
+    for (const t of sourceTasks) {
+      const type = t.templateSiteAsset?.type as string | undefined;
+      if (!type) continue;
+      byType[type] = (byType[type] || 0) + 1;
+    }
+
+    return NextResponse.json({ byType }, { status: 200 });
+  } catch (err) {
+    return NextResponse.json(
+      { message: "Internal Server Error", error: safeErr(err) },
+      { status: 500 }
+    );
   }
 }
