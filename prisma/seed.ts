@@ -414,6 +414,8 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_am_clients_create",
     "view_notifications",
     "chat_am",
+    "client_card_client_view",
+    "client_card_delete",
   ],
 
   am_ceo: [
@@ -422,6 +424,8 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_notifications",
     "chat_am_ceo",
     "view_sales",
+    "client_card_client_view",
+    "client_card_delete",
   ],
 
   data_entry: [

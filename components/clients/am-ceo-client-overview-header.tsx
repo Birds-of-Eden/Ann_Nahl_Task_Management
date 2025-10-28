@@ -1,35 +1,43 @@
-"use client"
+// components/clients/am-ceo-client-overview-header.tsx
 
-import { useEffect } from "react"
-import { Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+"use client";
 
-type ViewMode = "grid" | "list"
+import { useEffect } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type ViewMode = "grid" | "list";
 
 interface AmCeoClientOverviewHeaderProps {
-  searchQuery: string
-  setSearchQuery: (query: string) => void
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 
-  statusFilter: string
-  setStatusFilter: (status: string) => void
+  statusFilter: string;
+  setStatusFilter: (status: string) => void;
 
-  packageFilter: string
-  setPackageFilter: (pkg: string) => void
-  packages: { id: string; name: string }[]
+  packageFilter: string;
+  setPackageFilter: (pkg: string) => void;
+  packages: { id: string; name: string }[];
 
-  amFilter: string              // 'all' | stringified id
-  setAmFilter: (amId: string) => void
-  accountManagers: { id: string | number; label: string }[]
+  amFilter: string; // 'all' | stringified id
+  setAmFilter: (amId: string) => void;
+  accountManagers: { id: string | number; label: string }[];
 
-  currentUserId?: string | number
-  currentUserRole?: string
+  currentUserId?: string | number;
+  currentUserRole?: string;
 
-  viewMode: ViewMode
-  setViewMode: (mode: ViewMode) => void
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
 
-  onAddNewClient: () => void
+  onAddNewClient: () => void;
 }
 
 export function AmCeoClientOverviewHeader({
@@ -48,26 +56,36 @@ export function AmCeoClientOverviewHeader({
   viewMode,
   setViewMode,
 }: AmCeoClientOverviewHeaderProps) {
-  const isAM = (currentUserRole ?? "").trim().toLowerCase() === "am"
-  const currentUserIdStr = currentUserId != null ? String(currentUserId) : undefined
+  const isAM = (currentUserRole ?? "").trim().toLowerCase() === "am";
+  const currentUserIdStr =
+    currentUserId != null ? String(currentUserId) : undefined;
 
   // AM হলে নিজেরটাই লক
   useEffect(() => {
     if (isAM && currentUserIdStr && amFilter !== currentUserIdStr) {
-      setAmFilter(currentUserIdStr)
+      setAmFilter(currentUserIdStr);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAM, currentUserIdStr])
+  }, [isAM, currentUserIdStr]);
 
   // 🔎 Debug helpers (চাইলে রাখুন, সমস্যা বোঝা সহজ হবে)
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.log("[AM FILTER/HEADER] isAM:", isAM, "currentUserIdStr:", currentUserIdStr, "amFilter:", amFilter)
-  }, [isAM, currentUserIdStr, amFilter])
+    console.log(
+      "[AM FILTER/HEADER] isAM:",
+      isAM,
+      "currentUserIdStr:",
+      currentUserIdStr,
+      "amFilter:",
+      amFilter
+    );
+  }, [isAM, currentUserIdStr, amFilter]);
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-6">
-      <h1 className="text-3xl font-bold text-gray-800">ALL AM&apos;s Overview</h1>
+      <h1 className="text-3xl font-bold text-gray-800">
+        ALL AM&apos;s Overview
+      </h1>
 
       <div className="flex flex-wrap items-center gap-4">
         {/* Search */}
@@ -96,7 +114,10 @@ export function AmCeoClientOverviewHeader({
 
         {/* Account Manager filter — hidden for AM users */}
         {!isAM && (
-          <Select value={amFilter ?? "all"} onValueChange={(v) => setAmFilter(v)}>
+          <Select
+            value={amFilter ?? "all"}
+            onValueChange={(v) => setAmFilter(v)}
+          >
             <SelectTrigger className="w-[220px] border-gray-200 focus:border-cyan-500 focus:ring-cyan-500">
               <SelectValue placeholder="Filter by account manager" />
             </SelectTrigger>
@@ -138,9 +159,11 @@ export function AmCeoClientOverviewHeader({
               className="px-4 py-2 data-[state=active]:bg-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md rounded-md transition-all"
             >
               <div className="grid grid-cols-3 gap-0.5 h-4 w-4">
-                {Array(9).fill(null).map((_, i) => (
-                  <div key={i} className="bg-current rounded-sm" />
-                ))}
+                {Array(9)
+                  .fill(null)
+                  .map((_, i) => (
+                    <div key={i} className="bg-current rounded-sm" />
+                  ))}
               </div>
             </TabsTrigger>
             <TabsTrigger
@@ -148,14 +171,16 @@ export function AmCeoClientOverviewHeader({
               className="px-4 py-2 data-[state=active]:bg-cyan-500 data-[state=active]:text-white data-[state=active]:shadow-md rounded-md transition-all"
             >
               <div className="flex flex-col gap-0.5 h-4 w-4">
-                {Array(3).fill(null).map((_, i) => (
-                  <div key={i} className="bg-current rounded-sm h-1" />
-                ))}
+                {Array(3)
+                  .fill(null)
+                  .map((_, i) => (
+                    <div key={i} className="bg-current rounded-sm h-1" />
+                  ))}
               </div>
             </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
