@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, RefreshCcw, Target } from "lucide-react";
+import { Loader2, RefreshCcw } from "lucide-react";
 
 interface CreateNextTaskProps {
   clientId: string;
@@ -38,6 +38,26 @@ export default function CreateNextTask({
   ] as const;
   type SiteAssetTypeLocal = (typeof SITE_ASSET_TYPES)[number];
   const [countsByType, setCountsByType] = useState<Partial<Record<SiteAssetTypeLocal, number>>>({});
+  const [assetCountsByType, setAssetCountsByType] = useState<Partial<Record<SiteAssetTypeLocal, number>>>({});
+
+  useEffect(() => {
+    if (!open) return;
+    // Fetch asset counts when dialog opens
+    const fetchAssetCounts = async () => {
+      try {
+        const res = await fetch(
+          `/api/tasks/create-dataentry-posting-tasks?clientId=${clientId}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAssetCountsByType(data.byType || {});
+        }
+      } catch (err) {
+        console.error("Failed to fetch asset counts:", err);
+      }
+    };
+    fetchAssetCounts();
+  }, [open, clientId]);
 
   const createNext = async () => {
     if (!clientId) return;
@@ -48,7 +68,7 @@ export default function CreateNextTask({
     }
     setIsLoading(true);
     try {
-      // 1) Create tasks using the new countsByType API
+      // 1) Create tasks using the countsByType API
       const createRes = await fetch("/api/tasks/create-dataentry-posting-tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,7 +259,7 @@ export default function CreateNextTask({
         onClick={() => setOpen(true)}
         disabled={isLoading}
         className="bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white h-11 rounded-xl font-semibold"
-        title="Create tasks by type and assign to last agent of Blog Posting/Social Activity if available (button will hide after creation)"
+        title="Create next cycle of tasks by type and assign to last agent (button will hide after creation)"
       >
         {isLoading ? (
           <>
@@ -261,14 +281,16 @@ export default function CreateNextTask({
               <div className="p-2 bg-gradient-to-br from-sky-500 to-cyan-600 rounded-lg">
                 <RefreshCcw className="w-5 h-5 text-white" />
               </div>
-              Create Next Tasks
+              Create Next Cycle Tasks
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Enter how many tasks to create for each SiteAssetType. We will try to assign them to the last agent who completed Blog Posting or Social Activity for this client.
+              Select asset types and specify how many cycles to create. Each cycle
+              creates tasks for all assets of that type (e.g., 5 cycles × 10 assets
+              = 50 tasks).
             </DialogDescription>
           </DialogHeader>
 
-          {/* Summary Card - Fixed position */}
+          {/* Summary Card */}
           <div className="px-6 pt-4">
             <div className="p-4 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 rounded-xl border border-sky-200 dark:border-sky-800">
               <div className="flex items-center justify-between">
@@ -293,8 +315,11 @@ export default function CreateNextTask({
                   </span>
                 </div>
                 <span className="text-3xl font-bold text-sky-600 dark:text-sky-400">
-                  {Object.values(countsByType).reduce(
-                    (sum, count) => sum + (count || 0),
+                  {Object.entries(countsByType).reduce(
+                    (sum, [type, cycles]) => {
+                      const assets = assetCountsByType[type as SiteAssetTypeLocal] || 0;
+                      return sum + (cycles || 0) * assets;
+                    },
                     0
                   )}
                 </span>
@@ -310,9 +335,21 @@ export default function CreateNextTask({
                   key={type}
                   className="group flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-md transition-all duration-200"
                 >
-                  <Label className="font-medium text-gray-700 dark:text-gray-300 text-sm flex-1 cursor-pointer capitalize">
-                    {type.replace(/_/g, " ")}
-                  </Label>
+                  <div className="flex-1">
+                    <Label className="font-medium text-gray-700 dark:text-gray-300 text-sm cursor-pointer capitalize">
+                      {type.replace(/_/g, " ")}
+                    </Label>
+                    {assetCountsByType[type] ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {assetCountsByType[type]} asset{assetCountsByType[type] !== 1 ? 's' : ''}
+                        {countsByType[type] ? (
+                          <span className="font-semibold text-sky-600 dark:text-sky-400 ml-1">
+                            → {(countsByType[type] || 0) * (assetCountsByType[type] || 0)} tasks
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
