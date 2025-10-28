@@ -115,9 +115,16 @@ export function LoginForm() {
   return (
     <Card className="bg-transparent border-none">
       <CardHeader>
-        <div className="flex items-center text-slate-500 justify-center mb-3">
-          <img src="/aan-logo.png" alt="aan-logo" />
+        <div className="flex items-center justify-center mb-3">
+          <div className="p-[3px] bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 rounded-lg">
+            <img
+              src="/birds_of_eden.jpeg"
+              alt="Boed-logo"
+              className="w-56 h-56 object-cover rounded-lg shadow-lg hover:scale-105 transition-transform duration-500 ease-out"
+            />
+          </div>
         </div>
+
         <CardTitle className="text-2xl text-white flex items-center justify-center">
           Task Management
         </CardTitle>
