@@ -48,10 +48,28 @@ export default function CreateTasksButton({
   const [countsByType, setCountsByType] = useState<
     Partial<Record<SiteAssetTypeLocal, number>>
   >({});
+  const [assetCountsByType, setAssetCountsByType] = useState<
+    Partial<Record<SiteAssetTypeLocal, number>>
+  >({});
 
   useEffect(() => {
     if (!open) return;
-  }, [open]);
+    // Fetch asset counts when dialog opens
+    const fetchAssetCounts = async () => {
+      try {
+        const res = await fetch(
+          `/api/tasks/create-dataentry-posting-tasks?clientId=${clientId}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAssetCountsByType(data.byType || {});
+        }
+      } catch (err) {
+        console.error("Failed to fetch asset counts:", err);
+      }
+    };
+    fetchAssetCounts();
+  }, [open, clientId]);
 
   const createTasks = async () => {
     const total = Object.values(countsByType).reduce(
@@ -205,11 +223,12 @@ export default function CreateTasksButton({
               <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
                 <Target className="w-5 h-5 text-white" />
               </div>
-              Task Generator
+              Task Generator Estiak
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Select asset types and specify how many task cycles to create for
-              each.
+              Select asset types and specify how many cycles to create. Each cycle
+              creates tasks for all assets of that type (e.g., 5 cycles × 10 assets
+              = 50 tasks).
             </DialogDescription>
           </DialogHeader>
 
@@ -238,8 +257,11 @@ export default function CreateTasksButton({
                   </span>
                 </div>
                 <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {Object.values(countsByType).reduce(
-                    (sum, count) => sum + (count || 0),
+                  {Object.entries(countsByType).reduce(
+                    (sum, [type, cycles]) => {
+                      const assets = assetCountsByType[type as SiteAssetTypeLocal] || 0;
+                      return sum + (cycles || 0) * assets;
+                    },
                     0
                   )}
                 </span>
@@ -255,9 +277,21 @@ export default function CreateTasksButton({
                   key={type}
                   className="group flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200"
                 >
-                  <Label className="font-medium text-gray-700 dark:text-gray-300 text-sm flex-1 cursor-pointer capitalize">
-                    {type.replace(/_/g, " ")}
-                  </Label>
+                  <div className="flex-1">
+                    <Label className="font-medium text-gray-700 dark:text-gray-300 text-sm cursor-pointer capitalize">
+                      {type.replace(/_/g, " ")}
+                    </Label>
+                    {assetCountsByType[type] ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {assetCountsByType[type]} asset{assetCountsByType[type] !== 1 ? 's' : ''}
+                        {countsByType[type] ? (
+                          <span className="font-semibold text-blue-600 dark:text-blue-400 ml-1">
+                            → {(countsByType[type] || 0) * (assetCountsByType[type] || 0)} tasks
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
