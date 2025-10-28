@@ -84,7 +84,8 @@ export type FormValues = {
   // AM
   amId?: string | null;
   // Arbitrary JSON pairs to save in Client.otherField
-  otherField?: Array<{ title: string; data: string }>;
+  // Arbitrary JSON (category + title + multiple items) -> Client.otherField (Json)
+  otherField?: Array<{ category: string; title: string; data: string[] }>;
 };
 
 type AMUser = { id: string; name: string | null; email: string | null };
@@ -153,9 +154,9 @@ export default function ClientEditModal({
         password: clientData.password ?? "",
         recoveryEmail: clientData.recoveryEmail ?? "",
         websites: Array.isArray((clientData as any).websites)
-          ? (((clientData as any).websites as string[]).filter(
+          ? ((clientData as any).websites as string[]).filter(
               (w) => typeof w === "string" && w.trim() !== ""
-            ))
+            )
           : [],
         companywebsite: clientData.companywebsite ?? "",
         companyaddress: clientData.companyaddress ?? "",
@@ -190,9 +191,9 @@ export default function ClientEditModal({
       password: clientData.password ?? "",
       recoveryEmail: clientData.recoveryEmail ?? "",
       websites: Array.isArray((clientData as any).websites)
-        ? (((clientData as any).websites as string[]).filter(
+        ? ((clientData as any).websites as string[]).filter(
             (w) => typeof w === "string" && w.trim() !== ""
-          ))
+          )
         : [],
       companywebsite: clientData.companywebsite ?? "",
       companyaddress: clientData.companyaddress ?? "",
@@ -210,25 +211,55 @@ export default function ClientEditModal({
   }, [open]);
 
   // ---- otherField (arbitrary JSON key/value pairs) ----
-  type KV = { title: string; data: string };
+  // ---- otherField (category + title + data[]) ----
+  type KV = { category: string; title: string; data: string[] };
+
   const normalizeOtherField = (raw: any): KV[] => {
     if (!raw) return [];
+    // New shape: [{ category, title, data: [] }]
+    if (
+      Array.isArray(raw) &&
+      raw.some((x) => typeof x?.category === "string")
+    ) {
+      return raw
+        .map((it) => ({
+          category: String(it?.category ?? "").trim(),
+          title: String(it?.title ?? "").trim(),
+          data: Array.isArray(it?.data)
+            ? it.data.map((d: any) => String(d ?? "").trim()).filter(Boolean)
+            : [String(it?.data ?? "").trim()].filter(Boolean),
+        }))
+        .filter((r) => r.title || r.data.length);
+    }
+    // Legacy array: [{ title, data }]
     if (Array.isArray(raw)) {
       return raw
         .map((it) => ({
-          title: String((it && (it.title ?? it.key)) ?? ""),
-          data: String((it && (it.data ?? it.value)) ?? ""),
+          category: "General",
+          title: String((it && (it.title ?? it.key ?? it.name)) ?? "").trim(),
+          data: Array.isArray(it?.data)
+            ? it.data.map((d: any) => String(d ?? "").trim()).filter(Boolean)
+            : [
+                String(
+                  (it && (it.data ?? it.value ?? it.content)) ?? ""
+                ).trim(),
+              ].filter(Boolean),
         }))
-        .filter((it) => it.title || it.data);
+        .filter((r) => r.title || r.data.length);
     }
+    // Object map fallback: { key: value }
     if (typeof raw === "object") {
       return Object.entries(raw).map(([k, v]) => ({
-        title: String(k),
-        data: String(v as any),
+        category: "General",
+        title: String(k).trim(),
+        data: Array.isArray(v)
+          ? (v as any[]).map((d) => String(d ?? "").trim()).filter(Boolean)
+          : [String(v ?? "").trim()].filter(Boolean),
       }));
     }
     return [];
   };
+
   const [otherPairs, setOtherPairs] = useState<KV[]>(
     normalizeOtherField((clientData as any).otherField)
   );
@@ -238,6 +269,41 @@ export default function ClientEditModal({
       setOtherPairs(normalizeOtherField((clientData as any).otherField));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // helpers for array item ops
+  const addRow = () =>
+    setOtherPairs((prev) => [...prev, { category: "", title: "", data: [""] }]);
+
+  const removeRow = (idx: number) =>
+    setOtherPairs((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateRowField = (idx: number, key: keyof KV, value: string) =>
+    setOtherPairs((prev) =>
+      prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r))
+    );
+
+  const addDataItem = (idx: number) =>
+    setOtherPairs((prev) =>
+      prev.map((r, i) => (i === idx ? { ...r, data: [...r.data, ""] } : r))
+    );
+
+  const updateDataItem = (rowIdx: number, dataIdx: number, value: string) =>
+    setOtherPairs((prev) =>
+      prev.map((r, i) =>
+        i === rowIdx
+          ? { ...r, data: r.data.map((d, di) => (di === dataIdx ? value : d)) }
+          : r
+      )
+    );
+
+  const removeDataItem = (rowIdx: number, dataIdx: number) =>
+    setOtherPairs((prev) =>
+      prev.map((r, i) =>
+        i === rowIdx
+          ? { ...r, data: r.data.filter((_, di) => di !== dataIdx) }
+          : r
+      )
+    );
 
   const fetchPackages = async () => {
     try {
@@ -320,10 +386,22 @@ export default function ClientEditModal({
           return acc;
         }, {} as Partial<FormValues>);
       } else {
-        const { email, phone, password, recoveryEmail, imageDrivelink, ...rest } = values;
+        const {
+          email,
+          phone,
+          password,
+          recoveryEmail,
+          imageDrivelink,
+          ...rest
+        } = values;
         const cleanedPairs = otherPairs
-          .map((p) => ({ title: p.title.trim(), data: p.data.trim() }))
-          .filter((p) => p.title || p.data);
+          .map((p) => ({
+            category: p.category.trim(),
+            title: p.title.trim(),
+            data: p.data.map((d) => d.trim()).filter(Boolean),
+          }))
+          .filter((p) => p.title || p.data.length);
+
         const webArray = (rest as any).websites as string[] | undefined;
         const cleanedWebsites = (webArray ?? [])
           .map((w) => (w || "").trim())
@@ -894,80 +972,116 @@ export default function ClientEditModal({
                 </CardContent>
               </Card>
 
-              {/* Other (Custom Title/Data Pairs) */}
+              {/* Other (Category + Title + Data[]) */}
               <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-white to-slate-50/60">
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-slate-600" />
                     Other Information
                   </h3>
-                  <div className="space-y-3">
-                    {otherPairs.map((pair, idx) => (
+
+                  <div className="space-y-4">
+                    {otherPairs.map((row, idx) => (
                       <div
                         key={idx}
-                        className="grid grid-cols-1 md:grid-cols-10 gap-2 items-center"
+                        className="rounded-xl border border-slate-200 p-4 bg-white"
                       >
-                        <div className="md:col-span-2">
-                          <Label className="text-sm font-medium text-slate-700 mb-1 block">
-                            Title
-                          </Label>
-                          <Textarea
-                            value={pair.title}
-                            onChange={(e) =>
-                              setOtherPairs((prev) =>
-                                prev.map((p, i) =>
-                                  i === idx
-                                    ? { ...p, title: e.target.value }
-                                    : p
-                                )
-                              )
-                            }
-                            className="border-slate-300"
-                          />
-                        </div>
-                        <div className="md:col-span-7">
-                          <Label className="text-sm font-medium text-slate-700 mb-1 block">
-                            Data
-                          </Label>
-                          <Textarea
-                            value={pair.data}
-                            onChange={(e) =>
-                              setOtherPairs((prev) =>
-                                prev.map((p, i) =>
-                                  i === idx ? { ...p, data: e.target.value } : p
-                                )
-                              )
-                            }
-                            className="border-slate-300"
-                          />
-                        </div>
-                        <div
-                          className="bg-red-500 flex items-center justify-center p-1 rounded cursor-pointer hover:bg-red-600 text-white mt-6"
-                          onClick={() =>
-                            setOtherPairs((prev) =>
-                              prev.filter((_, i) => i !== idx)
-                            )
-                          }
-                        >
-                          Remove
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                          {/* Category */}
+                          <div className="md:col-span-3">
+                            <Label className="text-sm font-medium text-slate-700 mb-1 block">
+                              Category
+                            </Label>
+                            <Textarea
+                              value={row.category}
+                              onChange={(e) =>
+                                updateRowField(idx, "category", e.target.value)
+                              }
+                              rows={1}
+                              className="border-slate-300"
+                              placeholder="e.g., Publications"
+                            />
+                          </div>
+
+                          {/* Title */}
+                          <div className="md:col-span-3">
+                            <Label className="text-sm font-medium text-slate-700 mb-1 block">
+                              Title
+                            </Label>
+                            <Textarea
+                              value={row.title}
+                              onChange={(e) =>
+                                updateRowField(idx, "title", e.target.value)
+                              }
+                              rows={1}
+                              className="border-slate-300"
+                              placeholder="e.g., Additional Resources"
+                            />
+                          </div>
+
+                          {/* Data items */}
+                          <div className="md:col-span-5">
+                            <Label className="text-sm font-medium text-slate-700 mb-1 block">
+                              Data Items
+                            </Label>
+                            <div className="space-y-2">
+                              {row.data.map((d, di) => (
+                                <div key={di} className="flex gap-2">
+                                  <Textarea
+                                    value={d}
+                                    onChange={(e) =>
+                                      updateDataItem(idx, di, e.target.value)
+                                    }
+                                    rows={1}
+                                    className="border-slate-300 flex-1"
+                                    placeholder="Enter link or text"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="border-slate-300 bg-red-500 text-white hover:bg-red-600 hover:text-white hover:border-red-600"
+                                    onClick={() => removeDataItem(idx, di)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Remove
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-slate-300 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600"
+                                onClick={() => addDataItem(idx)}
+                              >
+                                + Add Data Item
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Remove row */}
+                          <div className="md:col-span-1 flex items-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="border-slate-300 bg-red-500 text-white hover:bg-red-600 hover:text-white hover:border-red-600 w-full"
+                              onClick={() => removeRow(idx)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Remove
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
-                    <div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="border-slate-300 bg-green-500 hover:bg-green-600 text-white hover:text-white"
-                        onClick={() =>
-                          setOtherPairs((prev) => [
-                            ...prev,
-                            { title: "", data: "" },
-                          ])
-                        }
-                      >
-                        + Add Row
-                      </Button>
-                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-slate-300 bg-gradient-to-br from-[#3FB28C] to-[#3FB28C]/60 text-white hover:bg-[#3FB28C] hover:text-white hover:border-[#3FB28C]"
+                      onClick={addRow}
+                    >
+                      + Add Row
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

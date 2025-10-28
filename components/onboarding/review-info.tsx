@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 // --- TYPE DEFINITIONS ---
 type AMUser = { id: string; name: string | null; email: string | null };
 type SocialLink = { platform: string; url: string };
-type OtherField = { title: string; data: string };
+type OtherField = { category: string; title: string; data: string[] };
 type ArticleTopic = { topicname: string };
 
 interface OnboardingData {
@@ -115,6 +115,10 @@ const COLORS = {
     border: "border-slate-200",
   },
 } as const;
+
+// --- Helper: detect if text is a link ---
+const isLikelyUrl = (v: string) =>
+  /^https?:\/\//i.test(v) || /^[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(v);
 
 // --- REUSABLE SUB-COMPONENTS ---
 
@@ -402,6 +406,23 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
     return reviewSections.filter((s) => s.items.length > 0);
   }, [formData, fetchedData]);
 
+  const groupedOther = useMemo(() => {
+    const raw = formData.otherField || [];
+    const map = new Map<string, OtherField[]>();
+    for (const it of raw) {
+      const cat = (it?.category || "General").trim() || "General";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(it);
+    }
+    // sort by category A→Z and item title A→Z
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(
+        ([cat, items]) =>
+          [cat, items.sort((x, y) => x.title.localeCompare(y.title))] as const
+      );
+  }, [formData.otherField]);
+
   const avatarPreviewUrl = useMemo(() => {
     if (formData.profilePicture instanceof File) {
       return URL.createObjectURL(formData.profilePicture);
@@ -584,24 +605,88 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
           )}
 
           {/* Additional Information */}
-          {formData.otherField && formData.otherField.length > 0 && (
+          {groupedOther.length > 0 && (
             <ReviewSectionCard
               icon={PlusCircle}
               title="Additional Information"
               gradient="from-violet-50 to-purple-50"
             >
-              <div className="space-y-3">
-                {formData.otherField.map((item, index) => (
+              <div className="space-y-6">
+                {groupedOther.map(([category, items]) => (
                   <div
-                    key={index}
-                    className="p-4 bg-white rounded-xl border border-slate-200 hover:shadow-md transition-shadow"
+                    key={category}
+                    className="rounded-2xl border border-slate-200 overflow-hidden"
                   >
-                    <p className="font-semibold text-slate-800 text-sm mb-2">
-                      {item.title}
-                    </p>
-                    <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
-                      {item.data}
-                    </p>
+                    {/* Category header */}
+                    <div className="px-4 py-2 bg-slate-50 flex items-center justify-between">
+                      <span className="font-semibold text-slate-800">
+                        {category}
+                      </span>
+                      <Badge variant="secondary">
+                        {items.reduce((n, it) => n + (it.data?.length || 0), 0)}{" "}
+                        items
+                      </Badge>
+                    </div>
+
+                    {/* Category body */}
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-4 bg-white rounded-xl border border-slate-200"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-semibold text-slate-800 text-sm">
+                              {item.title || "(Untitled)"}
+                            </p>
+                            <Badge variant="outline">
+                              {item.data?.length || 0}
+                            </Badge>
+                          </div>
+
+                          <ul className="space-y-2">
+                            {(item.data || []).map((val, i) => {
+                              const v = String(val || "").trim();
+                              if (!v) return null;
+
+                              // clickable links
+                              if (isLikelyUrl(v)) {
+                                const href = /^https?:\/\//i.test(v)
+                                  ? v
+                                  : `https://${v}`;
+                                return (
+                                  <li
+                                    key={i}
+                                    className="flex items-start justify-between gap-2"
+                                  >
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-start gap-2 rounded-lg px-3 py-1.5 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 break-all w-full"
+                                      title={v}
+                                    >
+                                      <LinkIcon className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                                      <span className="break-words">{v}</span>
+                                    </a>
+                                  </li>
+                                );
+                              }
+
+                              // plain text
+                              return (
+                                <li
+                                  key={i}
+                                  className="text-slate-700 text-sm whitespace-pre-wrap break-words"
+                                >
+                                  {v}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

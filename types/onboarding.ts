@@ -16,27 +16,27 @@ export interface OnboardingFormData {
   startDate?: string;
   dueDate?: string;
   profilePicture?: File;
-  
+
   // Optional: reference to an existing client to fetch dynamic data (e.g., articleTopics)
   clientId?: string;
-  
+
   // Contact Information
   email?: string;
   phone?: string;
   password?: string;
   recoveryEmail?: string;
-  
+
   // Website Information
   websites?: string[];
-  
+
   // Biography
   biography?: string;
-  
+
   // Image Gallery
   imageDrivelink?: string;
   imageFolderId?: string;
   imageCount?: number;
-  
+
   // Social Media
   socialLinks: Array<{
     platform: string;
@@ -47,14 +47,19 @@ export interface OnboardingFormData {
     password?: string;
     notes?: string;
   }>;
-  
+
   // Arbitrary additional info (will be saved to Client.otherField as JSON)
-  otherField?: Array<{ title: string; data: string }>;
-  
+  // Arbitrary additional info (will be saved to Client.otherField as JSON)
+  otherField?: Array<{
+    category: string;
+    title: string;
+    data: string[]; // multiple items (links / texts)
+  }>;
+
   // Package & Template
   packageId?: string;
   templateId?: string; // ✅ Added templateId field
-  
+
   // Progress
   progress: number;
 
