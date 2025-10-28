@@ -6,9 +6,7 @@ export type Client = {
     company: string | null
     designation: string | null
     location: string | null
-    website: string | null
-    website2: string | null
-    website3: string | null
+    websites: string[] | null
     biography: string | null
     imageDrivelink: string | null
     companywebsite: string | null

@@ -97,6 +97,13 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
     };
   }, [formData.packageId, formData.templateId, formData.amId]);
 
+  // Aggregate websites once for reuse in UI and payload (dynamic, unlimited)
+  const websiteList = useMemo(() => {
+    return Array.isArray((formData as any)?.websites)
+      ? (((formData as any).websites as string[]) || [])
+      : [];
+  }, [formData]);
+
   const sections = useMemo(() => {
     const reviewSections = [];
 
@@ -124,16 +131,17 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
       ].filter((item) => item.value),
     });
 
-    // Websites
     reviewSections.push({
       id: "websites",
       icon: Globe,
       title: "Website Information",
       gradient: "from-purple-50 to-violet-50",
       items: [
-        { label: "Primary Website", value: formData.website, icon: Globe },
-        { label: "Secondary Website", value: formData.website2, icon: Globe },
-        { label: "Third Website", value: formData.website3, icon: Globe },
+        ...websiteList.map((url: string, idx: number) => ({
+          label: websiteList.length > 1 ? `Website ${idx + 1}` : "Website",
+          value: url,
+          icon: Globe,
+        })),
         {
           label: "Company Website",
           value: formData.companywebsite,
@@ -243,9 +251,8 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
         phone: formData.phone || null,
         password: formData.password || null,
         recoveryEmail: formData.recoveryEmail || null,
-        website: formData.website,
-        website2: formData.website2,
-        website3: formData.website3,
+        // include aggregated websites array for multi-site support
+        websites: websiteList,
         companywebsite: formData.companywebsite,
         companyaddress: formData.companyaddress,
         biography: formData.biography,

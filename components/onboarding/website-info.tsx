@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import type { StepProps } from "@/types/onboarding"
-import { Globe, Link as LinkIcon } from "lucide-react"
+import { Globe, Link as LinkIcon, Plus, Trash2 } from "lucide-react"
 
 export function WebsiteInfo({ formData, updateFormData, onNext, onPrevious }: StepProps) {
   return (
@@ -32,50 +32,61 @@ export function WebsiteInfo({ formData, updateFormData, onNext, onPrevious }: St
         </div>
 
         <div className="space-y-6">
-          <div className="group">
-            <Label htmlFor="website" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-blue-500" />
-              Primary Website
-            </Label>
-            <Input
-              id="website"
-              value={formData.website || ""}
-              onChange={(e) => updateFormData({ website: e.target.value })}
-              placeholder="https://example.com"
-              className="mt-2 h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 rounded-xl"
-              inputMode="url"
-            />
-          </div>
+          {(formData.websites && formData.websites.length > 0
+            ? formData.websites
+            : [""]
+          ).map((value, idx) => (
+            <div key={idx} className="group">
+              <Label htmlFor={`website-${idx}`} className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-blue-500" />
+                {idx === 0 ? "Primary Website" : `Website ${idx + 1}`}
+              </Label>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  id={`website-${idx}`}
+                  value={value || ""}
+                  onChange={(e) => {
+                    const current = [...(formData.websites ?? [])];
+                    // Ensure array has at least idx+1 length
+                    const next = current.length ? current : [""];
+                    next[idx] = e.target.value;
+                    updateFormData({ websites: next });
+                  }}
+                  placeholder="https://example.com"
+                  className="h-12 border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 rounded-xl flex-1"
+                  inputMode="url"
+                />
+                {idx > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 px-4 border-2 bg-gradient-to-br from-red-500 to-red-500 hover:from-red-600 hover:to-red-600 text-white hover:text-white"
+                    onClick={() => {
+                      const current = [...(formData.websites ?? [])];
+                      const next = current.filter((_, i) => i !== idx);
+                      updateFormData({ websites: next.length ? next : [""] });
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
 
-          <div className="group">
-            <Label htmlFor="website2" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-cyan-500" />
-              Secondary Website
-            </Label>
-            <Input
-              id="website2"
-              value={formData.website2 || ""}
-              onChange={(e) => updateFormData({ website2: e.target.value })}
-              placeholder="https://example2.com"
-              className="mt-2 h-12 border-2 border-gray-200 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 transition-all duration-200 rounded-xl"
-              inputMode="url"
-            />
-          </div>
-
-          <div className="group">
-            <Label htmlFor="website3" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-teal-500" />
-              Third Website
-            </Label>
-            <Input
-              id="website3"
-              value={formData.website3 || ""}
-              onChange={(e) => updateFormData({ website3: e.target.value })}
-              placeholder="https://example3.com"
-              className="mt-2 h-12 border-2 border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all duration-200 rounded-xl"
-              inputMode="url"
-            />
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-2 bg-gradient-to-br from-[#0594F8] to-[#6dbcf5] hover:from-[#57aeec] hover:to-[#0594F8] text-white hover:text-white"
+            onClick={() => {
+              const current = formData.websites ?? [""];
+              updateFormData({ websites: [...current, ""] });
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add another website
+          </Button>
         </div>
       </div>
 

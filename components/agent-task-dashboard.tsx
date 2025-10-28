@@ -68,9 +68,7 @@ interface ClientData {
   location: string | null;
   avatar: string | null;
   status: string | null;
-  website?: string | null;
-  website2?: string | null;
-  website3?: string | null;
+  websites?: string[] | null;
 
   // Overall (DB-saved) progress:
   progress: number;
@@ -712,9 +710,7 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
                           </div>
 
                           {/* Websites (only if present) */}
-                          {[client.website, client.website2, client.website3]
-                            .filter(Boolean)
-                            .map((url, idx) => (
+                          {client.websites?.map((url, idx) => (
                               <a
                                 key={`${client.id}-w${idx}`}
                                 href={String(url)}

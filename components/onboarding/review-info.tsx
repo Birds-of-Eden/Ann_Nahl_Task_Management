@@ -51,9 +51,7 @@ interface OnboardingData {
   phone?: string;
   password?: string;
   recoveryEmail?: string;
-  website?: string;
-  website2?: string;
-  website3?: string;
+  websites?: string[];
   companywebsite?: string;
   companyaddress?: string;
   biography?: string;
@@ -318,16 +316,24 @@ export function ReviewInfo({ formData, onPrevious }: ReviewInfoProps) {
       ].filter((item) => item.value),
     });
 
-    // Websites
+    // Websites (dynamic)
+    const websiteList = Array.isArray((formData as any).websites)
+      ? ((formData as any).websites as string[])
+      : [];
+
     reviewSections.push({
       id: "websites",
       icon: Globe,
       title: "Websites & Addresses",
       gradient: "from-purple-50 to-violet-50",
       items: [
-        { label: "Primary Website", value: formData.website, icon: Globe },
-        { label: "Secondary Website", value: formData.website2, icon: Globe },
-        { label: "Third Website", value: formData.website3, icon: Globe },
+        ...websiteList
+          .filter((url) => typeof url === "string" && url.trim() !== "")
+          .map((url: string, idx: number) => ({
+            label: websiteList.length > 1 ? `Website ${idx + 1}` : "Website",
+            value: url,
+            icon: Globe,
+          })),
         {
           label: "Company Website",
           value: formData.companywebsite,

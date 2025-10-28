@@ -46,6 +46,7 @@ type ClientWithSocial = Client & {
   phone?: string | null;
   password?: string | null;
   recoveryEmail?: string | null;
+  websites?: string[];
   amId?: string | null;
   gender?: string | null;
   accountManager?: {
@@ -65,7 +66,6 @@ type ClientWithSocial = Client & {
     password?: string | null;
     notes?: string | null;
   }>;
-  // server may also provide raw JSON under socialMedia
   socialMedia?: unknown;
 };
 
@@ -100,9 +100,7 @@ type FormValues = {
   recoveryEmail?: string | null;
 
   // websites & media
-  website?: string;
-  website2?: string;
-  website3?: string;
+  websites?: string[];
   companywebsite?: string;
   companyaddress?: string;
   biography?: string;
@@ -456,25 +454,22 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
     }
   };
 
-  const websites: string[] = useMemo(
-    () =>
-      [
-        clientData.website ?? "",
-        clientData.website2 ?? "",
-        clientData.website3 ?? "",
-        clientData.companywebsite?.startsWith("http")
-          ? clientData.companywebsite
-          : clientData.companywebsite
-          ? `https://${clientData.companywebsite}`
-          : "",
-      ].filter((url) => url && url.trim() !== ""),
-    [
-      clientData.website,
-      clientData.website2,
-      clientData.website3,
-      clientData.companywebsite,
-    ]
-  );
+  const websites: string[] = useMemo(() => {
+    const provided = Array.isArray((clientData as any).websites)
+      ? (((clientData as any).websites as string[]).filter(
+          (u) => typeof u === "string" && u.trim() !== ""
+        ))
+      : [];
+    const withCompany = clientData.companywebsite
+      ? [
+          ...provided,
+          clientData.companywebsite.startsWith("http")
+            ? clientData.companywebsite
+            : `https://${clientData.companywebsite}`,
+        ]
+      : provided;
+    return withCompany;
+  }, [(clientData as any).websites, clientData.companywebsite]);
 
   // Task-derived progress (same formula as in Tasks component)
   const normalizeStatus = (raw?: string | null) => {
@@ -546,9 +541,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       phone: clientData.phone ?? "",
       password: clientData.password ?? "",
       recoveryEmail: clientData.recoveryEmail ?? "",
-      website: clientData.website ?? "",
-      website2: clientData.website2 ?? "",
-      website3: clientData.website3 ?? "",
+      websites: clientData.websites ?? [],
       companywebsite: clientData.companywebsite ?? "",
       companyaddress: clientData.companyaddress ?? "",
       biography: (clientData as any).biography ?? "",
@@ -574,9 +567,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       phone: clientData.phone ?? "",
       password: clientData.password ?? "",
       recoveryEmail: clientData.recoveryEmail ?? "",
-      website: clientData.website ?? "",
-      website2: clientData.website2 ?? "",
-      website3: clientData.website3 ?? "",
+      websites: clientData.websites ?? [],
       companywebsite: clientData.companywebsite ?? "",
       companyaddress: clientData.companyaddress ?? "",
       biography: (clientData as any).biography ?? "",

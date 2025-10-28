@@ -25,9 +25,7 @@ export interface OnboardingFormData {
   recoveryEmail?: string;
   
   // Website Information
-  website?: string;
-  website2?: string;
-  website3?: string;
+  websites?: string[];
   
   // Biography
   biography?: string;
