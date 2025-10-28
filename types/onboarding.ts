@@ -9,6 +9,8 @@ export interface OnboardingFormData {
   companyaddress?: string;
   companywebsite?: string;
   status?: string;
+  // Profile avatar URL
+  avatar?: string;
   // AM assignment
   amId?: string;
   startDate?: string;
@@ -25,9 +27,7 @@ export interface OnboardingFormData {
   recoveryEmail?: string;
   
   // Website Information
-  website?: string;
-  website2?: string;
-  website3?: string;
+  websites?: string[];
   
   // Biography
   biography?: string;
@@ -41,6 +41,11 @@ export interface OnboardingFormData {
   socialLinks: Array<{
     platform: string;
     url: string;
+    username?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    notes?: string;
   }>;
   
   // Arbitrary additional info (will be saved to Client.otherField as JSON)

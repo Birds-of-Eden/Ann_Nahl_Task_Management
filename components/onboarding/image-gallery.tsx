@@ -400,6 +400,15 @@ export function ImageGallery({
         </div>
 
         <div className="space-y-4">
+          <Label htmlFor="avatar" className="text-sm font-semibold text-gray-700">Avatar URL (optional)</Label>
+          <Input
+            id="avatar"
+            placeholder="https://example.com/avatar.jpg"
+            value={formData.avatar || ""}
+            onChange={(e) => updateFormData({ avatar: e.target.value })}
+            className="h-12 border-2 border-gray-200 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-200 rounded-xl"
+          />
+
           <Label htmlFor="imageDrivelink" className="text-sm font-semibold text-gray-700">Google Drive Folder Link</Label>
           <div className="flex gap-3">
             <Input

@@ -92,10 +92,7 @@ export async function POST(req: NextRequest) {
       phone,
       password,
       recoveryEmail,
-
-      website,
-      website2,
-      website3,
+      websites,
       companywebsite,
       companyaddress,
       biography,
@@ -147,10 +144,7 @@ export async function POST(req: NextRequest) {
         phone,
         password,
         recoveryEmail,
-
-        website,
-        website2,
-        website3,
+        websites,
         companywebsite,
         companyaddress,
         biography,

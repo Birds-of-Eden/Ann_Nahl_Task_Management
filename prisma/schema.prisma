@@ -249,11 +249,7 @@ model Client {
   phone         String?
   password      String?
   recoveryEmail String?
-
-  website  String?
-  website2 String?
-  website3 String?
-
+  websites      Json?
   biography      String?
   imageDrivelink String?
 
