@@ -1024,7 +1024,7 @@ export default function CreatePostingTasksPage() {
                       ) : (
                         <div className="flex items-center gap-3">
                           <ListChecks className="h-6 w-6" />
-                          Create Posting Tasks for{" "}
+                          Create Posting Tasks for {" "}
                           {selectedClient?.name || "Client"}
                         </div>
                       )}
