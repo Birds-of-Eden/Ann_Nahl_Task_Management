@@ -46,7 +46,7 @@ type ClientWithSocial = Client & {
   phone?: string | null;
   password?: string | null;
   recoveryEmail?: string | null;
-  websites?: string[];
+  websites?: string[] | null;
   amId?: string | null;
   gender?: string | null;
   accountManager?: {
