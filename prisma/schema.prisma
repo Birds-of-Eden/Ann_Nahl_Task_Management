@@ -263,7 +263,9 @@ model Client {
   packageId      String?
   package        Package?  @relation(fields: [packageId], references: [id])
   startDate      DateTime?
+  renewalDate    DateTime?
   dueDate        DateTime?
+  renewalCount   Int? @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   otherField     Json?

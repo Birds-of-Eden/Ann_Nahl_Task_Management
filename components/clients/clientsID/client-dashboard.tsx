@@ -19,6 +19,7 @@ import { OtherInformation } from "./otherInformation";
 import { ArticleTopics } from "./articleTopics";
 import ExportClientTxtButton from "@/components/ExportClientTxtButton";
 import { TemplateManagement } from "./template-management";
+import { RenewPostingTasksButton } from "./renewbutton";
 
 interface ClientDashboardProps {
   clientData: Client;
@@ -31,6 +32,20 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
   const roleName = (user as any)?.role?.name ?? (user as any)?.role ?? "";
   const isClient = String(roleName).toLowerCase() === "client";
   const isAgent = String(roleName).toLowerCase() === "agent";
+  const isAdmin = String(roleName).toLowerCase().includes("admin");
+
+  // Safely derive package months (fallback 1)
+  const packageMonths = Number(((clientData as any)?.package?.totalMonths)) && Number(((clientData as any)?.package?.totalMonths)) > 0
+    ? Math.floor(Number(((clientData as any)?.package?.totalMonths)))
+    : 1;
+
+  // Due date over? Strictly in the past
+  const isDueOver = (() => {
+    const due = clientData.dueDate ? new Date(clientData.dueDate) : null;
+    if (!due || isNaN(due.getTime())) return false;
+    const now = new Date();
+    return due.getTime() < now.getTime();
+  })();
 
   const getInitials = (name: string) => {
     return name
@@ -354,11 +369,21 @@ export function ClientDashboard({ clientData }: ClientDashboardProps) {
                 </Button>
               </div>
             )}
-            {isAgent && (
+            {(isAgent) && (
             <div>
               <ExportClientTxtButton clientData={clientData} />
             </div>
             )}
+            {(isAdmin && isDueOver) && (
+              <div>
+                <RenewPostingTasksButton
+                  clientId={clientData.id}
+                  templateId={undefined}
+                  packageMonths={packageMonths}
+                />
+              </div>
+            )}
+            
           </div>
 
           <TabsContent value="profile">
