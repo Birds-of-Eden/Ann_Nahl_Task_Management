@@ -24,8 +24,11 @@ import {
 import "react-datepicker/dist/react-datepicker.css";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
-import CreateTasksButton from "./CreateTasksButton";
-import CreateNextTask from "./CreateNextTask";
+import CreateTasksButton from "./CreateTasksButtonManual";
+import CreateNextTask from "./CreateNextTaskManual";
+import CreateTasksAuto from "./CreateTasksAuto";
+import CreateNextTasksAuto from "./CreateNextTasksAuto";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ContentWritingModal from "./DataEntryContentWritingDialog";
 import ReviewRemovalModal from "./DataEmtryReviewRemovalDialog";
 import BacklinkingModal from "./DataEntryBacklinkingDialog";
@@ -130,6 +133,8 @@ export default function DataEntryCompleteTasksPanel({
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [clientName, setClientName] = useState<string>("");
   const [clientEmail, setClientEmail] = useState<string>("");
+  const [createTasksChoiceOpen, setCreateTasksChoiceOpen] = useState(false);
+  const [createNextChoiceOpen, setCreateNextChoiceOpen] = useState(false);
 
   // Content Writing Modal state
   const [contentWritingModalOpen, setContentWritingModalOpen] = useState(false);
@@ -861,13 +866,51 @@ export default function DataEntryCompleteTasksPanel({
                 </p>
               </div>
             </div>
-            <CreateTasksButton
-              clientId={clientId}
-              onTaskCreationComplete={() => {
-                setHasCreatedTasks(true);
-                load();
-              }}
-            />
+            <>
+              <Button
+                onClick={() => setCreateTasksChoiceOpen(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                Create Posting Tasks
+              </Button>
+
+              <Dialog open={createTasksChoiceOpen} onOpenChange={setCreateTasksChoiceOpen}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Choose generation mode</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4">
+                    <div className="rounded-lg border p-4">
+                      <div className="font-semibold mb-2">Auto</div>
+                      <p className="text-sm text-muted-foreground mb-3">Automatically generate posting tasks from assets and auto-assign to a data_entry user.</p>
+                      <CreateTasksAuto
+                        clientId={clientId}
+                        onTaskCreationComplete={() => {
+                          setHasCreatedTasks(true);
+                          setCreateTasksChoiceOpen(false);
+                          load();
+                        }}
+                      />
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <div className="font-semibold mb-2">Manual</div>
+                      <p className="text-sm text-muted-foreground mb-3">Pick counts per asset type and generate. Tasks will auto-assign to you.</p>
+                      <CreateTasksButton
+                        clientId={clientId}
+                        onTaskCreationComplete={() => {
+                          setHasCreatedTasks(true);
+                          setCreateTasksChoiceOpen(false);
+                          load();
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setCreateTasksChoiceOpen(false)}>Close</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
           </div>
         </CardHeader>
 
@@ -944,9 +987,49 @@ export default function DataEntryCompleteTasksPanel({
                               criteria
                             </p>
                           </div>
-                            <CreateNextTask
-                              clientId={clientId}
-                            />
+                            <>
+                              <Button
+                                onClick={() => setCreateNextChoiceOpen(true)}
+                                className="bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white h-11 rounded-xl font-semibold"
+                              >
+                                Create Remaining Tasks
+                              </Button>
+
+                              <Dialog open={createNextChoiceOpen} onOpenChange={setCreateNextChoiceOpen}>
+                                <DialogContent className="sm:max-w-lg">
+                                  <DialogHeader>
+                                    <DialogTitle>Choose generation mode</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4">
+                                    <div className="rounded-lg border p-4">
+                                      <div className="font-semibold mb-2">Auto</div>
+                                      <p className="text-sm text-muted-foreground mb-3">Create all remaining tasks and auto-assign to the top agent.</p>
+                                      <CreateNextTasksAuto
+                                        clientId={clientId}
+                                        onCreated={() => {
+                                          setCreateNextChoiceOpen(false);
+                                          load();
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="rounded-lg border p-4">
+                                      <div className="font-semibold mb-2">Manual</div>
+                                      <p className="text-sm text-muted-foreground mb-3">Use the manual flow to create remaining tasks.</p>
+                                      <CreateNextTask
+                                        clientId={clientId}
+                                        onCreated={() => {
+                                          setCreateNextChoiceOpen(false);
+                                          load();
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <Button variant="outline" onClick={() => setCreateNextChoiceOpen(false)}>Close</Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </>
                         </div>
                         {q ||
                         statusFilter !== "all" ||
