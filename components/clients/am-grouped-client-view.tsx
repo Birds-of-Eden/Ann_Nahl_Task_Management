@@ -2,12 +2,12 @@
 
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import type { Client } from "@/types/client";
 import { ClientGrid } from "./client-grid";
 import { ClientList } from "./client-list";
 
-import { ChevronDown, Package, Users } from "lucide-react";
+import { ChevronDown, Package, Users, Heart } from "lucide-react";
 import {
   ResponsiveContainer,
   Tooltip,
@@ -37,20 +37,103 @@ const STATUS_COLORS = {
   total: "#334155",
 };
 
+// ✅ localStorage key for CEO favorites
+const FAV_KEY = "ceo_favorites_v1";
+
 export function AmGroupedClientView({
   groupedClients,
   onViewDetails,
   viewMode,
 }: AmGroupedClientViewProps) {
-  // manual lock state (click)
+  // -------------------------
+  // Favorites (am_ceo only)
+  // -------------------------
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(FAV_KEY);
+      if (raw) {
+        const arr: string[] = JSON.parse(raw);
+        setFavoriteIds(new Set(arr));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const persistFavorites = (next: Set<string>) => {
+    try {
+      window.localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(next)));
+    } catch {
+      // ignore
+    }
+  };
+
+  const toggleFavorite = (clientId: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clientId)) next.delete(clientId);
+      else next.add(clientId);
+      persistFavorites(next);
+      return next;
+    });
+  };
+
+  // Flatten all clients to derive the favorites list (unique by id)
+  const allClients = useMemo<Client[]>(() => {
+    const seen = new Set<string>();
+    const out: Client[] = [];
+    for (const g of groupedClients) {
+      for (const c of g.clients) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id);
+          out.push(c);
+        }
+      }
+    }
+    return out;
+  }, [groupedClients]);
+
+  const favoriteClients = useMemo<Client[]>(
+    () => allClients.filter((c) => favoriteIds.has(c.id)),
+    [allClients, favoriteIds]
+  );
+
+  // --- Favourites hover-only expand ---
+  const favTimer = useRef<number | undefined>(undefined);
+  const [favHovered, setFavHovered] = useState(false);
+
+  const clearFavTimer = () => {
+    if (favTimer.current) {
+      window.clearTimeout(favTimer.current);
+      favTimer.current = undefined;
+    }
+  };
+
+  const handleFavEnter = () => {
+    clearFavTimer();
+    favTimer.current = window.setTimeout(() => {
+      setFavHovered(true);
+      favTimer.current = undefined;
+    }, 80); // small delay to avoid jitter
+  };
+
+  const handleFavLeave = () => {
+    clearFavTimer();
+    favTimer.current = window.setTimeout(() => {
+      setFavHovered(false);
+      favTimer.current = undefined;
+    }, 120);
+  };
+
+  // -------------------------
+  // Expand/hover behavior for AM sections
+  // -------------------------
   const [expandedManual, setExpandedManual] = useState<Record<string, boolean>>(
     {}
   );
-
-  // hover state (auto-open)
   const [hovered, setHovered] = useState<Record<string, boolean>>({});
-
-  // debounce timers per section
   const hoverTimers = useRef<Record<string, number | undefined>>({});
 
   const defaultExpanded = useMemo(() => {
@@ -77,19 +160,17 @@ export function AmGroupedClientView({
     }
   };
 
-  // section-level hover handlers (prevents header→body collapse)
   const handleMouseEnter = (id: string) => {
     clearTimer(id);
     hoverTimers.current[id] = window.setTimeout(() => {
       setHovered((h) => ({ ...h, [id]: true }));
       hoverTimers.current[id] = undefined;
-    }, 80); // small delay to avoid jitter
+    }, 80);
   };
 
   const handleMouseLeave = (id: string) => {
     clearTimer(id);
     hoverTimers.current[id] = window.setTimeout(() => {
-      // do not auto-close if it's manually locked open
       if (!expandedManual[id]) {
         setHovered((h) => ({ ...h, [id]: false }));
       }
@@ -98,7 +179,6 @@ export function AmGroupedClientView({
   };
 
   const toggleOpen = (id: string) => {
-    // clicking acts as a lock/unlock; also ensure hovered=true when locking open
     setExpandedManual((s) => {
       const next = !getIsExpanded(id);
       if (next) setHovered((h) => ({ ...h, [id]: true }));
@@ -127,6 +207,67 @@ export function AmGroupedClientView({
 
   return (
     <div className="space-y-8">
+      {/* ----------------------------- */}
+      {/* Favorites section (hover-collapsible, always on top) */}
+      {/* ----------------------------- */}
+      {favoriteClients.length > 0 && (
+        <section
+          className={`overflow-hidden rounded-xl border border-amber-200 bg-amber-50 shadow-sm transition-all duration-300 ${
+            favHovered ? "shadow-md" : "shadow-sm"
+          }`}
+          onMouseEnter={handleFavEnter}
+          onMouseLeave={handleFavLeave}
+          aria-expanded={favHovered}
+        >
+          {/* Header stays visible; body reveals on hover */}
+          <header className="flex items-center justify-between p-4 md:p-6 bg-amber-50">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700 ring-2 ring-amber-300">
+                <Heart className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-amber-800">Favorites</h2>
+                <p className="text-sm text-amber-700">
+                  Quick access to clients you starred
+                </p>
+              </div>
+            </div>
+
+            {/* subtle hint that it expands */}
+            <span
+              className={`text-xs font-medium px-2 py-1 rounded-full border transition ${
+                favHovered
+                  ? "bg-white/70 border-amber-300 text-amber-700"
+                  : "bg-white/40 border-amber-200 text-amber-600"
+              }`}
+            >
+              Hover to expand
+            </span>
+          </header>
+
+          {/* Collapsible body: hidden until hovered */}
+          <div
+            className={`transition-all duration-300 ease-out ${
+              favHovered
+                ? "opacity-100 max-h-[1200px] p-4 md:p-6"
+                : "opacity-0 max-h-0 p-0"
+            }`}
+            style={{ overflow: "hidden" }}
+          >
+            <ClientGrid
+              clients={favoriteClients}
+              onViewDetails={onViewDetails}
+              // wire favorites down so cards can render filled hearts
+              favoriteIds={favoriteIds}
+              onToggleFavorite={toggleFavorite}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* ----------------------------- */}
+      {/* Regular AM sections (existing UI/logic) */}
+      {/* ----------------------------- */}
       {groupedClients.map((group) => {
         const amId = group.am.id;
         const isOpen = getIsExpanded(amId);
@@ -179,7 +320,6 @@ export function AmGroupedClientView({
                 ? "border-gray-200 bg-gray-50 shadow-lg"
                 : "border-gray-200 bg-white shadow-sm"
             }`}
-            // ✅ section-level hover listeners
             onMouseEnter={() => handleMouseEnter(amId)}
             onMouseLeave={() => handleMouseLeave(amId)}
           >
@@ -303,6 +443,8 @@ export function AmGroupedClientView({
                   <ClientGrid
                     clients={group.clients}
                     onViewDetails={onViewDetails}
+                    favoriteIds={favoriteIds}
+                    onToggleFavorite={toggleFavorite}
                   />
                 ) : (
                   <ClientList

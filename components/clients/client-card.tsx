@@ -12,6 +12,7 @@ import {
   Trash2,
   ArrowUpCircle,
   UserRoundCheck,
+  Heart,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitialsFromName, nameToColor } from "@/utils/avatar";
@@ -44,12 +45,18 @@ interface ClientCardProps {
   /** The linked client-role user's ID for this client (needed for impersonation). */
   clientUserId?: string | null;
   onViewDetails?: () => void;
+
+  /** Favorites (am_ceo only) */
+  isFavorite?: boolean;
+  onToggleFavorite?: (clientId: string) => void;
 }
 
 export function ClientCard({
   clientId,
   clientUserId,
   onViewDetails,
+  isFavorite = false,
+  onToggleFavorite,
 }: ClientCardProps) {
   const { user, loading: permsLoading } = useUserSession();
   const [client, setClient] = useState<Client | null>(null);
@@ -177,7 +184,6 @@ export function ClientCard({
     return isNaN(d.getTime()) ? null : d;
   };
 
-  // Prefer createdAt; fallback to startDate; then dueDate
   const getBestDate = (task: any): Date | null => {
     return (
       parseDate(task?.createdAt) ||
@@ -246,7 +252,6 @@ export function ClientCard({
   // SWR key for list page
   const swrKey = "/api/clients";
 
-  // Delete handler — optimistic hide + server refresh
   async function handleDelete() {
     setIsDeleting(true);
     const ok = await handleDeleteClient(clientId, swrKey);
@@ -279,6 +284,8 @@ export function ClientCard({
     setOpenUpgrade(true);
   }
 
+  const isAmCeo = role === "am_ceo";
+
   return (
     <Card className="overflow-hidden rounded-xl shadow-lg border border-gray-100 transition-all duration-300 hover:shadow-xl hover:scale-[1.01] bg-white">
       {/* Header */}
@@ -300,7 +307,38 @@ export function ClientCard({
               <p className="text-gray-500 text-xs">{client.designation}</p>
             </div>
           </div>
+
           <div className="flex flex-col items-end gap-2">
+            {/* ⭐ Favorite (am_ceo only) */}
+            {isAmCeo && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => onToggleFavorite?.(clientId)}
+                      className={`p-2 rounded-full border transition-all ${
+                        isFavorite
+                          ? "bg-rose-50 border-rose-200 text-rose-600"
+                          : "bg-white border-gray-200 text-gray-500 hover:text-gray-700"
+                      }`}
+                      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                      aria-pressed={isFavorite}
+                    >
+                      <Heart
+                        className={`h-5 w-5 ${
+                          isFavorite ? "fill-current" : ""
+                        }`}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             <Badge
               className={
                 client.status === "active"
@@ -339,14 +377,14 @@ export function ClientCard({
               Overall Progress
             </span>
             <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">
-              {displayOverall}%
+              {Math.min(100, Math.max(0, Math.round((taskCounts.completed / (totalTasks || 1)) * 100)))}%
             </span>
           </div>
 
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden mb-2">
             <div
               className="h-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
-              style={{ width: `${displayOverall}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, Math.round((taskCounts.completed / (totalTasks || 1)) * 100)))}%` }}
             />
           </div>
 
@@ -355,14 +393,14 @@ export function ClientCard({
               This Month Progress
             </span>
             <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">
-              {displayThisMonth}%
+              {Math.min(100, Math.max(0, derivedProgressThisMonth))}%
             </span>
           </div>
 
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
             <div
               className="h-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all"
-              style={{ width: `${displayThisMonth}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, derivedProgressThisMonth))}%` }}
             />
           </div>
         </div>
@@ -404,7 +442,7 @@ export function ClientCard({
         </div>
       </CardContent>
 
-      {/* Footer */}
+      {/* Footer (unchanged) */}
       <CardFooter className="border-t border-gray-100 bg-gray-50 p-6">
         <div className="flex flex-wrap gap-3 w-full">
           {!permsLoading &&
@@ -479,7 +517,6 @@ export function ClientCard({
         onConfirm={handleDelete}
       />
 
-      {/* Package Upgrade Dialog */}
       <PackageUpgradeDialog
         open={openUpgrade}
         onOpenChange={setOpenUpgrade}
