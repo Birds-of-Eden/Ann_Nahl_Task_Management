@@ -206,7 +206,7 @@ function takeLatest<T extends Record<string, any>>(
 }
 
 export function AdminDashboard() {
-  const [timeRange, setTimeRange] = useState("month");
+  const [timeRange, setTimeRange] = useState("this_month");
   const [dashboardData, setDashboardData] = useState<DashboardStats | null>(
     null
   );
@@ -219,7 +219,7 @@ export function AdminDashboard() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/dashboardStats", { cache: "no-store" });
+        const res = await fetch(`/api/dashboardStats?range=${encodeURIComponent(timeRange)}` , { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
         const data = (await res.json()) as DashboardStats;
         setDashboardData(data);
@@ -358,10 +358,10 @@ export function AdminDashboard() {
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="week">Last Week</SelectItem>
-              <SelectItem value="month">Last Month</SelectItem>
-              <SelectItem value="quarter">Last Quarter</SelectItem>
-              <SelectItem value="year">Last Year</SelectItem>
+              <SelectItem value="this_week">This Week</SelectItem>
+              <SelectItem value="this_month">This Month</SelectItem>
+              <SelectItem value="this_quarter">This Quarter</SelectItem>
+              <SelectItem value="this_year">This Year</SelectItem>
             </SelectContent>
           </Select>
         </div>
