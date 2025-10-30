@@ -147,10 +147,6 @@ export default function AMCEOSalesPage() {
         setQuery={setQuery}
       />
 
-      <RetentionGauge
-        active={summary?.active ?? 0}
-        expired={summary?.expired ?? 0}
-      />
       <TopPackagesShareRace packageSales={packageSales} />
 
       <ChartsSection
