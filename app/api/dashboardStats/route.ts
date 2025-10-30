@@ -1,4 +1,4 @@
-// app/api/dashboard/route.ts
+// app/api/dashboardStats/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -197,20 +197,14 @@ export async function GET(_request: NextRequest) {
       count: group._count.roleId
     }));
 
-    const completedTasksWithDuration = await prisma.task.findMany({
-      where: { status: "completed", actualDurationMinutes: { not: null } },
-      select: { actualDurationMinutes: true },
+    // Average Task Time = total actualDurationMinutes / total tasks
+    const durationAgg = await prisma.task.aggregate({
+      _sum: { actualDurationMinutes: true },
     });
-
-    const avgCompletionTime =
-      completedTasksWithDuration.length > 0
-        ? Math.round(
-            completedTasksWithDuration.reduce(
-              (sum, t) => sum + (t.actualDurationMinutes || 0),
-              0
-            ) / completedTasksWithDuration.length
-          )
-        : 0;
+    const totalDurationMinutes = durationAgg._sum.actualDurationMinutes || 0;
+    const avgCompletionTime = totalTasks > 0
+      ? Math.round(totalDurationMinutes / totalTasks)
+      : 0;
 
     const performanceRatings = await prisma.task.groupBy({
       by: ["performanceRating"],
