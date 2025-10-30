@@ -2,8 +2,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const range = searchParams.get("range") || "this_month"; // this_week | this_month | this_quarter | this_year
+
+    // Helpers for current period bounds
+    const now = new Date();
+    const startOfWeekMonday = new Date(now);
+    const day = startOfWeekMonday.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = (day + 6) % 7; // Mon=0, Tue=1, ... Sun=6
+    startOfWeekMonday.setDate(startOfWeekMonday.getDate() - diffToMonday);
+    startOfWeekMonday.setHours(0, 0, 0, 0);
+    const endOfWeekFriday = new Date(startOfWeekMonday);
+    endOfWeekFriday.setDate(startOfWeekMonday.getDate() + 4); // Mon+4 = Fri
+    endOfWeekFriday.setHours(23, 59, 59, 999);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const quarter = Math.floor(now.getMonth() / 3); // 0..3
+    const startOfQuarter = new Date(now.getFullYear(), quarter * 3, 1, 0, 0, 0, 0);
+    const endOfQuarter = new Date(now.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59, 999);
+
+    const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    const getRangeBounds = () => {
+      switch (range) {
+        case "this_week":
+          return { start: startOfWeekMonday, end: endOfWeekFriday };
+        case "this_quarter":
+          return { start: startOfQuarter, end: endOfQuarter };
+        case "this_year":
+          return { start: startOfYear, end: endOfYear };
+        case "this_month":
+        default:
+          return { start: startOfMonth, end: endOfMonth };
+      }
+    };
+    const { start: rangeStart, end: rangeEnd } = getRangeBounds();
     // ---------- Core, recent, and analytics (existing logic) ----------
     const [
       totalClients,
@@ -113,26 +151,11 @@ export async function GET(_request: NextRequest) {
         },
       }),
 
-      prisma.task.count({
-        where: {
-          completedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-      prisma.task.count({
-        where: {
-          completedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-      prisma.client.count({
-        where: {
-          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-      prisma.client.count({
-        where: {
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }),
+      // This Week (Mon–Fri), This Month, etc via rangeStart-rangeEnd for consistency
+      prisma.task.count({ where: { completedAt: { gte: startOfWeekMonday, lte: endOfWeekFriday } } }),
+      prisma.task.count({ where: { completedAt: { gte: startOfMonth, lte: endOfMonth } } }),
+      prisma.client.count({ where: { createdAt: { gte: startOfWeekMonday, lte: endOfWeekFriday } } }),
+      prisma.client.count({ where: { createdAt: { gte: startOfMonth, lte: endOfMonth } } }),
 
       prisma.activityLog.findMany({
         take: 20,
@@ -147,14 +170,7 @@ export async function GET(_request: NextRequest) {
     const taskCompletionRate =
       totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    const clientGrowthRate =
-      clientsAddedThisWeek > 0
-        ? Math.round(
-            ((clientsAddedThisMonth - clientsAddedThisWeek) /
-              clientsAddedThisWeek) *
-              100
-          )
-        : 0;
+    const clientGrowthRate = 0; // Simplified; can be extended for period-over-period
 
     const teamEfficiency =
       teamsWithMembers.length > 0
@@ -249,6 +265,14 @@ export async function GET(_request: NextRequest) {
       recentTasks: [],
     }));
 
+    // Compute metrics for the current selected range
+    const tasksCompletedInRange = await prisma.task.count({
+      where: { completedAt: { gte: rangeStart, lte: rangeEnd } },
+    });
+    const clientsAddedInRange = await prisma.client.count({
+      where: { createdAt: { gte: rangeStart, lte: rangeEnd } },
+    });
+
     // ---------- Assemble final payload ----------
     const dashboardStats = {
       overview: {
@@ -314,6 +338,13 @@ export async function GET(_request: NextRequest) {
         tasksCompletedThisMonth,
         clientsAddedThisWeek,
         clientsAddedThisMonth,
+        currentRange: {
+          range,
+          start: rangeStart,
+          end: rangeEnd,
+          tasksCompleted: tasksCompletedInRange,
+          clientsAdded: clientsAddedInRange,
+        },
       },
 
       recent: {
