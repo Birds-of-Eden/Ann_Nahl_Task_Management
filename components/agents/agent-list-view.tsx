@@ -28,6 +28,7 @@ import { MoreHorizontal, Edit, Trash2, Eye, Users, Mail, Phone, Calendar } from 
 import { Agent } from "../task-distribution/distribution-types"
 import { getCategoryBadge } from "./category-badge"
 import { getStatusBadge } from "./status-badge"
+import { useRoleSegment } from "@/lib/hooks/use-role-segment"
 
 interface AgentListViewProps {
   agents: Agent[]
@@ -48,6 +49,7 @@ export function AgentListView({ agents, onDelete, onViewDetails }: AgentListView
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [agentToDeleteId, setAgentToDeleteId] = useState<string | null>(null)
   const router = useRouter()
+  const roleSegment = useRoleSegment()
 
   const confirmDelete = (agentId: string) => {
     setAgentToDeleteId(agentId)
@@ -62,8 +64,8 @@ export function AgentListView({ agents, onDelete, onViewDetails }: AgentListView
     }
   }
 
-  const goProfile = (id: string) => router.push(`/admin/agents/${id}`)
-  const goEdit = (id: string) => router.push(`/admin/agents/${id}/edit`)
+  const goProfile = (id: string) => router.push(`/${roleSegment}/agents/${id}`)
+  const goEdit = (id: string) => router.push(`/${roleSegment}/agents/${id}/edit`)
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900 shadow-lg">

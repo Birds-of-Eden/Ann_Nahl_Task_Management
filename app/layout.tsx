@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Task Management Ann Nahl",
-  description: "Task Management Ann Nahl",
+  title: "Task Management Birds of Eden",
+  description: "Task Management Birds of Eden",
 };
 
 export default function RootLayout({

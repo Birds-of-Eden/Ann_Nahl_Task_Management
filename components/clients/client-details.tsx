@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/collapsible";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 // ✅ Drop-in full-page version of the old modal UI
 // Place this file at: app/clients/[clientId]/page.tsx
@@ -66,6 +67,7 @@ export default function ClientDetailsPage({
   clientId: string;
 }) {
   const router = useRouter();
+  const roleSegment = useRoleSegment();
 
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +130,7 @@ export default function ClientDetailsPage({
         <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" asChild className="rounded-full">
-              <Link href="/admin/clients">
+              <Link href={`/${roleSegment}/clients`}>
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>

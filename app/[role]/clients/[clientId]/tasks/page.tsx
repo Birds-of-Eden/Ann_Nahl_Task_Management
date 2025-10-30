@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useRoleSegment } from "@/lib/hooks/use-role-segment"
 
 // Type Definitions
 type TaskStatus = "pending" | "inProgress" | "completed" | "unassigned"
@@ -115,6 +116,7 @@ type ClientData = {
 export default function TasksPage() {
   const params = useParams()
   const router = useRouter()
+  const roleSegment = useRoleSegment()
   const clientId = params.clientId as string // Ensure clientId is string
 
   const [clientData, setClientData] = useState<ClientData | null>(null)
@@ -236,7 +238,7 @@ export default function TasksPage() {
   }
 
   const handleGoBack = () => {
-    router.push("/admin/clients") // Assuming this is the correct path
+    router.push(`/${roleSegment}/clients`)
   }
 
   const filteredTeamMembers =

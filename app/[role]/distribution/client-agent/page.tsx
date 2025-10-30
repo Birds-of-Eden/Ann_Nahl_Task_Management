@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 import {
   Card,
@@ -76,6 +77,8 @@ type Client = {
 
 export default function ClientUnifiedDashboard() {
   const router = useRouter();
+  const roleSegment = useRoleSegment();
+  const distributionBasePath = `/${roleSegment}/distribution/client-agent`;
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -127,7 +130,7 @@ export default function ClientUnifiedDashboard() {
 
   /** ---------- Routes ---------- */
   const openDistribution = (clientId: string) => {
-    router.push(`/admin/distribution/client-agent/${clientId}`);
+    router.push(`${distributionBasePath}/${clientId}`);
   };
 
   const conditionalRouteAndLabel = (client: Client) => {
@@ -139,9 +142,7 @@ export default function ClientUnifiedDashboard() {
         label: "Show Tasks",
         icon: <Layers className="h-4 w-4" />,
         go: () =>
-          router.push(
-            `/admin/distribution/client-agent/tasks?clientId=${client.id}`
-          ),
+          router.push(`${distributionBasePath}/tasks?clientId=${client.id}`),
         klass:
           "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white",
       };
@@ -151,7 +152,7 @@ export default function ClientUnifiedDashboard() {
         label: "Create Tasks",
         icon: <Target className="h-4 w-4" />,
         go: () =>
-          router.push(`/admin/distribution/client-agent/client/${client.id}`),
+          router.push(`${distributionBasePath}/client/${client.id}`),
         klass:
           "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white",
       };
@@ -160,8 +161,7 @@ export default function ClientUnifiedDashboard() {
     return {
       label: "View Details",
       icon: <Building2 className="h-4 w-4" />,
-      go: () =>
-        router.push(`/admin/distribution/client-agent/client/${client.id}`),
+      go: () => router.push(`${distributionBasePath}/client/${client.id}`),
       klass:
         "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white",
     };

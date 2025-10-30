@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 import {
   Card,
   CardContent,
@@ -356,6 +357,8 @@ export default function CreatePostingTasksPage() {
   const params = useParams();
   const router = useRouter();
   const clientId = params.clientId as string;
+  const roleSegment = useRoleSegment();
+  const distributionBasePath = `/${roleSegment}/distribution/client-agent`;
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
@@ -606,9 +609,7 @@ export default function CreatePostingTasksPage() {
               <CardTitle className="text-3xl font-bold mb-2 flex items-center gap-3">
               
                   <Button
-                    onClick={() =>
-                      router.push(`/admin/distribution/client-agent`)
-                    }
+                    onClick={() => router.push(distributionBasePath)}
                     variant="outline"
                     className="flex items-center gap-2 text-gray-600 font-semibold"
                   >

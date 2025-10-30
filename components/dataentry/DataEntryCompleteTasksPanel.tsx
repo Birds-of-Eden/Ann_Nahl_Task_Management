@@ -97,6 +97,8 @@ export default function DataEntryCompleteTasksPanel({
   clientId: string;
 }) {
   const router = useRouter();
+  const roleSegment = useRoleSegment();
+  const distributionBasePath = `/${roleSegment}/distribution/client-agent`;
   const { user } = useUserSession();
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<DETask[]>([]);
@@ -420,8 +422,8 @@ export default function DataEntryCompleteTasksPanel({
       toast.warning("Please complete & QC-approve all tasks first.");
       return;
     }
-    // Follow ClientUnifiedDashboard: route to admin creation page
-    router.push(`/admin/distribution/client-agent/client/${clientId}`);
+    // Follow ClientUnifiedDashboard: route to role-scoped creation page
+    router.push(`${distributionBasePath}/client/${clientId}`);
   };
 
   const resetModal = () => {

@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 import {
   Card,
   CardContent,
@@ -232,6 +233,8 @@ const cycleGrad = (n: number) => {
 export default function CreatedTasksPage() {
   const router = useRouter();
   const params = useSearchParams();
+  const roleSegment = useRoleSegment();
+  const distributionBasePath = `/${roleSegment}/distribution/client-agent`;
 
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -407,7 +410,7 @@ export default function CreatedTasksPage() {
   const toggleCycle = (key: string) =>
     setExpandedCycles((s) => ({ ...s, [key]: !s[key] }));
 
-  const goBack = () => router.push("/admin/distribution/client-agent");
+  const goBack = () => router.push(distributionBasePath);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-cyan-50">

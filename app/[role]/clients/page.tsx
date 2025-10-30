@@ -10,9 +10,12 @@ import { ClientStatusSummary } from "@/components/clients/client-status-summary"
 import { ClientGrid } from "@/components/clients/client-grid";
 import { ClientList } from "@/components/clients/client-list";
 import type { Client } from "@/types/client";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 export default function ClientsPage() {
   const router = useRouter();
+  const roleSegment = useRoleSegment();
+
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -78,13 +81,16 @@ export default function ClientsPage() {
     fetchPackages();
   }, [fetchPackages]);
 
-  const handleViewClientDetails = (client: Client) => {
-    router.push(`/admin/clients/${client.id}`);
-  };
+  const handleViewClientDetails = useCallback(
+    (client: Client) => {
+      router.push(`/${roleSegment}/clients/${client.id}`);
+    },
+    [router, roleSegment]
+  );
 
-  const handleAddNewClient = () => {
-    router.push("clients/onboarding");
-  };
+  const handleAddNewClient = useCallback(() => {
+    router.push(`/${roleSegment}/clients/onboarding`);
+  }, [router, roleSegment]);
 
   const filteredClients = clients.filter((client) => {
     if (statusFilter !== "all" && client.status !== statusFilter) return false;
