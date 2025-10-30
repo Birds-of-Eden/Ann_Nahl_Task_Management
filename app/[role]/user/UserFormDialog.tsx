@@ -394,41 +394,7 @@ export default function UserFormDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* First/Last Name (required) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="firstName">
-                First name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="firstName"
-                value={formData.firstName || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    firstName: e.target.value,
-                  }))
-                }
-                placeholder="e.g. Jane"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="lastName">
-                Last name <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="lastName"
-                value={formData.lastName || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
-                }
-                placeholder="e.g. Doe"
-              />
-            </div>
-          </div>
-
-          {/* Role */}
+                  {/* Role */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="role">
               Role <span className="text-red-500">*</span>
@@ -472,15 +438,34 @@ export default function UserFormDialog({
                 value={formData.clientId ?? undefined}
                 onValueChange={(value) => {
                   const selected = clients.find((c) => c.id === value);
-                  setFormData((prev) => ({
-                    ...prev,
-                    clientId: value,
-                    // optional auto-fill from client:
-                    email: selected?.email ?? prev.email,
-                    phone: selected?.phone ?? prev.phone,
-                    address: selected?.address ?? prev.address,
-                    biography: selected?.biography ?? prev.biography,
-                  }));
+                  setFormData((prev) => {
+                    // derive first/last name from client name if available
+                    const fullName = (selected?.name || "").trim();
+                    let derivedFirst = prev.firstName || "";
+                    let derivedLast = prev.lastName || "";
+                    if (fullName) {
+                      const parts = fullName.split(/\s+/);
+                      const f = parts[0] || "";
+                      const l = parts.slice(1).join(" ") || "";
+                      derivedFirst = f || derivedFirst;
+                      derivedLast = l || derivedLast;
+                    }
+
+                    const composedName = `${derivedFirst}${derivedLast ? ` ${derivedLast}` : ""}`;
+
+                    return {
+                      ...prev,
+                      clientId: value,
+                      // optional auto-fill from client:
+                      email: selected?.email ?? prev.email,
+                      phone: selected?.phone ?? prev.phone,
+                      address: selected?.address ?? prev.address,
+                      biography: selected?.biography ?? prev.biography,
+                      firstName: derivedFirst,
+                      lastName: derivedLast,
+                      name: composedName || prev.name,
+                    };
+                  });
                 }}
               >
                 <SelectTrigger id="client" className="w-full">
@@ -506,6 +491,40 @@ export default function UserFormDialog({
               </Select>
             </div>
           )}
+
+        <div className="grid gap-4 py-4">
+          {/* First/Last Name (required) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="firstName">
+                First name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="firstName"
+                value={formData.firstName || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    firstName: e.target.value,
+                  }))
+                }
+                placeholder="e.g. Jane"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="lastName">
+                Last name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="lastName"
+                value={formData.lastName || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, lastName: e.target.value }))
+                }
+                placeholder="e.g. Doe"
+              />
+            </div>
+          </div>
 
           {/* Email & Password */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -597,58 +616,69 @@ export default function UserFormDialog({
 
           {/* Biography */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="biography">Biography</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="biography">Biography</Label>
+              <span className="text-sm text-muted-foreground">
+                {formData.biography ? formData.biography.trim().split(/\s+/).filter(Boolean).length : 0}/100 words
+              </span>
+            </div>
             <Textarea
               id="biography"
               value={formData.biography}
-              onChange={(e) =>
-                setFormData({ ...formData, biography: e.target.value })
-              }
-              placeholder="Write a short bio here..."
+              onChange={(e) => {
+                const words = e.target.value.trim().split(/\s+/).filter(Boolean);
+                if (words.length <= 100) {
+                  setFormData({ ...formData, biography: e.target.value });
+                }
+              }}
+              placeholder="Write a short bio here... (max 100 words)"
               className="h-[20vh]"
+              maxLength={500}
             />
           </div>
 
-          {/* Team & Status */}
+          {/* Status (and Team if not Client role) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="team">Team</Label>
-              <Select
-                value={formData.teamId || "none"}
-                onValueChange={async (value) => {
-                  const teamName =
-                    value === "none"
-                      ? ""
-                      : teams.find((t) => t.id === value)?.name || "";
+            {!isClientRole && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="team">Team</Label>
+                <Select
+                  value={formData.teamId || "none"}
+                  onValueChange={async (value) => {
+                    const teamName =
+                      value === "none"
+                        ? ""
+                        : teams.find((t) => t.id === value)?.name || "";
 
-                  setFormData((prev) => ({
-                    ...prev,
-                    teamId: value === "none" ? "" : value,
-                    category: teamName,
-                  }));
+                    setFormData((prev) => ({
+                      ...prev,
+                      teamId: value === "none" ? "" : value,
+                      category: teamName,
+                    }));
 
-                  if (mode === "edit" && initialUser?.id && value !== "none") {
-                    await assignTeam(initialUser.id, value);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      loadingTeams ? "Loading teams..." : "Select team"
+                    if (mode === "edit" && initialUser?.id && value !== "none") {
+                      await assignTeam(initialUser.id, value);
                     }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No team</SelectItem>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingTeams ? "Loading teams..." : "Select team"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No team</SelectItem>
+                    {teams.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="status">Status</Label>

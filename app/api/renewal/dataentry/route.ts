@@ -1,3 +1,4 @@
+// app/api/renewal/dataentry/route.ts
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -5,7 +6,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import type { TaskPriority, TaskStatus, SiteAssetType } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
-// ================== CONSTANTS ==================
+// ---- constants
 const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "social_site",
   "web2_site",
@@ -16,7 +17,6 @@ const ALLOWED_ASSET_TYPES: SiteAssetType[] = [
   "summary_report",
   "guest_posting",
 ];
-
 const CAT_SOCIAL_ACTIVITY = "Social Activity";
 const CAT_BLOG_POSTING = "Blog Posting";
 const CAT_SOCIAL_COMMUNICATION = "Social Communication";
@@ -27,20 +27,15 @@ const CAT_REVIEW_REMOVAL = "Review Removal";
 const CAT_SUMMARY_REPORT = "Summary Report";
 
 const WEB2_FIXED_PLATFORMS = ["medium", "tumblr", "wordpress"] as const;
-const PLATFORM_META: Record<
-  (typeof WEB2_FIXED_PLATFORMS)[number],
-  { label: string; url: string }
-> = {
+const PLATFORM_META: Record<"medium" | "tumblr" | "wordpress", { label: string; url: string }> = {
   medium: { label: "Medium", url: "https://medium.com/" },
   tumblr: { label: "Tumblr", url: "https://www.tumblr.com/" },
   wordpress: { label: "Wordpress", url: "https://wordpress.com/" },
 };
 
-// ================== SMALL UTILS ==================
+// ---- helpers
 const makeId = () =>
-  `task_${Date.now()}_${
-    globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
-  }`;
+  `task_${Date.now()}_${globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
 
 function normalizeTaskPriority(v: unknown): TaskPriority {
   switch (String(v ?? "").toLowerCase()) {
@@ -55,6 +50,47 @@ function normalizeTaskPriority(v: unknown): TaskPriority {
     default:
       return "medium";
   }
+}
+
+// ================== WORKING-DAY HELPERS ==================
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function dateOnly(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(startDate: Date, days: number): Date {
+  const copy = new Date(startDate);
+  copy.setDate(copy.getDate() + days);
+  return dateOnly(copy);
+}
+
+function addWorkingDays(startDate: Date, workingDays: number): Date {
+  const result = dateOnly(startDate);
+  let daysToAdd = workingDays;
+  while (daysToAdd > 0) {
+    result.setDate(result.getDate() + 1);
+    if (!isWeekend(result)) {
+      daysToAdd--;
+    }
+  }
+  return dateOnly(result);
+}
+
+function monthsBetweenInclusive(d1: Date, d2: Date): number {
+  const a = new Date(d1.getFullYear(), d1.getMonth(), 1);
+  const b = new Date(d2.getFullYear(), d2.getMonth(), 1);
+  const diff = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+  return Math.max(diff + 1, 0);
+}
+
+function toLocalMiddayISOString(d: Date): string {
+  const local = new Date(d);
+  local.setHours(12, 0, 0, 0);
+  return local.toISOString();
 }
 
 function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
@@ -78,79 +114,19 @@ function resolveCategoryFromType(assetType?: SiteAssetType | null): string {
       return CAT_SOCIAL_ACTIVITY;
   }
 }
-
 function baseNameOf(name: string): string {
   return String(name).replace(/\s*-\s*\d+$/i, "").trim();
 }
-
-function safeErr(err: unknown) {
-  const anyErr = err as any;
-  return {
-    name: anyErr?.name ?? null,
-    code: anyErr?.code ?? null,
-    message: anyErr?.message ?? String(anyErr),
-    meta: anyErr?.meta ?? null,
-  };
-}
-
-function fail(stage: string, err: unknown, http = 500) {
-  const e = safeErr(err);
-  console.error(`[remain-tasks-create-and-distrubution] ${stage} ERROR:`, err);
-  return NextResponse.json(
-    { message: "Internal Server Error", stage, error: e },
-    { status: http }
-  );
-}
-
-// ================== WORKING-DAY HELPERS ==================
-function isWeekend(date: Date): boolean {
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
-
-function addWorkingDays(startDate: Date, workingDays: number): Date {
-  const result = new Date(startDate);
-  let daysToAdd = workingDays;
-  while (daysToAdd > 0) {
-    result.setDate(result.getDate() + 1);
-    if (!isWeekend(result)) daysToAdd--;
-  }
-  return result;
-}
-
-function dateOnly(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function addDays(startDate: Date, days: number): Date {
-  const copy = new Date(startDate);
-  copy.setDate(copy.getDate() + days);
-  return dateOnly(copy);
-}
-
-// Inclusive month count: counts the start month and end month if any overlap
-function monthsBetweenInclusive(d1: Date, d2: Date): number {
-  const a = new Date(d1.getFullYear(), d1.getMonth(), 1);
-  const b = new Date(d2.getFullYear(), d2.getMonth(), 1);
-  const diff = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-  return Math.max(diff + 1, 0);
-}
-
-// ================== PLATFORM PARSING ==================
-function normalizeStr(str: string) {
+function normalize(str: string) {
   return String(str).toLowerCase().replace(/\s+/g, " ").trim();
 }
-
-function matchPlatformFromWeb2Name(
-  name: string
-): "medium" | "tumblr" | "wordpress" | null {
-  const n = normalizeStr(name);
+function matchPlatformFromWeb2Name(name: string): "medium" | "tumblr" | "wordpress" | null {
+  const n = normalize(name);
   if (/\bmedium\b/.test(n)) return "medium";
   if (/\btumblr\b/.test(n)) return "tumblr";
   if (/\bwordpress\b/.test(n) || /\bword\s*press\b/.test(n)) return "wordpress";
   return null;
 }
-
 function collectWeb2PlatformSources(
   srcTasks: {
     name: string;
@@ -184,129 +160,147 @@ function collectWeb2PlatformSources(
     const idealDurationMinutes = t.idealDurationMinutes ?? null;
     if (!username || !email || !password || !url) continue;
     if (!map.has(p)) {
-      map.set(p, {
-        username,
-        email,
-        password,
-        url,
-        label: PLATFORM_META[p].label,
-        idealDurationMinutes,
-      });
+      map.set(p, { username, email, password, url, label: PLATFORM_META[p].label, idealDurationMinutes });
     }
   }
   return map;
 }
 
-// ================== ASSIGNEE: pick Top Agent ==================
-async function findTopAgentForClient(clientId: string) {
-  try {
-    const agentTaskCounts = await prisma.task.groupBy({
-      by: ["assignedToId"],
-      where: { clientId, assignedToId: { not: null } },
-      _count: { id: true },
-      orderBy: { _count: { id: "desc" } },
-      take: 1,
-    });
-
-    if (agentTaskCounts.length > 0 && agentTaskCounts[0].assignedToId) {
-      const topAgentId = agentTaskCounts[0].assignedToId!;
-      const agent = await prisma.user.findUnique({
-        where: { id: topAgentId },
-        select: { id: true, name: true, email: true },
-      });
-      if (agent) return agent;
-    }
-
-    // Fallback (agent/data_entry/staff)
-    const available = await prisma.user.findFirst({
-      where: { role: { name: { in: ["agent", "data_entry", "staff"] } } },
-      select: { id: true, name: true, email: true },
-      orderBy: { createdAt: "asc" },
-    });
-    return available;
-  } catch (error) {
-    console.error("Error finding top agent:", error);
-    return null;
-  }
+function safeErr(err: unknown) {
+  const anyErr = err as any;
+  return {
+    name: anyErr?.name ?? null,
+    code: anyErr?.code ?? null,
+    message: anyErr?.message ?? String(anyErr),
+    meta: anyErr?.meta ?? null,
+  };
+}
+function fail(stage: string, err: unknown, http = 500) {
+  const e = safeErr(err);
+  console.error(`[renewal/dataentry] ${stage} ERROR:`, err);
+  return NextResponse.json({ message: "Internal Server Error", stage, error: e }, { status: http });
 }
 
-// ================== POST: create remaining tasks with defaultPostingFrequency ==================
+// ---- last-agent (inline version of /api/last-agent-for-client)
+async function findLastAgentForClient(clientId: string) {
+  const preferredStatuses = ["completed", "qc_approved", "data_entered"] as const;
+
+  // try preferred statuses
+  let last = await prisma.task.findFirst({
+    where: { clientId, assignedToId: { not: null }, status: { in: preferredStatuses as any } },
+    orderBy: [{ completedAt: "desc" }, { updatedAt: "desc" }],
+    select: { assignedTo: { select: { id: true, name: true, email: true } } },
+  });
+
+  if (last?.assignedTo) return last.assignedTo;
+
+  // fallback any assigned
+  last = await prisma.task.findFirst({
+    where: { clientId, assignedToId: { not: null } },
+    orderBy: [{ updatedAt: "desc" }],
+    select: { assignedTo: { select: { id: true, name: true, email: true } } },
+  });
+  if (last?.assignedTo) return last.assignedTo;
+
+  // team member by completedTasks
+  const ctm = await prisma.clientTeamMember.findFirst({
+    where: { clientId },
+    orderBy: [{ completedTasks: "desc" }, { assignedDate: "desc" }],
+    select: { agent: { select: { id: true, name: true, email: true } } },
+  });
+  if (ctm?.agent) return ctm.agent;
+
+  // account manager
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { accountManager: { select: { id: true, name: true, email: true } } },
+  });
+  return client?.accountManager ?? null;
+}
+
+// ---- POST
+// Body: { clientId, templateId?, renewalDate: ISO, assignToUserId?: string, onlyType?, includeAssetIds?, excludeAssetIds?, priority? }
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const clientId: string | undefined = body?.clientId;
     const templateIdRaw: string | undefined = body?.templateId;
-    const onlyType: SiteAssetType | undefined = body?.onlyType;
-    const overridePriority = body?.priority
-      ? normalizeTaskPriority(body?.priority)
+    const renewalDateISO: string | undefined = body?.renewalDate;
+    const assignToUserId: string | undefined = body?.assignToUserId;
+    const onlyType: string | undefined = body?.onlyType;
+
+    const includeAssetIds = Array.isArray(body?.includeAssetIds)
+      ? body?.includeAssetIds.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+      : undefined;
+    const excludeAssetIds = Array.isArray(body?.excludeAssetIds)
+      ? body?.excludeAssetIds.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
       : undefined;
 
-    if (!clientId) {
-      return NextResponse.json({ message: "clientId is required" }, { status: 400 });
-    }
+    if (!clientId) return NextResponse.json({ message: "clientId is required" }, { status: 400 });
+    if (!renewalDateISO) return NextResponse.json({ message: "renewalDate is required (ISO string)" }, { status: 400 });
 
-    // DB preflight
     try {
       await prisma.$queryRaw`SELECT 1`;
     } catch (e) {
       return fail("POST.db-preflight", e);
     }
 
-    // Assign to Top Agent
-    const topAgent = await findTopAgentForClient(clientId);
-    if (!topAgent) {
-      return NextResponse.json(
-        { message: "No available agent found to assign tasks" },
-        { status: 400 }
-      );
-    }
-
-    // Dates
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { id: true, startDate: true, dueDate: true },
+      select: { id: true, package: { select: { totalMonths: true } } },
     });
     if (!client) return NextResponse.json({ message: "Client not found" }, { status: 404 });
-    if (!client.startDate) return NextResponse.json({ message: "Client start date is required" }, { status: 400 });
-    if (!client.dueDate) return NextResponse.json({ message: "Client due date is required" }, { status: 400 });
 
-    const startDate = new Date(client.startDate);
-    const dueDate = new Date(client.dueDate);
+    const monthsRaw = Number(client.package?.totalMonths ?? 1);
+    const months = Number.isFinite(monthsRaw) && monthsRaw > 0 ? Math.min(Math.floor(monthsRaw), 120) : 1;
 
-    const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const renewalDateRaw = new Date(renewalDateISO);
+    if (Number.isNaN(renewalDateRaw.getTime())) return NextResponse.json({ message: "renewalDate is invalid" }, { status: 400 });
+    // Normalize to date-only at UTC midnight to avoid timezone drift
+    const renewalDate = new Date(Date.UTC(
+      renewalDateRaw.getUTCFullYear(),
+      renewalDateRaw.getUTCMonth(),
+      renewalDateRaw.getUTCDate()
+    ));
 
-    // Assignment & source
+    const dueDate = new Date(renewalDate);
+    dueDate.setMonth(dueDate.getMonth() + months);
+
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { renewalDate, dueDate, renewalCount: { increment: 1 } },
+      select: { id: true },
+    });
+
     const templateId = templateIdRaw === "none" ? null : templateIdRaw;
     const assignment = await prisma.assignment.findFirst({
-      where: {
-        clientId,
-        ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}),
-      },
+      where: { clientId, ...(templateId !== undefined ? { templateId: templateId ?? undefined } : {}) },
       orderBy: { assignedAt: "desc" },
       select: { id: true },
     });
     if (!assignment) {
       return NextResponse.json(
-        { message: "No existing assignment found for this client." },
+        { message: "No existing assignment found for this client. Please create one first." },
         { status: 404 }
       );
     }
 
-    // Source tasks (must be qc_approved), optionally filter by type
     const sourceTasks = await prisma.task.findMany({
       where: {
         assignmentId: assignment.id,
         status: "qc_approved",
         templateSiteAsset: {
           is: {
-            ...(onlyType ? { type: onlyType } : { type: { in: ALLOWED_ASSET_TYPES } }),
+            ...(onlyType ? { type: onlyType as any } : { type: { in: ALLOWED_ASSET_TYPES } }),
+            ...(includeAssetIds && includeAssetIds.length ? { id: { in: includeAssetIds as any } } : {}),
+            ...(excludeAssetIds && excludeAssetIds.length ? { id: { notIn: excludeAssetIds as any } } : {}),
           },
         },
       },
       select: {
         id: true,
         name: true,
+        status: true,
         priority: true,
         idealDurationMinutes: true,
         completionLink: true,
@@ -314,9 +308,8 @@ export async function POST(req: NextRequest) {
         password: true,
         username: true,
         notes: true,
-        templateSiteAsset: {
-          select: { id: true, type: true, name: true, defaultPostingFrequency: true },
-        },
+        createdAt: true,
+        templateSiteAsset: { select: { id: true, type: true, name: true, defaultPostingFrequency: true } },
       },
     });
 
@@ -327,7 +320,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Ensure categories
+    const todayOnly = dateOnly(new Date());
+    const cutoff = todayOnly <= dueDate ? todayOnly : dueDate;
+
+    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
+
+    // ensure categories
     const ensureCategory = async (name: string) => {
       const found = await prisma.taskCategory.findFirst({ where: { name }, select: { id: true, name: true } });
       if (found) return found;
@@ -353,9 +351,6 @@ export async function POST(req: NextRequest) {
     const ensured = await Promise.all(ALL_CATEGORY_NAMES.map((n) => ensureCategory(n)));
     const categoryIdByName = new Map<string, string>(ensured.map((c) => [c.name, c.id] as const));
 
-    // Web2 creds for SC
-    const web2PlatformCreds = collectWeb2PlatformSources(sourceTasks as any);
-
     const CUSTOM_SCHEDULE_OFFSETS: Record<string, number[]> = {
       [CAT_CONTENT_WRITING]: [30, 60, 90],
       [CAT_BACKLINKS]: [30, 60],
@@ -364,7 +359,7 @@ export async function POST(req: NextRequest) {
       [CAT_GUEST_POSTING]: [30, 60, 90],
     };
 
-    // 👇 NEW: per-month capped schedule builder (+7WD cycles), starting from last task or today
+    // 👇 Cadence dates generator: first = +7WD, then +7WD cycles, starting from last task or renewalDate
     function* cadenceDates(from: Date, end: Date, lastTaskDueDate: Date | null) {
       let cur: Date;
       
@@ -372,7 +367,7 @@ export async function POST(req: NextRequest) {
         // Continue from last task with 7WD cycle
         cur = addWorkingDays(lastTaskDueDate, 7);
       } else {
-        // No previous tasks or last task is before 'from', start from today + 7WD
+        // No previous tasks or last task is before 'from', start from renewalDate + 7WD
         cur = addWorkingDays(from, 7);
       }
       
@@ -420,8 +415,8 @@ export async function POST(req: NextRequest) {
       const customOffsets = CUSTOM_SCHEDULE_OFFSETS[catName];
       if (customOffsets) {
         const customDates = customOffsets
-          .map((offset) => addDays(startDate, offset))
-          .filter((date) => date.getTime() > todayMidnight.getTime() && date.getTime() <= dueDate.getTime());
+          .map((offset) => addDays(renewalDate, offset))
+          .filter((date) => date.getTime() <= cutoff.getTime() && date.getTime() <= dueDate.getTime());
 
         customDates.forEach((dueDateForTask, idx) => {
           const seqIndex = existingTasksForSource.length + idx + 1;
@@ -434,16 +429,15 @@ export async function POST(req: NextRequest) {
             seqIndex,
           });
         });
-
         continue;
       }
 
       const freqPerMonthRaw = src.templateSiteAsset?.defaultPostingFrequency ?? 1;
       const freqPerMonth = Math.max(1, Number(freqPerMonthRaw) || 1);
 
-      // Calculate total months remaining (from today to dueDate)
-      const remainingMonths = monthsBetweenInclusive(todayMidnight, dueDate);
-      const totalNeeded = remainingMonths * freqPerMonth;
+      // Total months from renewalDate to dueDate
+      const totalMonths = monthsBetweenInclusive(renewalDate, dueDate);
+      const totalNeeded = totalMonths * freqPerMonth;
 
       // Per-month cap implementation
       const perMonthCount = new Map<string, number>(); // "YYYY-MM" -> count for THIS src
@@ -451,10 +445,11 @@ export async function POST(req: NextRequest) {
 
       const startingSeqIndex = existingTasksForSource.length + 1;
 
-      for (const d of cadenceDates(todayMidnight, dueDate, lastTaskDueDate)) {
-        if (d > dueDate) break;
+      for (const d of cadenceDates(renewalDate, dueDate, lastTaskDueDate)) {
+        const dOnly = dateOnly(d);
+        if (dOnly.getTime() > cutoff.getTime()) break; // Stop at cutoff (today or dueDate)
 
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const key = `${dOnly.getFullYear()}-${String(dOnly.getMonth() + 1).padStart(2, "0")}`;
         const used = perMonthCount.get(key) ?? 0;
 
         if (used < freqPerMonth) {
@@ -467,7 +462,7 @@ export async function POST(req: NextRequest) {
             catName,
             base,
             name: `${base} -${seqIndex}`,
-            dueDate: d,
+            dueDate: dOnly,
             seqIndex,
           });
 
@@ -479,10 +474,12 @@ export async function POST(req: NextRequest) {
     if (future.length === 0) {
       return NextResponse.json(
         {
-          message: "No remaining occurrences fall within the requested window (today+15WD to dueDate).",
+          message: "No occurrences fall within the requested window (renewalDate+7WD to cutoff).",
           created: 0,
-          assignedTo: topAgent,
-          tasks: [],
+          cutoff,
+          scheduleCount: 0,
+          renewalDate,
+          dueDate,
         },
         { status: 200 }
       );
@@ -502,6 +499,10 @@ export async function POST(req: NextRequest) {
       : [];
     const skipNameSet = new Set(existingTasks.map((t) => t.name));
 
+    // find fallback last agent once
+    const lastAgent = await findLastAgentForClient(clientId);
+    const overridePriority = body?.priority ? normalizeTaskPriority(body?.priority) : undefined;
+
     // Create payloads
     type TaskCreate = Parameters<typeof prisma.task.create>[0]["data"];
     const payloads: TaskCreate[] = [];
@@ -511,13 +512,18 @@ export async function POST(req: NextRequest) {
       const catId = categoryIdByName.get(item.catName);
       if (!catId) continue;
 
+      const assignToId =
+        item.dueDate.getTime() <= todayOnly.getTime()
+          ? assignToUserId || lastAgent?.id || undefined
+          : lastAgent?.id || assignToUserId || undefined;
+
       payloads.push({
         id: makeId(),
         name: item.name,
         status: "pending" as TaskStatus,
         priority: overridePriority ?? item.src.priority,
         idealDurationMinutes: item.src.idealDurationMinutes ?? undefined,
-        dueDate: item.dueDate.toISOString(),
+        dueDate: toLocalMiddayISOString(item.dueDate),
         completionLink: item.src.completionLink ?? undefined,
         email: item.src.email ?? undefined,
         password: item.src.password ?? undefined,
@@ -526,17 +532,17 @@ export async function POST(req: NextRequest) {
         assignment: { connect: { id: assignment.id } },
         client: { connect: { id: clientId } },
         category: { connect: { id: catId } },
-        assignedTo: { connect: { id: topAgent.id } }, // ✅ Top Agent
+        ...(assignToId ? { assignedTo: { connect: { id: assignToId } } } : {}),
       });
     }
 
-    // Social Communication (optional): latestDue = সর্বশেষ তৈরি ডিউডেট (এই রান)
+    // Social Communication (optional): latestDue = latest created due date (this run)
     const createdDates = future
       .filter((f) => !skipNameSet.has(f.name))
       .map((f) => f.dueDate.getTime());
     const latestDue = createdDates.length
       ? new Date(Math.max(...createdDates))
-      : dueDate;
+      : cutoff;
 
     const socialBases = Array.from(
       new Set(
@@ -570,6 +576,12 @@ export async function POST(req: NextRequest) {
         const src = sourceTasks.find(
           (s) => s.templateSiteAsset?.type === "social_site" && baseNameOf(s.name) === base
         );
+        
+        const assignToId =
+          latestDue.getTime() <= todayOnly.getTime()
+            ? assignToUserId || lastAgent?.id || undefined
+            : lastAgent?.id || assignToUserId || undefined;
+
         payloads.push({
           id: makeId(),
           name: scName,
@@ -584,7 +596,7 @@ export async function POST(req: NextRequest) {
           assignment: { connect: { id: assignment.id } },
           client: { connect: { id: clientId } },
           category: { connect: { id: scCatId } },
-          assignedTo: { connect: { id: topAgent.id } }, // ✅ Top Agent
+          ...(assignToId ? { assignedTo: { connect: { id: assignToId } } } : {}),
         });
       }
 
@@ -594,6 +606,11 @@ export async function POST(req: NextRequest) {
         if (!creds) continue;
         const scName = `${PLATFORM_META[p].label} - ${CAT_SOCIAL_COMMUNICATION}`;
         if (scSkip.has(scName)) continue;
+
+        const assignToId =
+          latestDue.getTime() <= todayOnly.getTime()
+            ? assignToUserId || lastAgent?.id || undefined
+            : lastAgent?.id || assignToUserId || undefined;
 
         payloads.push({
           id: makeId(),
@@ -609,7 +626,7 @@ export async function POST(req: NextRequest) {
           assignment: { connect: { id: assignment.id } },
           client: { connect: { id: clientId } },
           category: { connect: { id: scCatId } },
-          assignedTo: { connect: { id: topAgent.id } }, // ✅ Top Agent
+          ...(assignToId ? { assignedTo: { connect: { id: assignToId } } } : {}),
         });
       }
     }
@@ -617,16 +634,18 @@ export async function POST(req: NextRequest) {
     if (payloads.length === 0) {
       return NextResponse.json(
         {
-          message: "All remaining tasks already exist.",
+          message: "All scheduled tasks already exist for this renewal window.",
           created: 0,
-          assignedTo: topAgent,
+          cutoff,
+          scheduleCount: 0,
+          renewalDate,
+          dueDate,
           tasks: [],
         },
         { status: 200 }
       );
     }
 
-    // Persist
     const created = await prisma.$transaction(
       payloads.map((data) =>
         prisma.task.create({
@@ -655,12 +674,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        message: `Created ${created.length} remaining task(s) with per-month frequency caps and assigned to ${topAgent.name}.`,
+        message: `Created ${created.length} task(s) for renewal up to cutoff with per-month caps and 7WD cadence.`,
         created: created.length,
-        assignedTo: topAgent,
+        cutoff,
+        scheduleCount: created.length,
         assignmentId: assignment.id,
-        cadence: "first at today + 15 working days, then every +7 working days (per-month capped)",
+        cadence: "first at renewalDate + 7 working days, then every +7 working days (per-month capped)",
         tasks: created,
+        renewalDate,
+        dueDate,
       },
       { status: 201 }
     );

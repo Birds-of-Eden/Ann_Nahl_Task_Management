@@ -665,6 +665,7 @@ function EditTeamDialog({
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([])
+  const [avgCompletionTime, setAvgCompletionTime] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -702,6 +703,20 @@ export default function TeamsPage() {
   useEffect(() => {
     fetchTeams()
   }, [fetchTeams])
+
+  // Fetch avgCompletionTime once for display in the KPI card
+  useEffect(() => {
+    const fetchAvg = async () => {
+      try {
+        const res = await fetch("/api/dashboardStats", { cache: "no-store" })
+        const json = await res.json().catch(() => null)
+        if (res.ok && json?.tasks?.avgCompletionTime != null) {
+          setAvgCompletionTime(Number(json.tasks.avgCompletionTime))
+        }
+      } catch {}
+    }
+    fetchAvg()
+  }, [])
 
   const handleDeleteTeam = async (teamId: string) => {
     try {
@@ -873,14 +888,18 @@ export default function TeamsPage() {
             <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
               <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-100">Avg. Team Size</CardTitle>
+                <CardTitle className="text-sm font-medium text-purple-100">Avg. Completion Time</CardTitle>
                 <div className="p-2 bg-white/20 rounded-lg">
                   <UserCheck className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
               <CardContent className="relative">
-                <div className="text-3xl font-bold text-white">{averageMembersPerTeam}</div>
-                <p className="text-xs text-purple-100 mt-1">Members per team</p>
+                <div className="mt-2">
+                  <div className="text-3xl font-bold text-white">
+                    {avgCompletionTime != null ? `${avgCompletionTime}m` : "-"}
+                  </div>
+                  <p className="text-xs text-purple-100 mt-1">Average completion time (minutes)</p>
+                </div>
               </CardContent>
             </Card>
           </div>

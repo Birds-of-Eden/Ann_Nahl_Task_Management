@@ -11,6 +11,9 @@ import {
   AlertTriangle,
   UserCircle2,
   Loader2,
+  Target,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +44,8 @@ import {
   AreaChart,
   Area,
   CartesianGrid,
+  Line,
+  Legend,
 } from "recharts";
 
 import { useUserSession } from "@/lib/hooks/use-user-session";
@@ -52,7 +57,7 @@ type ClientLite = {
   progress?: number | null;
   startDate?: string | null;
   dueDate?: string | null;
-  amCeoId?: string | null; // ⬅️ renamed
+  amCeoId?: string | null;
   packageId?: string | null;
   accountManager?: {
     id?: string;
@@ -64,7 +69,7 @@ type ClientLite = {
 type Summary = {
   totalClients: number;
   activeClients: number;
-  avgProgress: number; // rounded on server
+  avgProgress: number;
   dueIn7Days: number;
   statusCounts: Record<string, number>;
   progressBuckets: { label: string; count: number }[];
@@ -97,32 +102,47 @@ function safeParse<T = unknown>(raw: any): T {
   return raw as T;
 }
 
+// Enhanced color palette with professional gradients
+const CHART_COLORS = {
+  primary: "#6366f1",
+  secondary: "#8b5cf6",
+  accent: "#06b6d4",
+  success: "#10b981",
+  warning: "#f59e0b",
+  error: "#ef4444",
+  neutral: "#64748b",
+  info: "#0ea5e9",
+};
+
+const GRADIENTS = {
+  indigo: "bg-gradient-to-br from-indigo-50 via-white to-indigo-100/70",
+  emerald: "bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70",
+  amber: "bg-gradient-to-br from-amber-50 via-white to-amber-100/70",
+  blue: "bg-gradient-to-br from-blue-50 via-white to-blue-100/70",
+  slate: "bg-gradient-to-br from-slate-50 via-white to-slate-100/70",
+};
+
 export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
-  // internally we'll treat it as am_ceoId
   const [selectedAmCeoId, setSelectedAmCeoId] = useState<string>(defaultAmId);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [clientOpen, setClientOpen] = useState<boolean>(false);
   const { user, loading: sessionLoading } = useUserSession();
 
-  // Clients for dropdown
   const [clients, setClients] = useState<FetchState<ClientLite[]>>({
     data: [],
     loading: false,
     error: null,
   });
 
-  // Aggregated summary from server
   const [summary, setSummary] = useState<FetchState<Summary | null>>({
     data: null,
     loading: false,
     error: null,
   });
 
-  // Packages map for pretty names in the table
   const [pkgMap, setPkgMap] = useState<Record<string, string>>({});
   const [pkgLoading, setPkgLoading] = useState(false);
 
-  // Session → AM CEO selection
   useEffect(() => {
     if (sessionLoading) return;
     if (user?.role === "am_ceo" && user?.id) {
@@ -134,7 +154,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
     }
   }, [user, sessionLoading, defaultAmId, selectedAmCeoId]);
 
-  // Load packages → id→name map (once)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -159,7 +178,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
     };
   }, []);
 
-  // Load clients list for the dropdown (server supports ?am_ceoId=)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -187,14 +205,13 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                 : null,
             startDate: c.startDate ?? null,
             dueDate: c.dueDate ?? null,
-            amCeoId: c.amCeoId ?? null, // ⬅️ take from API
+            amCeoId: c.amCeoId ?? null,
             packageId: c.packageId ?? null,
             accountManager: c.accountManager ?? null,
           })
         );
 
         setClients({ data: mapped, loading: false, error: null });
-        // Keep dropdown selection valid
         const exists = mapped.some((c) => c.id === selectedClientId);
         if (!exists) setSelectedClientId("");
       } catch {
@@ -210,7 +227,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
     };
   }, [selectedAmCeoId, selectedClientId]);
 
-  // Fetch aggregated summary (server-side) — uses am_ceoId
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -240,18 +256,14 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
     };
   }, [selectedAmCeoId]);
 
-  // ---------- Derived values from summary ----------
-  const totalClients = summary.data?.totalClients ?? 0;
-  const activeClients = summary.data?.activeClients ?? 0;
-  const avgProgress = summary.data?.avgProgress ?? 0;
-  const dueIn7Days = summary.data?.dueIn7Days ?? 0;
-
+  // Enhanced chart data with unique visual treatments
   const pieData = useMemo(
     () =>
       Object.entries(summary.data?.statusCounts ?? {}).map(
-        ([name, value]) => ({
+        ([name, value], index) => ({
           name: name.replace(/_/g, " "),
           value,
+          fill: Object.values(CHART_COLORS)[index % Object.values(CHART_COLORS).length],
         })
       ),
     [summary.data?.statusCounts]
@@ -260,21 +272,19 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
   const progressBuckets = summary.data?.progressBuckets ?? [];
   const startsByMonth = summary.data?.startsByMonth ?? [];
 
-  // For the Upcoming table: allow narrowing by selected client (optional)
   const upcomingDueList = (summary.data?.upcomingDueList ?? []).filter(
     (c) => !selectedClientId || c.id === selectedClientId
   );
 
-  const COLORS = [
-    "#6366f1",
-    "#8b5cf6",
-    "#06b6d4",
-    "#10b981",
-    "#f59e0b",
-    "#ef4444",
-    "#64748b",
-    "#0ea5e9",
-  ];
+  // Enhanced progress chart with line overlay
+  const enhancedProgressData = useMemo(
+    () =>
+      progressBuckets.map((bucket, index) => ({
+        ...bucket,
+        trend: Math.max(0, bucket.count - (progressBuckets[index - 1]?.count || 0)),
+      })),
+    [progressBuckets]
+  );
 
   const amLabel = useMemo(() => {
     if (user?.role === "am_ceo") {
@@ -309,30 +319,37 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
 
   return (
     <div className="space-y-6 px-4 bg-gradient-to-br from-slate-50 to-gray-100 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl p-2 md:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            {amLabel}'s Dashboard
+      {/* Enhanced Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-6">
+        <div className="space-y-2">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+            AM CEO's Dashboard
           </h1>
+          <p className="text-sm text-slate-600 font-medium">
+            {amLabel} • {summary.data?.totalClients ?? 0} total clients
+          </p>
         </div>
-        {/* Client Filter (top-right) - Searchable */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        
+        {/* Enhanced Client Filter */}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-500 hidden sm:block">
+            Filter by client:
+          </div>
           <Popover open={clientOpen} onOpenChange={setClientOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="bg-white/80 backdrop-blur border-slate-200 shadow-sm hover:shadow transition min-w-[180px] justify-between"
+                className="bg-white/90 backdrop-blur border-slate-200 shadow-sm hover:shadow transition min-w-[200px] justify-between font-medium"
                 aria-label="Filter by client"
               >
-                <span className="inline-flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-500" />
-                  {selectedClientName}
+                <span className="inline-flex items-center gap-2 truncate">
+                  <Filter className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                  <span className="truncate">{selectedClientName}</span>
                 </span>
-                <span className="ml-2 text-slate-400">▾</span>
+                <span className="ml-2 text-slate-400 flex-shrink-0">▾</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-72">
+            <PopoverContent className="p-0 w-72" align="end">
               <Command>
                 <CommandInput placeholder="Search clients..." />
                 <CommandList>
@@ -344,6 +361,7 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                         setSelectedClientId("");
                         setClientOpen(false);
                       }}
+                      className="font-medium"
                     >
                       All Clients
                     </CommandItem>
@@ -370,31 +388,35 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
         </div>
       </div>
 
-      {/* Loading / Error */}
+      {/* Loading / Error States */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 mr-2 animate-spin text-indigo-500" />
-          Loading statistics…
+        <div className="flex items-center justify-center py-20 text-slate-500 bg-white rounded-xl shadow-sm border">
+          <Loader2 className="w-5 h-5 mr-3 animate-spin text-indigo-500" />
+          <span className="font-medium">Loading dashboard data...</span>
         </div>
       ) : errorMsg ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-rose-600">
-          <AlertTriangle className="w-5 h-5" />
-          {errorMsg}
+        <div className="flex items-center justify-center gap-3 py-16 text-rose-600 bg-white rounded-xl shadow-sm border">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <span className="font-medium">{errorMsg}</span>
         </div>
       ) : (
         <>
-          {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 via-white to-indigo-100/50 hover:shadow-xl transition-shadow duration-300">
+          {/* Enhanced KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <Card className={`border-0 shadow-lg ${GRADIENTS.indigo} hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Total Clients
                     </p>
                     <p className="text-3xl font-bold text-slate-800">
                       {summary.data?.totalClients ?? 0}
                     </p>
+                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <TrendingUp className="w-3 h-3 text-emerald-500" />
+                      <span>Portfolio size</span>
+                    </div>
                   </div>
                   <div className="p-3 bg-indigo-500 rounded-xl shadow-lg">
                     <Users className="w-6 h-6 text-white" />
@@ -403,16 +425,20 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 via-white to-emerald-100/50 hover:shadow-xl transition-shadow duration-300">
+            <Card className={`border-0 shadow-lg ${GRADIENTS.emerald} hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Active Clients
                     </p>
                     <p className="text-3xl font-bold text-slate-800">
                       {summary.data?.activeClients ?? 0}
                     </p>
+                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <Activity className="w-3 h-3 text-emerald-500" />
+                      <span>Currently engaged</span>
+                    </div>
                   </div>
                   <div className="p-3 bg-emerald-500 rounded-xl shadow-lg">
                     <Activity className="w-6 h-6 text-white" />
@@ -421,34 +447,21 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 via-white to-violet-100/50 hover:shadow-xl transition-shadow duration-300">
+           
+            <Card className={`border-0 shadow-lg ${GRADIENTS.amber} hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Overall Progress
-                    </p>
-                    <p className="text-3xl font-bold text-slate-800">
-                      {summary.data?.avgProgress ?? 0}%
-                    </p>
-                  </div>
-                  <div className="p-3 bg-violet-500 rounded-xl shadow-lg">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 via-white to-amber-100/50 hover:shadow-xl transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Due in 7 Days
                     </p>
                     <p className="text-3xl font-bold text-slate-800">
                       {summary.data?.dueIn7Days ?? 0}
                     </p>
+                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <CalendarDays className="w-3 h-3 text-amber-500" />
+                      <span>Upcoming deadlines</span>
+                    </div>
                   </div>
                   <div className="p-3 bg-amber-500 rounded-xl shadow-lg">
                     <CalendarDays className="w-6 h-6 text-white" />
@@ -458,117 +471,186 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
             </Card>
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Status pie */}
-            <Card className="bg-gradient-to-br from-white to-indigo-50/30 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-1">
+          {/* Enhanced Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Enhanced Status Pie Chart with Donut */}
+            <Card className={`border-0 shadow-lg ${GRADIENTS.slate} hover:shadow-xl transition-all duration-300`}>
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-slate-800">
-                  <div className="p-2 bg-indigo-500 rounded-lg">
-                    <UserCircle2 className="w-5 h-5 text-white" />
+                <CardTitle className="flex items-center gap-3 text-slate-800 font-semibold">
+                  <div className="p-2 bg-indigo-500 rounded-lg shadow-md">
+                    <PieChartIcon className="w-5 h-5 text-white" />
                   </div>
-                  Client Status Distribution
+                  <span>Client Status Distribution</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[260px]">
+              <CardContent className="h-[280px]">
                 {pieData.length ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie dataKey="value" data={pieData} outerRadius={90} label>
-                        {pieData.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
+                      <defs>
+                        {pieData.map((entry, index) => (
+                          <filter key={index} id={`glow-${index}`} x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                              <feMergeNode in="coloredBlur"/>
+                              <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                          </filter>
+                        ))}
+                      </defs>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => 
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                        labelLine={false}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.fill}
+                            filter={`url(#glow-${index})`}
                           />
                         ))}
                       </Pie>
-                      <RTooltip />
+                      <RTooltip 
+                        formatter={(value: number) => [`${value} clients`, 'Count']}
+                        contentStyle={{
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-sm text-slate-500">
-                    No data available
+                  <div className="h-full flex items-center justify-center text-sm text-slate-500 font-medium">
+                    No status data available
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Progress distribution */}
-            <Card className="bg-gradient-to-br from-white to-emerald-50/30 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-1">
+            {/* Enhanced Progress Bar Chart with Line Overlay */}
+            <Card className={`border-0 shadow-lg ${GRADIENTS.emerald} hover:shadow-xl transition-all duration-300`}>
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-slate-800">
-                  <div className="p-2 bg-emerald-500 rounded-lg">
-                    <Activity className="w-5 h-5 text-white" />
+                <CardTitle className="flex items-center gap-3 text-slate-800 font-semibold">
+                  <div className="p-2 bg-emerald-500 rounded-lg shadow-md">
+                    <BarChart3 className="w-5 h-5 text-white" />
                   </div>
-                  Progress Distribution
+                  <span>Progress Distribution</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[260px]">
+              <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={progressBuckets}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "#64748b", fontSize: 12 }}
+                  <BarChart data={enhancedProgressData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.4}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <YAxis
+                    <YAxis 
                       allowDecimals={false}
-                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <RTooltip
                       contentStyle={{
                         backgroundColor: "#f8fafc",
                         border: "1px solid #e2e8f0",
                         borderRadius: "8px",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                       }}
+                      formatter={(value: number) => [value, 'Clients']}
                     />
-                    <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar 
+                      dataKey="count" 
+                      fill="url(#progressGradient)" 
+                      radius={[4, 4, 0, 0]}
+                      barSize={30}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="trend" 
+                      stroke="#f59e0b" 
+                      strokeWidth={2}
+                      dot={{ fill: "#f59e0b", strokeWidth: 2, r: 4 }}
+                      strokeDasharray="3 3"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Starts by month */}
-            <Card className="bg-gradient-to-br from-white to-blue-50/30 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 lg:col-span-1">
+            {/* Enhanced Area Chart with Gradient */}
+            <Card className={`border-0 shadow-lg ${GRADIENTS.blue} hover:shadow-xl transition-all duration-300`}>
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-slate-800">
-                  <div className="p-2 bg-blue-500 rounded-lg">
+                <CardTitle className="flex items-center gap-3 text-slate-800 font-semibold">
+                  <div className="p-2 bg-blue-500 rounded-lg shadow-md">
                     <Clock className="w-5 h-5 text-white" />
                   </div>
-                  Client Starts (6 Months)
+                  <span>Client Onboarding Trend</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[260px]">
+              <CardContent className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={startsByMonth}>
+                  <AreaChart data={startsByMonth} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <defs>
-                      <linearGradient id="colorStart" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                      <linearGradient id="colorStarts" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorLine" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={1}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.5}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: "#64748b", fontSize: 12 }}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis 
+                      dataKey="label" 
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
-                    <YAxis
+                    <YAxis 
                       allowDecimals={false}
-                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      tick={{ fill: "#64748b", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <RTooltip
                       contentStyle={{
                         backgroundColor: "#f8fafc",
                         border: "1px solid #e2e8f0",
                         borderRadius: "8px",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                       }}
+                      formatter={(value: number) => [value, 'New Clients']}
                     />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fill="url(#colorStart)"
+                    <Area 
+                      type="monotone" 
+                      dataKey="count" 
+                      stroke="url(#colorLine)"
+                      strokeWidth={3}
+                      fill="url(#colorStarts)" 
+                      dot={{ fill: "#6366f1", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: "#6366f1" }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -576,83 +658,88 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
             </Card>
           </div>
 
-          {/* Upcoming Due Table */}
-          <Card className="bg-gradient-to-br from-white to-amber-50/20 border-0 shadow-lg mb-6 hover:shadow-xl transition-shadow duration-300">
+          {/* Enhanced Upcoming Due Table */}
+          <Card className={`border-0 shadow-lg ${GRADIENTS.amber} hover:shadow-xl transition-all duration-300 mb-8`}>
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-slate-800">
-                <div className="p-2 bg-amber-500 rounded-lg">
+              <CardTitle className="flex items-center gap-3 text-slate-800 font-semibold">
+                <div className="p-2 bg-amber-500 rounded-lg shadow-md">
                   <CalendarDays className="w-5 h-5 text-white" />
                 </div>
-                Upcoming Due Dates
+                <span>Upcoming Deliverables</span>
                 <Badge
                   variant="secondary"
-                  className="ml-2 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  className="ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium"
                 >
                   {upcomingDueList.length}
                 </Badge>
-                <span className="ml-auto text-sm text-slate-500 font-medium">
+                <span className="ml-auto text-sm text-slate-500 font-medium hidden lg:block">
                   Viewing: {amLabel}
                   {selectedClientId && (
                     <>
-                      {" "}
-                      • Client:{" "}
-                      {clients.data.find((c) => c.id === selectedClientId)?.name ||
-                        "—"}
+                      {" • "}
+                      <span className="text-amber-600">
+                        {clients.data.find((c) => c.id === selectedClientId)?.name || "—"}
+                      </span>
                     </>
                   )}
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="overflow-x-auto p-0">
               {upcomingDueList.length ? (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-slate-600 border-b border-slate-200">
-                      <th className="py-3 px-4 font-semibold">Client</th>
-                      <th className="py-3 px-4 font-semibold">Status</th>
-                      <th className="py-3 px-4 font-semibold">Progress</th>
-                      <th className="py-3 px-4 font-semibold">Package</th>
-                      <th className="py-3 px-4 font-semibold">Due Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {upcomingDueList.map((c, index) => (
-                      <tr
-                        key={c.id}
-                        className={`border-t border-slate-100 hover:bg-slate-50/50 transition-colors ${
-                          index % 2 === 0 ? "bg-white" : "bg-slate-50/30"
-                        }`}
-                      >
-                        <td className="py-3 px-4 font-medium text-slate-800">
-                          {c.name}
-                        </td>
-                        <td className="py-3 px-4 capitalize">
-                          <Badge
-                            variant="outline"
-                            className="border-slate-300 text-slate-700 bg-white"
-                          >
-                            {(c.status ?? "—").toString().replace(/_/g, " ")}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">
-                          {Number(c.progress ?? 0)}%
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">
-                          {c.packageId
-                            ? pkgMap[c.packageId] ??
-                              (pkgLoading ? "Loading…" : c.packageId)
-                            : "—"}
-                        </td>
-                        <td className="py-3 px-4 text-slate-600">
-                          {formatDate(c.dueDate)}
-                        </td>
+                <div className="rounded-lg overflow-hidden border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50/80 text-left text-slate-600 border-b border-slate-200">
+                        <th className="py-4 px-6 font-semibold text-xs uppercase tracking-wider">Client</th>
+                        <th className="py-4 px-6 font-semibold text-xs uppercase tracking-wider">Status</th>
+                        <th className="py-4 px-6 font-semibold text-xs uppercase tracking-wider">Package</th>
+                        <th className="py-4 px-6 font-semibold text-xs uppercase tracking-wider">Due Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {upcomingDueList.map((c, index) => (
+                        <tr
+                          key={c.id}
+                          className={`border-t border-slate-100 hover:bg-white/70 transition-colors duration-150 ${
+                            index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
+                          }`}
+                        >
+                          <td className="py-4 px-6 font-semibold text-slate-800">
+                            {c.name}
+                          </td>
+                          <td className="py-4 px-6">
+                            <Badge
+                              variant="outline"
+                              className="border-slate-300 text-slate-700 bg-white font-medium capitalize px-3 py-1"
+                            >
+                              {(c.status ?? "—").toString().replace(/_/g, " ")}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-6 text-slate-600 font-medium">
+                            {c.packageId
+                              ? pkgMap[c.packageId] ??
+                                (pkgLoading ? "Loading…" : c.packageId)
+                              : "—"}
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-2">
+                              <CalendarDays className="w-4 h-4 text-amber-500" />
+                              <span className="font-medium text-slate-700">
+                                {formatDate(c.dueDate)}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <div className="py-12 text-center text-slate-500">
-                  No upcoming due dates found.
+                <div className="py-16 text-center text-slate-500 font-medium">
+                  <CalendarDays className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                  <p>No upcoming deliverables found</p>
+                  <p className="text-sm text-slate-400 mt-1">All clients are up to date</p>
                 </div>
               )}
             </CardContent>

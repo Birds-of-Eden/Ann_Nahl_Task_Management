@@ -15,6 +15,7 @@ export function PackageInfo() {
     monthlyEngagement: 1,
     domain: 1,
     startDate: "March 15, 2023",
+    renewalDate: "June 13, 2023",
     endDate: "June 13, 2023",
     progress: 13,
   };
@@ -59,6 +60,10 @@ export function PackageInfo() {
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Start Date</span>
           <span>{packageDetails.startDate}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Renewal Date</span>
+          <span>{packageDetails.renewalDate}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">End Date</span>

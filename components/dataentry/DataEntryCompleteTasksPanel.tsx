@@ -25,10 +25,11 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useUserSession } from "@/lib/hooks/use-user-session";
 import { useRouter } from "next/navigation";
 import { useRoleSegment } from "@/lib/hooks/use-role-segment";
-import CreateTasksButton from "./CreateTasksButtonManual";
-import CreateNextTask from "./CreateNextTaskManual";
+// import CreateTasksButton from "./CreateTasksButtonManual";
+// import CreateNextTask from "./CreateNextTaskManual";
 import CreateTasksAuto from "./CreateTasksAuto";
 import CreateNextTasksAuto from "./CreateNextTasksAuto";
+import { RenewPostingTasksButton } from "./DateEntryRenew";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ContentWritingModal from "./DataEntryContentWritingDialog";
 import ReviewRemovalModal from "./DataEmtryReviewRemovalDialog";
@@ -106,6 +107,9 @@ export default function DataEntryCompleteTasksPanel({
     Array<{ id: string; name?: string | null; email?: string | null }>
   >([]);
   const [hasCreatedTasks, setHasCreatedTasks] = useState(false);
+  const [showCreateTasksButton, setShowCreateTasksButton] = useState(true);
+  const [showRenewButton, setShowRenewButton] = useState(false);
+  const [showCreateNextButton, setShowCreateNextButton] = useState(false);
   // Removed nextTasksAlreadyCreated state - CreateNextTask now handles localStorage internally
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
@@ -136,6 +140,8 @@ export default function DataEntryCompleteTasksPanel({
   const [agentSearchTerm, setAgentSearchTerm] = useState("");
   const [clientName, setClientName] = useState<string>("");
   const [clientEmail, setClientEmail] = useState<string>("");
+  const [packageMonths, setPackageMonths] = useState<number>(1);
+  const [isDueOver, setIsDueOver] = useState<boolean>(false);
   const [createTasksChoiceOpen, setCreateTasksChoiceOpen] = useState(false);
   const [createNextChoiceOpen, setCreateNextChoiceOpen] = useState(false);
 
@@ -175,6 +181,12 @@ export default function DataEntryCompleteTasksPanel({
           const data = await response.json();
           setClientName(data.name || `Client ${clientId}`);
           setClientEmail(data.email || "");
+          const pm = Number(data?.package?.totalMonths);
+          setPackageMonths(Number.isFinite(pm) && pm > 0 ? Math.floor(pm) : 1);
+          const dueRaw = data?.dueDate;
+          const due = dueRaw ? new Date(dueRaw) : null;
+          const over = !!due && !isNaN(due.getTime()) && due.getTime() < Date.now();
+          setIsDueOver(over);
         } else {
           setClientName(`Client ${clientId}`);
           setClientEmail("");
@@ -638,6 +650,32 @@ export default function DataEntryCompleteTasksPanel({
     }
   }, []);
 
+  // Check button states from localStorage on mount
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && clientId) {
+        const createTasksKey = `createTasksClicked_${clientId}`;
+        const renewKey = `renewClicked_${clientId}`;
+        const createNextKey = `createNextClicked_${clientId}`;
+
+        const createTasksClicked = localStorage.getItem(createTasksKey) === "true";
+        const renewClicked = localStorage.getItem(renewKey) === "true";
+        const createNextClicked = localStorage.getItem(createNextKey) === "true";
+
+        // CreateTasksAuto button: hide if clicked
+        setShowCreateTasksButton(!createTasksClicked);
+
+        // RenewButton: show only if CreateTasksAuto clicked AND RenewButton not clicked yet
+        setShowRenewButton(createTasksClicked && !renewClicked);
+
+        // CreateNextButton: show only if RenewButton clicked AND CreateNextButton not clicked yet
+        setShowCreateNextButton(renewClicked && !createNextClicked);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [clientId]);
+
   // Save password to localStorage when it changes
   useEffect(() => {
     if (password) {
@@ -870,13 +908,56 @@ export default function DataEntryCompleteTasksPanel({
               </div>
             </div>
             <>
-              <Button
-                onClick={() => setCreateTasksChoiceOpen(true)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                Create Posting Tasks
-              </Button>
+             <div className="flex items-center gap-4">
+               {showCreateTasksButton && (
+                 <Button
+                  onClick={() => setCreateTasksChoiceOpen(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                  Create Posting Tasks
+                </Button>
+               )}
 
+              {isDueOver && showRenewButton && (
+                <RenewPostingTasksButton
+                  clientId={clientId}
+                  templateId={undefined}
+                  packageMonths={packageMonths}
+                  onRenewComplete={() => {
+                    // Mark RenewButton as clicked
+                    try {
+                      if (typeof window !== "undefined") {
+                        const key = `renewClicked_${clientId}`;
+                        localStorage.setItem(key, "true");
+                        setShowRenewButton(false);
+                        setShowCreateNextButton(true);
+                      }
+                    } catch {
+                      // Ignore localStorage errors
+                    }
+                  }}
+                />
+              )}
+
+              {showCreateNextButton && (
+                <CreateNextTasksAuto
+                  clientId={clientId}
+                  onComplete={() => {
+                    // Mark CreateNextButton as clicked
+                    try {
+                      if (typeof window !== "undefined") {
+                        const key = `createNextClicked_${clientId}`;
+                        localStorage.setItem(key, "true");
+                        setShowCreateNextButton(false);
+                      }
+                    } catch {
+                      // Ignore localStorage errors
+                    }
+                  }}
+                />
+              )}
+
+             </div>
               <Dialog open={createTasksChoiceOpen} onOpenChange={setCreateTasksChoiceOpen}>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
@@ -891,11 +972,22 @@ export default function DataEntryCompleteTasksPanel({
                         onTaskCreationComplete={() => {
                           setHasCreatedTasks(true);
                           setCreateTasksChoiceOpen(false);
+                          // Mark CreateTasksAuto as clicked
+                          try {
+                            if (typeof window !== "undefined") {
+                              const key = `createTasksClicked_${clientId}`;
+                              localStorage.setItem(key, "true");
+                              setShowCreateTasksButton(false);
+                              setShowRenewButton(true);
+                            }
+                          } catch {
+                            // Ignore localStorage errors
+                          }
                           load();
                         }}
                       />
                     </div>
-                    <div className="rounded-lg border p-4">
+                    {/* <div className="rounded-lg border p-4">
                       <div className="font-semibold mb-2">Manual</div>
                       <p className="text-sm text-muted-foreground mb-3">Pick counts per asset type and generate. Tasks will auto-assign to you.</p>
                       <CreateTasksButton
@@ -906,7 +998,7 @@ export default function DataEntryCompleteTasksPanel({
                           load();
                         }}
                       />
-                    </div>
+                    </div> */}
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setCreateTasksChoiceOpen(false)}>Close</Button>
@@ -1015,7 +1107,7 @@ export default function DataEntryCompleteTasksPanel({
                                         }}
                                       />
                                     </div>
-                                    <div className="rounded-lg border p-4">
+                                    {/* <div className="rounded-lg border p-4">
                                       <div className="font-semibold mb-2">Manual</div>
                                       <p className="text-sm text-muted-foreground mb-3">Use the manual flow to create remaining tasks.</p>
                                       <CreateNextTask
@@ -1025,7 +1117,7 @@ export default function DataEntryCompleteTasksPanel({
                                           load();
                                         }}
                                       />
-                                    </div>
+                                    </div> */}
                                   </div>
                                   <DialogFooter>
                                     <Button variant="outline" onClick={() => setCreateNextChoiceOpen(false)}>Close</Button>

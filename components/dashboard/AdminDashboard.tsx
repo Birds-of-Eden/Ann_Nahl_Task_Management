@@ -219,7 +219,7 @@ export function AdminDashboard() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
+        const res = await fetch("/api/dashboardStats", { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
         const data = (await res.json()) as DashboardStats;
         setDashboardData(data);
@@ -460,6 +460,17 @@ export function AdminDashboard() {
 
         {/* ---------- TASKS TAB ---------- */}
         <TabsContent value="tasks" className="space-y-6">
+          {/* Avg Task Time compact block */}
+          <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-white to-slate-50/60">
+            <CardContent className="pt-6">
+              <div className="text-3xl font-extrabold text-slate-900 mb-1">
+                {dashboardData.tasks.avgCompletionTime}
+              </div>
+              <div className="text-sm text-slate-600">
+                Average completion time (minutes)
+              </div>
+            </CardContent>
+          </Card>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Status breakdown */}
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50/60">
@@ -862,22 +873,6 @@ export function AdminDashboard() {
                       {team.totalMembers}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">
-                      Client Members
-                    </span>
-                    <span className="font-medium text-slate-700">
-                      {team.clientMembers}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">
-                      Template Members
-                    </span>
-                    <span className="font-medium text-slate-700">
-                      {team.templateMembers}
-                    </span>
-                  </div>
                   <Progress
                     value={
                       team.totalMembers > 0
@@ -900,9 +895,9 @@ export function AdminDashboard() {
               <CardHeader className="border-b border-slate-200/70 py-5 bg-gradient-to-r from-yellow-50/70 to-amber-50/70">
                 <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-amber-600" />
-                  Performance Ratings
+                  Performance Ratings (QC Approved)
                 </CardTitle>
-                <CardDescription>Task performance distribution</CardDescription>
+                <CardDescription>Task performance rating</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
@@ -1290,22 +1285,7 @@ function MetricCard({
           >
             {icon}
           </div>
-          <Badge
-            variant="outline"
-            className={cn(
-              "font-medium flex items-center gap-2",
-              trend === "up"
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : "bg-rose-50 text-rose-700 border-rose-200"
-            )}
-          >
-            <span>{change}</span>
-            {trend === "up" ? (
-              <MoveUp className="h-4 w-4" />
-            ) : (
-              <MoveDown className="h-4 w-4 transform rotate-0" />
-            )}
-          </Badge>
+
         </div>
 
         <div className="mt-5">
