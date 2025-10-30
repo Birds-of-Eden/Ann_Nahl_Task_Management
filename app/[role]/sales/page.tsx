@@ -16,7 +16,6 @@ import { SmartInsights } from "@/components/sales/SmartInsights";
 import { RenewalForecast } from "@/components/sales/RenewalForecast";
 import { SalesKPIGrid } from "@/components/sales/SalesKPIGrid";
 import { RetentionGauge } from "@/components/sales/RetentionGauge";
-import { PackageHealthTreemap } from "@/components/sales/PackageHealthTreemap";
 import { TopPackagesShareRace } from "@/components/sales/TopPackagesShareRace";
 
 export default function AMCEOSalesPage() {
@@ -32,6 +31,7 @@ export default function AMCEOSalesPage() {
 
   // Derived metrics
   const totalSales = data?.totalSales ?? summary.totalSales ?? 0;
+
   const ma7 = React.useMemo(() => {
     let sum = 0;
     const res: any[] = [];
@@ -87,6 +87,7 @@ export default function AMCEOSalesPage() {
         </div>
       </div>
 
+      {/* Sales Overview Section */}
       <SalesSpotlight
         isLoading={isLoading}
         totalSales={totalSales}
@@ -107,14 +108,6 @@ export default function AMCEOSalesPage() {
         isLoading={isLoading}
       />
 
-      <RenewalForecast
-        forecastData={series.slice(-30).map((d) => ({
-          day: d.day,
-          expiring: Math.floor(d.starts / 2),
-        }))}
-        isLoading={isLoading}
-      />
-
       <PackagesOverview
         isLoading={isLoading}
         byPackage={byPackage}
@@ -123,11 +116,28 @@ export default function AMCEOSalesPage() {
         setSelectedPkg={setSelectedPkg}
       />
 
+      {/* 🔹 Renewal Forecast + Retention Gauge Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <RetentionGauge
+          active={summary?.active ?? 0}
+          expired={summary?.expired ?? 0}
+        />
+
+        <RenewalForecast
+          forecastData={series.slice(-30).map((d) => ({
+            day: d.day,
+            expiring: Math.floor(d.starts / 2),
+          }))}
+          isLoading={isLoading}
+        />
+      </div>
+
       <PackageSalesTable
         isLoading={isLoading}
         packageSales={packageSales}
         totalSales={totalSales}
       />
+
       <ClientsTable
         isLoading={isLoading}
         grouped={grouped}
@@ -137,11 +147,6 @@ export default function AMCEOSalesPage() {
         setQuery={setQuery}
       />
 
-      <RetentionGauge
-        active={summary?.active ?? 0}
-        expired={summary?.expired ?? 0}
-      />
-      <PackageHealthTreemap byPackage={byPackage} />
       <TopPackagesShareRace packageSales={packageSales} />
 
       <ChartsSection
@@ -150,7 +155,6 @@ export default function AMCEOSalesPage() {
         ma7={ma7}
         cumStarts={cumStarts}
       />
-      <ClientsByPackageChart isLoading={isLoading} byPackage={byPackage} />
     </div>
   );
 }

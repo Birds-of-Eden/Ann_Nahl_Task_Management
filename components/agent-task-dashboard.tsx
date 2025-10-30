@@ -433,7 +433,7 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent p-3">
             My Clients
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg">
@@ -711,18 +711,18 @@ export default function AgentDashboard({ agentId }: AgentDashboardProps) {
 
                           {/* Websites (only if present) */}
                           {client.websites?.map((url, idx) => (
-                              <a
-                                key={`${client.id}-w${idx}`}
-                                href={String(url)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                              >
-                                <Globe className="h-4 w-4" />
-                                <span className="truncate">{url}</span>
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
-                            ))}
+                            <a
+                              key={`${client.id}-w${idx}`}
+                              href={String(url)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              <Globe className="h-4 w-4" />
+                              <span className="truncate">{url}</span>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          ))}
                         </div>
 
                         {/* Actions */}
