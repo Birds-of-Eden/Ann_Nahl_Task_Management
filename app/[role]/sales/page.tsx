@@ -111,6 +111,7 @@ export default function AMCEOSalesPage() {
       <PackagesOverview
         isLoading={isLoading}
         byPackage={byPackage}
+        timeseries={series}
         summary={summary}
         selectedPkg={selectedPkg}
         setSelectedPkg={setSelectedPkg}
