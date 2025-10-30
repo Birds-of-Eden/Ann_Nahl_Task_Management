@@ -7,7 +7,6 @@ import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ClientsTable } from "@/components/sales/ClientsTable";
 import { PackageSalesTable } from "@/components/sales/PackageSalesTable";
-import { ClientsByPackageChart } from "@/components/sales/ClientsByPackageChart";
 import { ChartsSection } from "@/components/sales/ChartsSection";
 import { PackagesOverview } from "@/components/sales/PackagesOverview";
 import { SalesSpotlight } from "@/components/sales/SalesSpotlight";
