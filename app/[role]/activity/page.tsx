@@ -236,38 +236,38 @@ export default function ActivityPage() {
                         {log.entityId}
                       </span>
                     </td>
-                   <td className="p-3">
-  <span
-    className={`px-2 py-1 rounded text-xs ${(() => {
-      const a = String(log.action || "").toLowerCase();
-      if (a === "create" || a.includes("assigned"))
-        return "bg-emerald-100 text-emerald-700";
-      if (
-        a === "update" ||
-        a.includes("status") ||
-        a.includes("resume") ||
-        a.includes("pause")
-      )
-        return "bg-blue-100 text-blue-700";
-      if (a === "delete" || a.includes("cancel"))
-        return "bg-red-100 text-red-700";
-      if (a.includes("overdue"))
-        return "bg-orange-100 text-orange-700";
-      if (a.startsWith("task_timer"))
-        return "bg-purple-100 text-purple-700";
-      if (a === "sign_in")
-        return "bg-green-100 text-green-700";
-      if (a === "sign_out")
-        return "bg-red-100 text-red-700";
-      if (a === "upgrade_package")
-        return "bg-cyan-100 text-cyan-700";
-      if (a === "onboarded")
-        return "bg-emerald-100 text-emerald-700";
-    })()}`}
-  >
-    {log.action}
-  </span>
-</td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${(() => {
+                          const a = String(log.action || "").toLowerCase();
+                          if (a === "create" || a.includes("assigned"))
+                            return "bg-emerald-100 text-emerald-700";
+                          if (
+                            a === "update" ||
+                            a.includes("status") ||
+                            a.includes("resume") ||
+                            a.includes("pause")
+                          )
+                            return "bg-blue-100 text-blue-700";
+                          if (a === "delete" || a.includes("cancel"))
+                            return "bg-red-100 text-red-700";
+                          if (a.includes("overdue"))
+                            return "bg-orange-100 text-orange-700";
+                          if (a.startsWith("task_timer"))
+                            return "bg-purple-100 text-purple-700";
+                          if (a === "sign_in")
+                            return "bg-green-100 text-green-700";
+                          if (a === "sign_out")
+                            return "bg-red-100 text-red-700";
+                          if (a === "upgrade_package")
+                            return "bg-cyan-100 text-cyan-700";
+                          if (a === "onboarded")
+                            return "bg-emerald-100 text-emerald-700";
+                        })()}`}
+                      >
+                        {log.action}
+                      </span>
+                    </td>
 
                     <td className="p-3 max-w-[380px]">
                       {log.details && typeof log.details === "object" ? (
