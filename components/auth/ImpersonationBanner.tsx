@@ -9,6 +9,8 @@ export default function ImpersonationBanner() {
   const [state, setState] = useState<{
     isImpersonating: boolean;
     adminName?: string | null;
+    targetName?: string | null;
+    targetRole?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -23,6 +25,9 @@ export default function ImpersonationBanner() {
             adminName:
               d?.impersonation?.realAdmin?.name ||
               d?.impersonation?.realAdmin?.email,
+            targetName:
+              d?.user?.name || d?.user?.email || d?.user?.role || null,
+            targetRole: d?.user?.role || null,
           });
         } else {
           setState({ isImpersonating: false });
@@ -41,10 +46,19 @@ export default function ImpersonationBanner() {
     window.location.reload();
   };
 
+  const formatRole = (role: string) =>
+    role
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const actingAsName = state.targetName || "another user";
+  const actingAsRole = state.targetRole ? ` (${formatRole(state.targetRole)})` : "";
+
   return (
     <div className="w-full bg-amber-100 text-amber-900 border-b border-amber-300 px-4 py-2 flex items-center justify-between">
       <div className="text-sm">
-        <strong>Impersonating</strong> — You are acting as another user.
+        <strong>Impersonating</strong> — You are acting as {actingAsName}
+        {actingAsRole}.
         {state.adminName ? (
           <span className="ml-2">Started by: {state.adminName}</span>
         ) : null}
