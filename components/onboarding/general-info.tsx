@@ -493,7 +493,7 @@ export function GeneralInfo({ formData, updateFormData, onNext }: StepProps) {
       <div className="flex justify-end pt-8">
         <Button 
           onClick={onNext} 
-          disabled={!formData.name}
+          disabled={!formData.name || !formData.gender || !formData.status}
           className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
           Continue to Next Step

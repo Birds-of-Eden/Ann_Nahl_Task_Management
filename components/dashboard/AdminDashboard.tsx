@@ -477,30 +477,6 @@ export function AdminDashboard() {
 
         {/* ---------- TASKS TAB ---------- */}
         <TabsContent value="tasks" className="space-y-6">
-          {/* Range Summary Card */}
-          <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
-            <CardContent className="pt-6 pb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium text-slate-600 mb-2">Showing data for</div>
-                  <div className="text-2xl font-extrabold text-slate-900 mb-1">
-                    {rangeLabel}
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    {dashboardData.rangeInfo?.start && new Date(dashboardData.rangeInfo.start).toLocaleDateString()} → {dashboardData.rangeInfo?.end && new Date(dashboardData.rangeInfo.end).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-extrabold text-indigo-600 mb-1">
-                    {dashboardData.tasks.avgCompletionTime}m
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    Avg completion time
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Status breakdown */}
             <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50/60">
