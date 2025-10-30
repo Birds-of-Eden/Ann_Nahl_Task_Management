@@ -8,11 +8,13 @@ import { Loader2, RefreshCcw } from "lucide-react";
 interface CreateNextTaskProps {
   clientId: string;
   onCreated?: () => void;
+  onComplete?: () => void;
 }
 
 export default function CreateNextTask({
   clientId,
   onCreated,
+  onComplete,
 }: CreateNextTaskProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,6 +50,7 @@ export default function CreateNextTask({
       }
 
       onCreated?.();
+      onComplete?.();
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to create remaining tasks");

@@ -67,6 +67,7 @@ type ClientWithSocial = Client & {
     notes?: string | null;
   }>;
   socialMedia?: unknown;
+  renewalCount?: number | null;
 };
 
 type SocialRow = {
@@ -111,7 +112,9 @@ type FormValues = {
   status?: string;
   packageId?: string;
   startDate?: string;
+  renewalDate?: string;
   dueDate?: string;
+  renewalCount?: number;
 
   // AM
   amId?: string | null;
@@ -124,7 +127,12 @@ function asSocialArray(json: unknown): SocialRow[] {
   try {
     const arr = Array.isArray(json) ? json : [];
     return arr.map((r: any) => ({
-      id: typeof r?.id === "string" ? r.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9)),
+      id:
+        typeof r?.id === "string"
+          ? r.id
+          : [r?.platform, r?.url, r?.username, r?.email, r?.phone]
+              .map((v: any) => (v ?? "").toString().trim())
+              .join("|"),
       platform: r?.platform ?? null,
       url: r?.url ?? null,
       username: r?.username ?? null,
@@ -428,6 +436,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: "UTC",
     });
   };
 
@@ -551,7 +560,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       status: (clientData.status as string) ?? "inactive",
       packageId: (clientData.packageId as string) ?? "",
       startDate: toDateInput(clientData.startDate as any),
+      renewalDate: toDateInput(clientData.renewalDate as any),
       dueDate: toDateInput(clientData.dueDate as any),
+      renewalCount: clientData.renewalCount ?? 0,
       amId: clientData.amId ?? null,
     },
   });
@@ -577,6 +588,7 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
       status: (clientData.status as string) ?? "inactive",
       packageId: (clientData.packageId as string) ?? "",
       startDate: toDateInput(clientData.startDate as any),
+      renewalDate: toDateInput(clientData.renewalDate as any),
       dueDate: toDateInput(clientData.dueDate as any),
       amId: clientData.amId ?? null,
     });
@@ -620,7 +632,9 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
               : Number(values.progress),
           birthdate: values.birthdate || undefined,
           startDate: values.startDate || undefined,
+          renewalDate: values.renewalDate || undefined,
           dueDate: values.dueDate || undefined,
+          renewalCount: values.renewalCount || undefined,
           amId: values.amId && values.amId.trim() !== "" ? values.amId : null,
         };
       }
@@ -959,6 +973,19 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Renewal Date
+                </label>
+                <div className="flex items-center mt-1">
+                  <Clock className="h-4 w-4 text-slate-400 mr-2" />
+                  <span className="text-slate-900 dark:text-slate-100">
+                    {clientData.renewalDate
+                      ? formatDate(clientData.renewalDate as any)
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
                   Due Date
                 </label>
                 <div className="flex items-center mt-1">
@@ -972,10 +999,10 @@ export function Profile({ clientData, currentUserRole }: ProfileProps) {
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Package ID
+                  Renewal Count
                 </label>
                 <p className="text-slate-900 dark:text-slate-100 mt-1 font-mono text-sm">
-                  {(clientData.packageId as string) ?? ""}
+                  {(clientData.renewalCount as number) ?? ""}
                 </p>
               </div>
             </div>

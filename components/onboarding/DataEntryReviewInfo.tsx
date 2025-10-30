@@ -320,9 +320,15 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
                 createdAssignment?.data?.tasks ||
                 [];
               if (Array.isArray(createdTasks) && createdTasks.length > 0) {
-                const now = new Date();
-                const due = new Date(now);
-                due.setDate(due.getDate() + 7);
+                // Set due date to the package start date
+                const startDateRaw = (formData as any)?.startDate;
+                const packageStartISO = startDateRaw
+                  ? new Date(startDateRaw).toISOString()
+                  : (() => {
+                      const fallback = new Date();
+                      fallback.setDate(fallback.getDate() + 7);
+                      return fallback.toISOString();
+                    })();
 
                 const distributeBody = {
                   clientId: createdClientId,
@@ -330,7 +336,7 @@ export function DataEntryReviewInfo({ formData, onPrevious }: any) {
                     taskId: t.id,
                     agentId: user?.id,
                     note: "Auto-assigned to creator after onboarding",
-                    dueDate: due.toISOString(),
+                    dueDate: packageStartISO,
                   })),
                 };
 
