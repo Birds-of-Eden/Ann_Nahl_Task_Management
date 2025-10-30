@@ -23,6 +23,7 @@ export type Client = {
       updatedAt: string
     }
     startDate: string | null
+    renewalDate: string | null
     dueDate: string | null
     createdAt: string
     updatedAt: string
