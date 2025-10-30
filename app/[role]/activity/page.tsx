@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { pusherClient } from "@/lib/pusher/client";
 
-type ActionType = "create" | "update" | "delete";
+type ActionType = "create" | "update" | "delete" | "sign_in" | "sign_out" | "onboarded" | "task_assigned";
 type Log = {
   id: string;
   entityType: string;
@@ -177,6 +177,10 @@ export default function ActivityPage() {
           <option value="create">Create</option>
           <option value="update">Update</option>
           <option value="delete">Delete</option>
+          <option value="sign_in">Sign In</option>
+          <option value="sign_out">Sign Out</option>
+          <option value="onboarded">onboarded</option>
+          <option value="task_assigned">Task Assigned</option>
         </select>
       </div>
 
