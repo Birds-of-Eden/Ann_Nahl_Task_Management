@@ -16,7 +16,6 @@ import { SmartInsights } from "@/components/sales/SmartInsights";
 import { RenewalForecast } from "@/components/sales/RenewalForecast";
 import { SalesKPIGrid } from "@/components/sales/SalesKPIGrid";
 import { RetentionGauge } from "@/components/sales/RetentionGauge";
-import { PackageHealthTreemap } from "@/components/sales/PackageHealthTreemap";
 import { TopPackagesShareRace } from "@/components/sales/TopPackagesShareRace";
 
 export default function AMCEOSalesPage() {
@@ -148,7 +147,10 @@ export default function AMCEOSalesPage() {
         setQuery={setQuery}
       />
 
-      <PackageHealthTreemap byPackage={byPackage} />
+      <RetentionGauge
+        active={summary?.active ?? 0}
+        expired={summary?.expired ?? 0}
+      />
       <TopPackagesShareRace packageSales={packageSales} />
 
       <ChartsSection
