@@ -155,8 +155,6 @@ export default function AMCEOSalesPage() {
         ma7={ma7}
         cumStarts={cumStarts}
       />
-
-      <ClientsByPackageChart isLoading={isLoading} byPackage={byPackage} />
     </div>
   );
 }
