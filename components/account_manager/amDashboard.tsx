@@ -298,7 +298,7 @@ export function AMDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 via-white to-indigo-100/50 hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -327,19 +327,7 @@ export function AMDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 via-white to-violet-100/50 hover:shadow-xl transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg. Progress</p>
-                    <p className="text-3xl font-bold text-slate-800">{avgProgress}%</p>
-                  </div>
-                  <div className="p-3 bg-violet-500 rounded-xl shadow-lg">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
 
             <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 via-white to-amber-100/50 hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-6">
@@ -460,7 +448,7 @@ export function AMDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                     <tr className="text-left text-slate-600 border-b border-slate-200">
                       <th className="py-3 px-4 font-semibold">Client</th>
                       <th className="py-3 px-4 font-semibold">Status</th>
-                      <th className="py-3 px-4 font-semibold">Progress</th>
+                      {/* <th className="py-3 px-4 font-semibold">Progress</th> */}
                       <th className="py-3 px-4 font-semibold">Package</th>
                       <th className="py-3 px-4 font-semibold">Due Date</th>
                     </tr>
@@ -479,7 +467,7 @@ export function AMDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                             {(c.status ?? "—").toString().replace(/_/g, " ")}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">{Number(c.progress ?? 0)}%</td>
+                        {/* <td className="py-3 px-4 text-slate-700 font-medium">{Number(c.progress ?? 0)}%</td> */}
                         <td className="py-3 px-4 text-slate-600">
                           {c.packageId ? (pkgMap[c.packageId] ?? (pkgLoading ? "Loading…" : c.packageId)) : "—"}
                         </td>
