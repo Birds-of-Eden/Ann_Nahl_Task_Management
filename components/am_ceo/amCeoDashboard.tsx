@@ -384,7 +384,7 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 via-white to-indigo-100/50 hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -416,24 +416,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                   </div>
                   <div className="p-3 bg-emerald-500 rounded-xl shadow-lg">
                     <Activity className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 via-white to-violet-100/50 hover:shadow-xl transition-shadow duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                      Overall Progress
-                    </p>
-                    <p className="text-3xl font-bold text-slate-800">
-                      {summary.data?.avgProgress ?? 0}%
-                    </p>
-                  </div>
-                  <div className="p-3 bg-violet-500 rounded-xl shadow-lg">
-                    <TrendingUp className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -610,7 +592,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                     <tr className="text-left text-slate-600 border-b border-slate-200">
                       <th className="py-3 px-4 font-semibold">Client</th>
                       <th className="py-3 px-4 font-semibold">Status</th>
-                      <th className="py-3 px-4 font-semibold">Progress</th>
                       <th className="py-3 px-4 font-semibold">Package</th>
                       <th className="py-3 px-4 font-semibold">Due Date</th>
                     </tr>
@@ -633,9 +614,6 @@ export function AMCeoDashboard({ defaultAmId = "" }: { defaultAmId?: string }) {
                           >
                             {(c.status ?? "—").toString().replace(/_/g, " ")}
                           </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-slate-700 font-medium">
-                          {Number(c.progress ?? 0)}%
                         </td>
                         <td className="py-3 px-4 text-slate-600">
                           {c.packageId
