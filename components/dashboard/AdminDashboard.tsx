@@ -75,6 +75,13 @@ interface DashboardStats {
     byStatus: Array<{ status: string; count: number }>;
     performanceRatings: Array<{ rating: string; count: number }>;
   };
+  // Range information
+  rangeInfo?: {
+    range: string;
+    start: string | Date;
+    end: string | Date;
+    label: string;
+  };
   clients: {
     total: number;
     growthRate: number;
@@ -102,6 +109,13 @@ interface DashboardStats {
     tasksCompletedThisMonth: number;
     clientsAddedThisWeek: number;
     clientsAddedThisMonth: number;
+    currentRange?: {
+      range: string;
+      start: string | Date;
+      end: string | Date;
+      tasksCompleted: number;
+      clientsAdded: number;
+    };
   };
   recent: {
     clients: Array<{
@@ -317,6 +331,10 @@ export function AdminDashboard() {
     }
   }, [dashboardData]);
 
+  const rangeLabel = useMemo(() => {
+    return dashboardData?.rangeInfo?.label || "This Month";
+  }, [dashboardData]);
+
   if (loading) return <DashboardSkeleton />;
   if (error)
     return (
@@ -344,12 +362,14 @@ export function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 bg-clip-text text-transparent">
-            Dashboard Overview
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Real-time insights into your operations & performance
-          </p>
+          <div>
+            <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 bg-clip-text text-transparent">
+              Dashboard Overview
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              {rangeLabel} • Real-time insights into your operations & performance
+            </p>
+          </div>
         </div>
        
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full md:w-auto">
@@ -370,24 +390,32 @@ export function AdminDashboard() {
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <MetricCard
-          title="Total Clients"
-          value={numberFmt(dashboardData.overview.totalClients)}
-          change={`+${dashboardData.clients.growthRate}%`}
-          trend="up"
+          title="Clients Added"
+          value={numberFmt(dashboardData.clients.total)}
+          change={`${dashboardData.clients.growthRate >= 0 ? '+' : ''}${dashboardData.clients.growthRate}%`}
+          trend={dashboardData.clients.growthRate >= 0 ? "up" : "down"}
           description="vs previous period"
           icon={<Users className="h-6 w-6" />}
           gradient="from-blue-500 to-cyan-500"
-          subMetric={`${dashboardData.clients.addedThisMonth} this month`}
         />
         <MetricCard
-          title="Total Tasks"
-          value={numberFmt(dashboardData.overview.totalTasks)}
+          title="Tasks Completed"
+          value={numberFmt(dashboardData.tasks.total)}
           change={`${dashboardData.tasks.completionRate}%`}
           trend="up"
           description="completion rate"
           icon={<Layers className="h-6 w-6" />}
           gradient="from-violet-500 to-purple-500"
-          subMetric={`${dashboardData.tasks.completed} completed`}
+
+        />
+        <MetricCard
+          title="Avg Task Time"
+          value={`${dashboardData.tasks.avgCompletionTime}m`}
+          change={`${numberFmt(dashboardData.tasks.completed)} done`}
+          trend="up"
+          description="average completion"
+          icon={<Timer className="h-6 w-6" />}
+          gradient="from-emerald-500 to-green-500"
         />
         <MetricCard
           title="Active Teams"
@@ -396,18 +424,7 @@ export function AdminDashboard() {
           trend="up"
           description="avg tasks / team"
           icon={<UserCheck className="h-6 w-6" />}
-          gradient="from-emerald-500 to-green-500"
-          subMetric={`${dashboardData.overview.totalUsers} users`}
-        />
-        <MetricCard
-          title="Notifications"
-          value={numberFmt(dashboardData.overview.unreadNotifications)}
-          change={`${dashboardData.overview.totalNotifications}`}
-          trend={dashboardData.overview.unreadNotifications > 5 ? "down" : "up"}
-          description="total notifications"
-          icon={<Bell className="h-6 w-6" />}
           gradient="from-amber-500 to-orange-500"
-          subMetric={`${dashboardData.overview.totalMessages} messages`}
         />
       </div>
 
@@ -460,14 +477,27 @@ export function AdminDashboard() {
 
         {/* ---------- TASKS TAB ---------- */}
         <TabsContent value="tasks" className="space-y-6">
-          {/* Avg Task Time compact block */}
-          <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-white to-slate-50/60">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-extrabold text-slate-900 mb-1">
-                {dashboardData.tasks.avgCompletionTime}
-              </div>
-              <div className="text-sm text-slate-600">
-                Average completion time (minutes)
+          {/* Range Summary Card */}
+          <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
+            <CardContent className="pt-6 pb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-slate-600 mb-2">Showing data for</div>
+                  <div className="text-2xl font-extrabold text-slate-900 mb-1">
+                    {rangeLabel}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {dashboardData.rangeInfo?.start && new Date(dashboardData.rangeInfo.start).toLocaleDateString()} → {dashboardData.rangeInfo?.end && new Date(dashboardData.rangeInfo.end).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-extrabold text-indigo-600 mb-1">
+                    {dashboardData.tasks.avgCompletionTime}m
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Avg completion time
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

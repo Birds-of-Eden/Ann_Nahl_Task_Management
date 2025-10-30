@@ -28,6 +28,11 @@ export async function GET(request: NextRequest) {
     const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
 
+    const startOfSixMonths = new Date(now);
+    startOfSixMonths.setMonth(now.getMonth() - 5, 1); // inclusive from the 1st of the month 5 months ago + current month = 6 calendar months
+    startOfSixMonths.setHours(0, 0, 0, 0);
+    const endOfSixMonths = new Date(endOfMonth); // through end of current month
+
     const getRangeBounds = () => {
       switch (range) {
         case "this_week":
@@ -36,13 +41,21 @@ export async function GET(request: NextRequest) {
           return { start: startOfQuarter, end: endOfQuarter };
         case "this_year":
           return { start: startOfYear, end: endOfYear };
+        case "last_6_months":
+        case "six_months":
+          return { start: startOfSixMonths, end: endOfSixMonths };
         case "this_month":
         default:
           return { start: startOfMonth, end: endOfMonth };
       }
     };
     const { start: rangeStart, end: rangeEnd } = getRangeBounds();
-    // ---------- Core, recent, and analytics (existing logic) ----------
+
+    // ---------- Core, recent, and analytics (RANGE-FILTERED) ----------
+    // Build where clauses for range filtering
+    const taskCompletedWhere = { completedAt: { gte: rangeStart, lte: rangeEnd } };
+    const clientCreatedWhere = { createdAt: { gte: rangeStart, lte: rangeEnd } };
+
     const [
       totalClients,
       totalTasks,
@@ -81,8 +94,10 @@ export async function GET(request: NextRequest) {
       totalMessages,
       unreadNotifications,
     ] = await Promise.all([
-      prisma.client.count(),
-      prisma.task.count(),
+      // Clients filtered by createdAt in range
+      prisma.client.count({ where: clientCreatedWhere }),
+      // Tasks filtered by completedAt in range
+      prisma.task.count({ where: taskCompletedWhere }),
       prisma.user.count(),
       prisma.team.count(),
       prisma.package.count(),
@@ -91,13 +106,16 @@ export async function GET(request: NextRequest) {
       prisma.notification.count(),
       prisma.conversation.count(),
 
-      prisma.task.count({ where: { status: "completed" } }),
-      prisma.task.count({ where: { status: "pending" } }),
-      prisma.task.count({ where: { status: "in_progress" } }),
-      prisma.task.count({ where: { status: "overdue" } }),
+      // Task status counts filtered by completedAt in range
+      prisma.task.count({ where: { ...taskCompletedWhere, status: "completed" } }),
+      prisma.task.count({ where: { ...taskCompletedWhere, status: "pending" } }),
+      prisma.task.count({ where: { ...taskCompletedWhere, status: "in_progress" } }),
+      prisma.task.count({ where: { ...taskCompletedWhere, status: "overdue" } }),
 
+      // Recent clients filtered by createdAt in range
       prisma.client.findMany({
         take: 10,
+        where: clientCreatedWhere,
         orderBy: { createdAt: "desc" },
         include: {
           package: true,
@@ -106,9 +124,11 @@ export async function GET(request: NextRequest) {
         },
       }),
 
+      // Recent tasks filtered by completedAt in range
       prisma.task.findMany({
         take: 10,
-        orderBy: { createdAt: "desc" },
+        where: taskCompletedWhere,
+        orderBy: { completedAt: "desc" },
         include: {
           client: true,
           assignedTo: true,
@@ -131,17 +151,19 @@ export async function GET(request: NextRequest) {
         include: { user: true, task: true },
       }),
 
-      prisma.task.groupBy({ by: ["priority"], _count: { priority: true } }),
-      prisma.task.groupBy({ by: ["status"], _count: { status: true } }),
+      // Task groupings filtered by completedAt in range
+      prisma.task.groupBy({ by: ["priority"], _count: { priority: true }, where: taskCompletedWhere }),
+      prisma.task.groupBy({ by: ["status"], _count: { status: true }, where: taskCompletedWhere }),
       prisma.user.groupBy({
         by: ["roleId"],
         _count: { roleId: true },
         where: { roleId: { not: null } },
       }),
+      // Client status grouping filtered by createdAt in range
       prisma.client.groupBy({
         by: ["status"],
         _count: { status: true },
-        where: { status: { not: null } },
+        where: { ...clientCreatedWhere, status: { not: null } },
       }),
 
       prisma.team.findMany({
@@ -167,10 +189,21 @@ export async function GET(request: NextRequest) {
       prisma.notification.count({ where: { isRead: false } }),
     ]);
 
+    // Completion rate based on range-filtered tasks
     const taskCompletionRate =
       totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    const clientGrowthRate = 0; // Simplified; can be extended for period-over-period
+    // Client growth: compare current range to previous period
+    const rangeDuration = rangeEnd.getTime() - rangeStart.getTime();
+    const prevRangeStart = new Date(rangeStart.getTime() - rangeDuration);
+    const prevRangeEnd = new Date(rangeStart.getTime() - 1);
+    const clientsAddedPrevRange = await prisma.client.count({
+      where: { createdAt: { gte: prevRangeStart, lte: prevRangeEnd } },
+    });
+    const clientGrowthRate =
+      clientsAddedPrevRange > 0
+        ? Math.round(((totalClients - clientsAddedPrevRange) / clientsAddedPrevRange) * 100)
+        : totalClients > 0 ? 100 : 0;
 
     const teamEfficiency =
       teamsWithMembers.length > 0
@@ -213,19 +246,25 @@ export async function GET(request: NextRequest) {
       count: group._count.roleId
     }));
 
-    // Average Task Time = total actualDurationMinutes / total tasks
+    // Average Task Time = total actualDurationMinutes / total tasks (in range)
     const durationAgg = await prisma.task.aggregate({
       _sum: { actualDurationMinutes: true },
+      where: taskCompletedWhere,
     });
     const totalDurationMinutes = durationAgg._sum.actualDurationMinutes || 0;
     const avgCompletionTime = totalTasks > 0
       ? Math.round(totalDurationMinutes / totalTasks)
       : 0;
 
+    // tasksInRange and clientsInRange already computed above via main queries
+    const tasksCompletedInRange = completedTasks;
+    const clientsAddedInRange = totalClients;
+
+    // Performance ratings filtered by completedAt in range
     const performanceRatings = await prisma.task.groupBy({
       by: ["performanceRating"],
       _count: { performanceRating: true },
-      where: { performanceRating: { not: null } },
+      where: { ...taskCompletedWhere, performanceRating: { not: null } },
     });
 
     // ---------- NEW: Category details ----------
@@ -265,13 +304,7 @@ export async function GET(request: NextRequest) {
       recentTasks: [],
     }));
 
-    // Compute metrics for the current selected range
-    const tasksCompletedInRange = await prisma.task.count({
-      where: { completedAt: { gte: rangeStart, lte: rangeEnd } },
-    });
-    const clientsAddedInRange = await prisma.client.count({
-      where: { createdAt: { gte: rangeStart, lte: rangeEnd } },
-    });
+    // (removed duplicate in-range computation; see later consolidated block)
 
     // ---------- Assemble final payload ----------
     const dashboardStats = {
@@ -309,6 +342,14 @@ export async function GET(request: NextRequest) {
           rating: g.performanceRating,
           count: g._count.performanceRating,
         })),
+      },
+
+      // Range summary (all metrics already filtered)
+      rangeInfo: {
+        range,
+        start: rangeStart,
+        end: rangeEnd,
+        label: range.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       },
 
       clients: {
