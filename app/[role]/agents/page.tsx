@@ -19,6 +19,7 @@ import { AgentListView } from "@/components/agents/agent-list-view";
 import { AgentDetailsDialog } from "@/components/agents/agent-details-dialog";
 import { EmptyState } from "@/components/agents/empty-state";
 import { Agent } from "@/components/task-distribution/distribution-types";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 export default function AllAgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -30,6 +31,8 @@ export default function AllAgentsPage() {
   const [viewMode, setViewMode] = useState<"list" | "card">("card");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const roleSegment = useRoleSegment();
+  const agentsBasePath = `/${roleSegment}/agents`;
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -178,7 +181,7 @@ export default function AllAgentsPage() {
                 tools and insights
               </p>
             </div>
-            <Link href="/admin/agents/create">
+            <Link href={`${agentsBasePath}/create`}>
               <Button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-3 text-base font-medium rounded-md">
                 <Plus className="h-5 w-5" />
                 Add New Agent

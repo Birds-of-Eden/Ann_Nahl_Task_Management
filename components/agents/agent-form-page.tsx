@@ -35,6 +35,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 interface Team {
   id: string;
@@ -64,6 +65,8 @@ export default function AgentFormPage({
   initialData,
 }: AgentFormPageProps) {
   const router = useRouter();
+  const roleSegment = useRoleSegment();
+  const agentsPath = `/${roleSegment}/agents`;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -250,7 +253,7 @@ export default function AgentFormPage({
       );
 
       setTimeout(() => {
-        router.push("/admin/agents");
+        router.push(agentsPath);
       }, 2000);
     } catch (error) {
       console.error(`Failed to ${mode} agent:`, error);
@@ -284,7 +287,7 @@ export default function AgentFormPage({
                 </p>
                 <div className="space-y-3">
                   <Button
-                    onClick={() => router.push("/admin/agents")}
+                    onClick={() => router.push(agentsPath)}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                   >
                     View All Agents
@@ -328,7 +331,7 @@ export default function AgentFormPage({
         <div className="w-full mx-auto space-y-8">
           {/* Enhanced Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <Link href="/admin/agents">
+            <Link href={agentsPath}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -707,7 +710,7 @@ export default function AgentFormPage({
 
             {/* Submit Actions */}
             <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6">
-              <Link href="/admin/agents">
+              <Link href={agentsPath}>
                 <Button
                   type="button"
                   variant="outline"

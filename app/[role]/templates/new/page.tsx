@@ -18,6 +18,7 @@ import { Plus, Trash, Save, ArrowLeft, Badge } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { SiteAssetType } from '@prisma/client'
+import { useRoleSegment } from '@/lib/hooks/use-role-segment'
 
 interface NewAsset {
   type: SiteAssetType
@@ -45,6 +46,8 @@ export default function NewTemplatePage() {
     defaultIdealDurationMinutes: 1,
   })
   const router = useRouter()
+  const roleSegment = useRoleSegment()
+  const templatesBasePath = `/${roleSegment}/templates`
 
   const handleAddAsset = () => {
     if (!newAsset.name) return
@@ -88,7 +91,7 @@ export default function NewTemplatePage() {
 
       const createdTemplate = await response.json()
       toast('Template created successfully')
-      router.push(`/admin/templates`)
+      router.push(templatesBasePath)
     } catch (error) {
       console.error('Error creating template:', error)
       toast('Failed to create template')
@@ -99,7 +102,7 @@ export default function NewTemplatePage() {
     <div className="container mx-auto py-8">
       <div className="flex items-center mb-6">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/templates">
+          <Link href={templatesBasePath}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

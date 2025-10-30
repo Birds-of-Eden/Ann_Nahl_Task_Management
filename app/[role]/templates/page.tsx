@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { title } from 'process'
+import { useRoleSegment } from '@/lib/hooks/use-role-segment'
 
 interface Template {
   id: string
@@ -44,6 +45,9 @@ interface Template {
 }
 
 export default function TemplatesPage() {
+  const roleSegment = useRoleSegment()
+  const templatesBasePath = `/${roleSegment}/templates`
+
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -114,7 +118,7 @@ export default function TemplatesPage() {
           </div>
           <div className="flex items-center space-x-3">
             <Button asChild className="bg-amber-600 hover:bg-amber-800 text-white hover:text-white">
-              <Link href="/admin/templates/new">
+              <Link href={`${templatesBasePath}/new`}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Template
               </Link>
@@ -335,7 +339,7 @@ export default function TemplatesPage() {
           )
         ) : (
           <Button asChild className="bg-amber-600 hover:bg-amber-800 text-white hover:text-white">
-            <Link href="/admin/templates/new">
+            <Link href={`${templatesBasePath}/new`}>
               <Plus className="mr-2 h-4 w-4" />
               New Template
             </Link>

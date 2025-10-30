@@ -37,6 +37,7 @@ import { Agent } from "../task-distribution/distribution-types";
 import { getInitialsFromParts, nameToColor } from "@/utils/avatar";
 import { getStatusBadge } from "./status-badge";
 import { getCategoryBadge } from "./category-badge";
+import { useRoleSegment } from "@/lib/hooks/use-role-segment";
 
 interface AgentCardProps {
   agent: Agent;
@@ -56,9 +57,10 @@ const formatJoinDate = (dateString: string) => {
 export function AgentCard({ agent, onDelete, onViewDetails }: AgentCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const router = useRouter();
+  const roleSegment = useRoleSegment();
 
-  const goProfile = () => router.push(`/admin/agents/${agent.id}`);
-  const goEdit = () => router.push(`/admin/agents/${agent.id}/edit`);
+  const goProfile = () => router.push(`/${roleSegment}/agents/${agent.id}`);
+  const goEdit = () => router.push(`/${roleSegment}/agents/${agent.id}/edit`);
 
   return (
     <Card

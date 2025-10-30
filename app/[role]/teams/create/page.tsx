@@ -14,9 +14,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useUserSession } from "@/lib/hooks/use-user-session"
+import { useRoleSegment } from "@/lib/hooks/use-role-segment"
 
 export default function CreateTeamPage() {
   const router = useRouter()
+  const roleSegment = useRoleSegment()
+  const teamsBasePath = `/${roleSegment}/teams`
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [formData, setFormData] = useState({
@@ -68,7 +71,7 @@ export default function CreateTeamPage() {
       })
 
       setTimeout(() => {
-        router.push("/admin/teams")
+        router.push(teamsBasePath)
       }, 2000)
     } catch (error) {
       console.error("Failed to create team:", error)
@@ -131,7 +134,7 @@ export default function CreateTeamPage() {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-                    <Link href="/admin/teams">
+                    <Link href={teamsBasePath}>
                       <Button className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-3">
                         <Sparkles className="w-4 h-4 mr-2" />
                         View All Teams
@@ -167,7 +170,7 @@ export default function CreateTeamPage() {
         <div className="max-w-3xl mx-auto space-y-8">
           {/* Enhanced Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-            <Link href="/admin/teams">
+            <Link href={teamsBasePath}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -291,7 +294,7 @@ export default function CreateTeamPage() {
 
             {/* Submit Actions */}
             <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6">
-              <Link href="/admin/teams">
+              <Link href={teamsBasePath}>
                 <Button
                   type="button"
                   variant="outline"

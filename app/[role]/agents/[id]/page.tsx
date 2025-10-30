@@ -337,10 +337,17 @@ export default async function AgentPerformancePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ role?: string; id: string }>;
   searchParams: Promise<{ filter?: PerformanceFilter }>;
 }) {
-  const { id } = await params;
+  const { id, role: roleParam } = await params;
+  const roleSegment = (() => {
+    if (typeof roleParam === "string") {
+      const normalized = roleParam.trim().toLowerCase();
+      if (/^[a-z0-9_-]+$/.test(normalized)) return normalized;
+    }
+    return "admin";
+  })();
   const { filter = "all" } = await searchParams;
 
   const agent = await prisma.user.findUnique({
@@ -443,7 +450,7 @@ export default async function AgentPerformancePage({
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-6">
-            <Link href="/admin/agents">
+            <Link href={`/${roleSegment}/agents`}>
               <Button
                 variant="outline"
                 className="border-2 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-700 dark:hover:bg-indigo-900/20 transition-all duration-200"
