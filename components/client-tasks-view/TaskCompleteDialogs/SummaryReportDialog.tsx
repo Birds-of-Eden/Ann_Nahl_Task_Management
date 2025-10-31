@@ -147,6 +147,20 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
         else performanceRating = "Lazy"; // More than 200% over ideal
       }
 
+      // Convert PDF file to base64 if exists
+      let pdfData: string | null = null;
+      if (pdfFile) {
+        pdfData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64String = reader.result as string;
+            resolve(base64String);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfFile);
+        });
+      }
+
       // Update task details with backlinking data (saved in Task.taskCompletionJson)
       const updateResponse = await fetch(`/api/tasks/${task.id}`, {
         method: "PUT",
@@ -162,6 +176,9 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
             title: title.trim(),
             text,
             pdfFileName: pdfFile?.name ?? null,
+            pdfData: pdfData, // Store the full PDF file as base64
+            pdfSize: pdfFile?.size ?? null,
+            pdfType: pdfFile?.type ?? null,
             clientId,
             updatedAt: new Date().toISOString(),
           },

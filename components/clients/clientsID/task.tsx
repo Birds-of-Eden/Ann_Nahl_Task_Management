@@ -1,6 +1,7 @@
 //components/clients/[clientsID]/task.tsx
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -22,6 +23,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Client } from "@/types/client"
 import { PostingTaskStatus } from "./posting-task-status"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 // ---------- Small UI Helpers ----------
 const Pill = ({ children }: { children: React.ReactNode }) => (
@@ -55,6 +57,8 @@ interface TasksProps {
 
 export function Tasks({ clientData }: TasksProps) {
   type TaskItem = NonNullable<Client["tasks"]>[number]
+
+  const [pdfPreview, setPdfPreview] = useState<{ open: boolean; title?: string; url?: string }>({ open: false })
 
   // ---------- Aggregates ----------
   const normalizeStatus = (raw?: string | null) => {
@@ -379,6 +383,8 @@ export function Tasks({ clientData }: TasksProps) {
     const title = data?.title
     const text = data?.text
     const pdf = data?.pdfFileName
+    const pdfData: string | undefined = data?.pdfData
+    const pdfType: string | undefined = data?.pdfType
 
     if (status !== "completed") return <PendingBox />
     return (
@@ -394,13 +400,32 @@ export function Tasks({ clientData }: TasksProps) {
             <p className="text-sm text-slate-500">No report text provided.</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <KeyStat label="PDF" value={pdf || "—"} />
-          {pdf && (
-            <span className="ml-1 inline-flex items-center gap-1 text-xs text-blue-700">
-              <FileDown className="h-3.5 w-3.5" />
-              {pdf}
-            </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <KeyStat label="PDF" value={pdf || (pdfData ? "Attached" : "—")} />
+          {pdfData ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setPdfPreview({ open: true, title: title || pdf || "Summary Report", url: pdfData })}
+                className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline"
+              >
+                <FileText className="h-3.5 w-3.5" /> View
+              </button>
+              <a
+                href={pdfData}
+                download={pdf || "summary-report.pdf"}
+                className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline"
+              >
+                <FileDown className="h-3.5 w-3.5" /> Download
+              </a>
+            </>
+          ) : (
+            pdf && (
+              <span className="ml-1 inline-flex items-center gap-1 text-xs text-blue-700">
+                <FileDown className="h-3.5 w-3.5" />
+                {pdf}
+              </span>
+            )
           )}
         </div>
       </div>
@@ -519,7 +544,7 @@ export function Tasks({ clientData }: TasksProps) {
         <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="text-indigo-600" />
-            <span>Task Breakdown - {clientData.name}</span>
+            <span>Task Breakdown- {clientData.name}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="px-6">
@@ -721,6 +746,20 @@ export function Tasks({ clientData }: TasksProps) {
           </Accordion>
         </CardContent>
       </Card>
+      <Dialog open={pdfPreview.open} onOpenChange={(o) => setPdfPreview((p) => ({ ...p, open: o }))}>
+        <DialogTitle>PDF Preview</DialogTitle>
+        <DialogContent className="max-w-5xl h-[85vh]">
+            {pdfPreview.url ? (
+            <iframe
+              src={pdfPreview.url}
+              title={pdfPreview.title || "PDF"}
+              className="w-full h-full rounded-md border"
+            />
+          ) : (
+            <div className="text-sm text-slate-500">No PDF to preview.</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
