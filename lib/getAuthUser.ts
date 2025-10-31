@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
-import { amScopeCheck, canImpersonate } from "./impersonation";
+import { amScopeCheck, amCeoScopeCheck, canImpersonate } from "./impersonation";
 
 export async function getAuthUser() {
   const session = await getServerSession(authOptions);
@@ -26,6 +26,12 @@ export async function getAuthUser() {
       const scope = await amScopeCheck(originId, targetId);
       if (!scope.ok) {
         return baseUser; // স্কোপ মিলেনি → ইগনোর
+      }
+    }
+    if (perm.roleName === "am_ceo") {
+      const scope = await amCeoScopeCheck(originId, targetId);
+      if (!scope.ok) {
+        return baseUser; // Scope failed
       }
     }
 
@@ -75,3 +81,4 @@ export async function getAuthUser() {
     __impersonating: false,
   } as any;
 }
+

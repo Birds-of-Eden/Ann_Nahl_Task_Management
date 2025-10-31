@@ -41,6 +41,7 @@ export default function ClientsPage() {
   const currentUserId = user?.id ?? undefined;
   const currentUserRole = user?.role ?? undefined;
   const isAM = (currentUserRole ?? "").toLowerCase() === "am";
+  const isAMCeo = (currentUserRole ?? "").toLowerCase() === "am_ceo";
 
   // Enforce AM filtering to their own ID
   useEffect(() => {
@@ -321,6 +322,8 @@ export default function ClientsPage() {
           groupedClients={groupedClients}
           onViewDetails={handleViewClientDetails}
           viewMode={viewMode}
+          canImpersonateAm={isAMCeo}
+          currentUserId={currentUserId}
         />
       )}
     </div>

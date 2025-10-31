@@ -6,6 +6,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import type { Client } from "@/types/client";
 import { ClientGrid } from "./client-grid";
 import { ClientList } from "./client-list";
+import ImpersonateButton from "@/components/users/ImpersonateButton";
 
 import { ChevronDown, Package, Users, Heart } from "lucide-react";
 import {
@@ -27,6 +28,8 @@ interface AmGroupedClientViewProps {
   groupedClients: AmGroup[];
   onViewDetails: (client: Client) => void;
   viewMode: "grid" | "list";
+  canImpersonateAm?: boolean;
+  currentUserId?: string;
 }
 
 const STATUS_COLORS = {
@@ -44,6 +47,8 @@ export function AmGroupedClientView({
   groupedClients,
   onViewDetails,
   viewMode,
+  canImpersonateAm = false,
+  currentUserId,
 }: AmGroupedClientViewProps) {
   // -------------------------
   // Favorites (am_ceo only)
@@ -270,6 +275,14 @@ export function AmGroupedClientView({
       {/* ----------------------------- */}
       {groupedClients.map((group) => {
         const amId = group.am.id;
+        const canImpersonateThisAm =
+          canImpersonateAm &&
+          typeof amId === "string" &&
+          amId.length > 0 &&
+          amId !== "unassigned" &&
+          (!currentUserId || currentUserId !== amId);
+        const impersonateLabel =
+          group.am.name || group.am.email || "Account Manager";
         const isOpen = getIsExpanded(amId);
         const isHovered = hovered[amId] ?? false;
 
@@ -406,6 +419,14 @@ export function AmGroupedClientView({
                     </div>
                   )}
                 </div>
+
+                {canImpersonateThisAm && (
+                  <ImpersonateButton
+                    targetUserId={amId}
+                    targetName={impersonateLabel}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                  />
+                )}
 
                 <button
                   type="button"
