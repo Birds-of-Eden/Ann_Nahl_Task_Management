@@ -94,6 +94,8 @@ export function RenewPostingTasksButton({
       if (onRenewComplete) {
         onRenewComplete();
       }
+      // Hide the button thereafter by refreshing the page only on success
+      window.location.reload();
     } catch (e: any) {
       toast.error(e?.message || "Something went wrong");
     } finally {

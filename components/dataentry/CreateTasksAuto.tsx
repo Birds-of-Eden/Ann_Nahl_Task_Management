@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Target, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
 
 interface CreateTasksButtonProps {
   clientId: string;
@@ -17,6 +18,7 @@ export default function CreateTasksButton({
   onTaskCreationComplete 
 }: CreateTasksButtonProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const { user, status } = useAuth();
 
   const createTasks = async () => {
     setIsCreating(true);
@@ -38,24 +40,17 @@ export default function CreateTasksButton({
       const createdTasks: Array<{ id: string; dueDate?: string | null }> = Array.isArray(data?.tasks) ? data.tasks : [];
       const createdCount = Number(data?.created ?? createdTasks.length);
 
-      // Try auto-assign to a data_entry user
+      // Try auto-assign to the current session user
       try {
-        const usersRes = await fetch(`/api/users?role=data_entry&limit=50`, { cache: "no-store" });
-        const usersJson = await usersRes.json().catch(() => ({}));
-        const dataEntryUsers: any[] = (usersJson?.users ?? usersJson?.data ?? []).filter(
-          (u: any) => u?.role?.name?.toLowerCase() === "data_entry"
-        );
-
-        if (dataEntryUsers.length === 0) {
-          toast.warning("Tasks created, but no data_entry users found to assign.");
-        } else if (createdTasks.length === 0) {
+        if (createdTasks.length === 0) {
           toast.success("Tasks already existed or none created. No assignment needed.");
+        } else if (status !== "authenticated" || !user?.id) {
+          toast.warning("Tasks created, but no authenticated user found to assign.");
         } else {
-          const assignee = dataEntryUsers[0];
           const assignments = createdTasks.map((t) => ({
             taskId: t.id,
-            agentId: assignee.id,
-            note: "Auto-assigned to data_entry after posting creation",
+            agentId: user.id,
+            note: "Auto-assigned to session user after posting creation",
             dueDate:
               t?.dueDate && typeof t.dueDate === "string"
                 ? t.dueDate
@@ -73,7 +68,7 @@ export default function CreateTasksButton({
           });
 
           if (distRes.ok) {
-            toast.success(`Created ${createdCount} posting task(s) and assigned to data_entry`);
+            toast.success(`Created ${createdCount} posting task(s) and assigned to you`);
           } else {
             const dj = await distRes.json().catch(() => ({}));
             console.error("Distribute failed", dj);
@@ -82,7 +77,7 @@ export default function CreateTasksButton({
         }
       } catch (assignErr) {
         console.error(assignErr);
-        toast.warning("Tasks created, but auto-assignment to data_entry failed");
+        toast.warning("Tasks created, but auto-assignment to session user failed");
       }
 
       if (!createdCount) {
@@ -90,13 +85,14 @@ export default function CreateTasksButton({
         toast.info(data?.message || "No new posting tasks to create (already exists)");
       }
 
-      // Call the callback if provided
-      if (onTaskCreationComplete) {
-        onTaskCreationComplete();
+      // Only hide (reload) if tasks were actually created successfully
+      if (createdCount > 0) {
+        if (onTaskCreationComplete) {
+          onTaskCreationComplete();
+        }
+        // Refresh the page to show updated status and hide the button thereafter
+        window.location.reload();
       }
-      
-      // Refresh the page to show updated status
-      window.location.reload();
     } catch (error: any) {
       console.error("Error creating tasks:", error);
       toast.error(error.message || "Failed to create tasks");
