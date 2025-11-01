@@ -13,7 +13,7 @@ export async function canImpersonate(userId: string) {
   if (!user) return { ok: false as const };
 
   const roleName = user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "am")
+  if (roleName === "admin" || roleName === "am" || roleName === "am_ceo")
     return { ok: true as const, roleName };
 
   const perms =
@@ -49,4 +49,36 @@ export async function amScopeCheck(amUserId: string, targetUserId: string) {
     return { ok: false as const, reason: "Not your client" };
   }
   return { ok: true as const };
+}
+
+export async function amCeoScopeCheck(
+  _amCeoUserId: string,
+  targetUserId: string
+) {
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    include: { role: true },
+  });
+
+  if (!target) {
+    return { ok: false as const, reason: "Target user not found" };
+  }
+
+  const role = target.role?.name?.toLowerCase() ?? "";
+
+  if (role === "am" || role === "client") {
+    return { ok: true as const };
+  }
+
+  if (role === "am_ceo") {
+    return {
+      ok: false as const,
+      reason: "AM CEO cannot impersonate another AM CEO",
+    };
+  }
+
+  return {
+    ok: false as const,
+    reason: "AM CEO can only impersonate AM or client users",
+  };
 }

@@ -4,7 +4,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { randomUUID } from "crypto";
-import { canImpersonate, amScopeCheck } from "@/lib/impersonation";
+import {
+  canImpersonate,
+  amScopeCheck,
+  amCeoScopeCheck,
+} from "@/lib/impersonation";
 
 function isSecure(req: NextRequest) {
   const proto =
@@ -41,9 +45,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const actorRoleName = (perm.roleName ?? "").toLowerCase();
+
     // ✅ AM-স্কোপ গার্ড (যদি actor AM হয়)
-    if ((perm.roleName ?? "").toLowerCase() === "am") {
+    if (actorRoleName === "am") {
       const scope = await amScopeCheck(actorUserId, targetUserId);
+      if (!scope.ok) {
+        return NextResponse.json({ error: scope.reason }, { status: 403 });
+      }
+    }
+
+    if (actorRoleName === "am_ceo") {
+      const scope = await amCeoScopeCheck(actorUserId, targetUserId);
       if (!scope.ok) {
         return NextResponse.json({ error: scope.reason }, { status: 403 });
       }
