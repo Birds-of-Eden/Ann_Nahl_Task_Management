@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Download, Calendar as CalendarIcon, Loader2, Users, Package, BarChart3, Filter } from "lucide-react";
+import { Download, Calendar as CalendarIcon, Loader2, Users, Package, BarChart3, Filter, Table as TableIcon, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -260,11 +260,15 @@ export default function MonthlyAgentPackageMatrix({
     const totalPost = rows.reduce((sum, row) => sum + row.total_post, 0);
     const totalWeekly = rows.reduce((sum, row) => sum + row.total_weekly, 0);
     const totalSheets = rows.reduce((sum, row) => sum + row.total_sheets, 0);
+    const totalImageOp = rows.reduce((sum, row) => sum + row.image_op, 0);
+    const totalAwsUpload = rows.reduce((sum, row) => sum + row.aws_upload, 0);
     return {
       totalTasks,
       totalPost,
       totalWeekly,
       totalSheets,
+      totalImageOp,
+      totalAwsUpload,
       totalAgents: rows.length,
       totalPackages: packageList.length,
     };
@@ -315,10 +319,10 @@ export default function MonthlyAgentPackageMatrix({
 
   // Color variants for badges based on values
   const getBadgeVariant = (value: number, type?: "post" | "weekly" | "sheet") => {
-    if (value === 0) return "outline";
-    if (value <= 5) return "secondary";
-    if (value <= 15) return "default";
-    return "destructive";
+    if (value === 0) return "outline" as const;
+    if (value <= 5) return "secondary" as const;
+    if (value <= 15) return "default" as const;
+    return "destructive" as const;
   };
 
   return (
@@ -473,7 +477,7 @@ export default function MonthlyAgentPackageMatrix({
                             <th className="w-[200px] px-6 py-4 text-left font-semibold text-slate-700 sticky left-0 bg-slate-100 z-10">
                               Team Member
                             </th>
-                            {(["Posting", "Weekly", "Sheet"] as const).map((m) => (
+                            {( ["Posting", "Weekly", "Sheet"] as const).map((m) => (
                               <React.Fragment key={`head-${m}`}>
                                 {packageList.map((p) => (
                                   <th 
@@ -514,7 +518,7 @@ export default function MonthlyAgentPackageMatrix({
                               <td className="px-6 py-3 font-semibold text-slate-800 sticky left-0 bg-white border-r border-slate-200 z-10">
                                 {r.agent}
                               </td>
-                              {(["Posting", "Weekly", "Sheet"] as const).map((m) => (
+                              {( ["Posting", "Weekly", "Sheet"] as const).map((m) => (
                                 <React.Fragment key={`row-${r.agent}-${m}`}>
                                   {packageList.map((p) => {
                                     const c = r.byPkg[p] || { post: 0, weekly: 0, sheet: 0 };
@@ -566,7 +570,7 @@ export default function MonthlyAgentPackageMatrix({
                             <td className="px-6 py-4 text-slate-800 sticky left-0 bg-slate-100 border-r border-slate-200 z-10">
                               Team Totals
                             </td>
-                            {(["Posting", "Weekly", "Sheet"] as const).map((m) => (
+                            {( ["Posting", "Weekly", "Sheet"] as const).map((m) => (
                               <React.Fragment key={`tot-${m}`}>
                                 {packageList.map((p) => {
                                   const v = m === "Posting" ? pkgTotals[p].post : m === "Weekly" ? pkgTotals[p].weekly : pkgTotals[p].sheet;
@@ -664,6 +668,106 @@ export default function MonthlyAgentPackageMatrix({
               </Card>
             </TabsContent>
           </Tabs>
+        )}
+
+        {/* ===== NEW: Grand Totals Table (all metrics in one place) ===== */}
+        {!loading && (
+          <Card className="bg-white/90 backdrop-blur-sm border-slate-200 shadow-sm">
+            <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-amber-50/60 border-b">
+              <CardTitle className="flex items-center gap-3 text-slate-800">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <TableIcon className="h-5 w-5 text-amber-700" />
+                </div>
+                Monthly Totals
+              </CardTitle>
+              <CardDescription className="text-slate-600">
+                All key totals for {format(start, "MMMM yyyy")} consolidated in one table
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid md:grid-cols-2 gap-0">
+                {/* Left: Overall Totals */}
+                <div className="p-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <List className="h-4 w-4" /> Overall
+                  </h3>
+                  <div className="rounded-lg border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Total Posts</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalPost}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Total Weekly</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalWeekly}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Total Sheets</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalSheets}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Image Optimization</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalImageOp}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">AWS Upload</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalAwsUpload}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Total Tasks</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalTasks}</td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="px-4 py-3 text-slate-600">Total Agents</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalAgents}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-slate-600">Total Packages</td>
+                          <td className="px-4 py-3 font-semibold text-slate-900 text-right">{summaryStats.totalPackages}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right: Totals by Package */}
+                <div className="p-6 border-t md:border-t-0 md:border-l border-slate-200">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" /> Totals by Package
+                  </h3>
+                  <div className="rounded-lg border border-slate-200 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-slate-700">Package</th>
+                          <th className="px-4 py-3 text-right font-semibold text-slate-700">Posting</th>
+                          <th className="px-4 py-3 text-right font-semibold text-slate-700">Weekly</th>
+                          <th className="px-4 py-3 text-right font-semibold text-slate-700">Sheet</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packageList.map((p) => (
+                          <tr key={`pkg-row-${p}`} className="border-t">
+                            <td className="px-4 py-3 font-medium text-slate-900">{p}</td>
+                            <td className="px-4 py-3 text-right">{pkgTotals[p].post}</td>
+                            <td className="px-4 py-3 text-right">{pkgTotals[p].weekly}</td>
+                            <td className="px-4 py-3 text-right">{pkgTotals[p].sheet}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-50 font-semibold">
+                          <td className="px-4 py-3">Grand Total</td>
+                          <td className="px-4 py-3 text-right">{Object.values(pkgTotals).reduce((a, c) => a + c.post, 0)}</td>
+                          <td className="px-4 py-3 text-right">{Object.values(pkgTotals).reduce((a, c) => a + c.weekly, 0)}</td>
+                          <td className="px-4 py-3 text-right">{Object.values(pkgTotals).reduce((a, c) => a + c.sheet, 0)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
