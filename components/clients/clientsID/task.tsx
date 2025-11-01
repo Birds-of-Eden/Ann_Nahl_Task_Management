@@ -70,6 +70,55 @@ export function Tasks({ clientData }: TasksProps) {
     return s || "pending"
   }
 
+  const RenderMonitoring = (task: TaskItem) => {
+    const status = normalizeStatus((task as any).status)
+    const data = (task as any)?.taskCompletionJson || {}
+    const sheets = Array.isArray(data?.monitoringSheets) ? (data as any).monitoringSheets as { id?: string; name?: string; columns?: string[]; rows?: Record<string, string>[] }[] : []
+
+    if (status !== "completed") return <PendingBox />
+    if (!sheets.length) return <PendingBox note="Completed, but no monitoring data attached." />
+
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
+          <KeyStat label="Done By" value={data?.doneByAgentId ?? "—"} />
+          <KeyStat label="Completion Date" value={formatDate(data?.completionDate)} />
+          <KeyStat label="Sheets" value={sheets.length} />
+        </div>
+        <div className="space-y-4">
+          {sheets.slice(0, 3).map((s, idx) => (
+            <div key={s?.id || idx} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+              <SectionTitle icon={<BarChart3 className="h-4 w-4" />} title={s?.name || `Sheet ${idx + 1}`} />
+              <div className="overflow-x-auto">
+                <table className="min-w-[400px] text-sm">
+                  <thead>
+                    <tr>
+                      {(s?.columns || []).map((c, i) => (
+                        <th key={i} className="px-2 py-1 text-left font-semibold border-b">{c}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(s?.rows || []).slice(0, 5).map((r, ri) => (
+                      <tr key={ri}>
+                        {(s?.columns || []).map((c, ci) => (
+                          <td key={ci} className="px-2 py-1 border-b">{(r || {})[c] ?? ""}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {((s?.rows || []).length > 5) && (
+                <div className="mt-1 text-xs text-slate-500">Showing first 5 rows</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const totalTasks = clientData.tasks?.length || 0
   const completedTasks = clientData.tasks?.filter((t) => normalizeStatus((t as any).status) === "completed").length || 0
   const inProgressTasks = clientData.tasks?.filter((t) => normalizeStatus((t as any).status) === "in_progress").length || 0
@@ -440,6 +489,7 @@ export function Tasks({ clientData }: TasksProps) {
     if (t.includes("backlinks")) return <RenderBacklinks {...(task as any)} />
     if (t.includes("review_removal")) return <RenderReviewRemoval {...(task as any)} />
     if (t.includes("summary_report")) return <RenderSummaryReport {...(task as any)} />
+    if (t.includes("monitoring")) return <RenderMonitoring {...(task as any)} />
     return null
   }
 

@@ -36,6 +36,7 @@ import ReviewRemovalModal from "./DataEmtryReviewRemovalDialog";
 import BacklinkingModal from "./DataEntryBacklinkingDialog";
 import SummaryReportModal from "./DataEntrySummaryReportDialog";
 import CompletionDialog from "./DataEntryCompletionDialog";
+import MonitoringDialog from "./DataEntryMonitoringTask";
 
 export type DETask = {
   id: string;
@@ -488,6 +489,14 @@ export default function DataEntryCompleteTasksPanel({
     );
   };
 
+  // Check if a task is a Monitoring task
+  const isMonitoringTask = (task: DETask | null) => {
+    if (!task?.category) return false;
+    const nameLc = (task.category.name || "").toLowerCase();
+    const idLc = (task.category.id || "").toLowerCase();
+    return nameLc.includes("monitoring") || idLc.includes("monitoring");
+  };
+
   const openContentWritingModal = (task: DETask) => {
     setSelectedContentTask(task);
     setContentWritingModalOpen(true);
@@ -526,6 +535,18 @@ export default function DataEntryCompleteTasksPanel({
   const closeSummaryReportModal = () => {
     setSummaryReportModalOpen(false);
     setSelectedSummaryReportTask(null);
+  };
+
+  // Monitoring modal state
+  const [monitoringModalOpen, setMonitoringModalOpen] = useState(false);
+  const [selectedMonitoringTask, setSelectedMonitoringTask] = useState<DETask | null>(null);
+  const openMonitoringModal = (task: DETask) => {
+    setSelectedMonitoringTask(task);
+    setMonitoringModalOpen(true);
+  };
+  const closeMonitoringModal = () => {
+    setMonitoringModalOpen(false);
+    setSelectedMonitoringTask(null);
   };
 
   const openComplete = (t: DETask) => {
@@ -1269,6 +1290,19 @@ export default function DataEntryCompleteTasksPanel({
                                   <ClipboardPlus className="h-4 w-4 mr-2" />
                                   Summary Report
                                 </Button>
+                              ) : isMonitoringTask(t) ? (
+                                <Button
+                                  className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:shadow-xl hover:scale-105 transition-all duration-300 shadow-lg font-semibold"
+                                  onClick={() => openMonitoringModal(t)}
+                                  size="sm"
+                                  disabled={
+                                    t.status === "completed" ||
+                                    t.status === "qc_approved"
+                                  }
+                                >
+                                  <BarChart3 className="h-4 w-4 mr-2" />
+                                  Monitoring
+                                </Button>
                               ) : (
                                 /* Complete Button for all other tasks */
                                 <Button
@@ -1390,6 +1424,17 @@ export default function DataEntryCompleteTasksPanel({
         clientId={clientId}
         onSuccess={() => {
           closeSummaryReportModal();
+          load();
+        }}
+      />
+      {/* Monitoring Dialog */}
+      <MonitoringDialog
+        open={monitoringModalOpen}
+        onOpenChange={closeMonitoringModal}
+        task={selectedMonitoringTask}
+        clientId={clientId}
+        onSuccess={() => {
+          closeMonitoringModal();
           load();
         }}
       />
