@@ -115,6 +115,19 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
 
     setSubmitting(true);
     try {
+      let pdfData: string | null = null;
+      if (pdfFile) {
+        pdfData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64String = reader.result as string;
+            resolve(base64String);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfFile);
+        });
+      }
+
       // 1) Mark completed for the agent
       const r1 = await fetch(`/api/tasks/agents/${user.id}`, {
         method: "PATCH",
@@ -134,6 +147,9 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
             title: title.trim(),
             text,
             pdfFileName: pdfFile?.name ?? null,
+            pdfData: pdfData,
+            pdfSize: pdfFile?.size ?? null,
+            pdfType: pdfFile?.type ?? null,
             clientId,
             updatedAt: new Date().toISOString(),
           },
