@@ -110,6 +110,9 @@ const PERMISSION_CATEGORY_MAP: Record<string, string> = {
   view_dashboard: "dashboard",
   data_entry_dashboard: "dashboard",
 
+  // ---- Reports ----
+  view_monthly_report: "monthly_report",
+
   // ---- QC ----
   view_qc_dashboard: "qc",
   view_qc_review: "qc",
@@ -306,6 +309,17 @@ export default function RolePermissionPage() {
       icon: (
         <div className="w-5 h-5 bg-emerald-100 rounded-md flex items-center justify-center text-emerald-600">
           <DollarSign size={14} />
+        </div>
+      ),
+    },
+    // 🆕 Monthly Report category
+    {
+      id: "monthly_report",
+      name: "Monthly Report",
+      description: "Access to Monthly Report",
+      icon: (
+        <div className="w-5 h-5 bg-violet-100 rounded-md flex items-center justify-center text-violet-600">
+          <Shield size={14} />
         </div>
       ),
     },

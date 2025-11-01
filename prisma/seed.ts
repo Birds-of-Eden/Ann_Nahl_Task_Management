@@ -281,6 +281,13 @@ const PERMS = [
 
   { id: "view_sales", name: "view_sales", description: "Sidebar: Sales" },
 
+  // Reports
+  {
+    id: "view_monthly_report",
+    name: "view_monthly_report",
+    description: "Reports: Monthly Report",
+  },
+
   {
     id: "generate_biography",
     name: "generate_biography",
@@ -345,6 +352,7 @@ const ADMIN_PERMS: string[] = [
   "view_role_permissions",
   "view_teams_manage",
   "view_user_management",
+  "view_monthly_report",
   "generate_biography",
   "delete_article_topic",
   "client_card_Upgrade_Package",
@@ -379,6 +387,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     "view_user_management",
     "view_activity_logs",
     "view_notifications",
+    "view_monthly_report",
     "generate_biography",
     "delete_article_topic",
     "client_card_Upgrade_Package",
