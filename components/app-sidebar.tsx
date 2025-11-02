@@ -112,6 +112,10 @@ const ICONS: Record<string, React.ReactNode> = {
   "All Package": <Boxes className="h-4 w-4" strokeWidth={1.75} />,
   Template: <FileText className="h-4 w-4" strokeWidth={1.75} />,
   sales: <LineChart className="h-4 w-4" strokeWidth={1.75} />,
+  
+  // Reports
+  Reports: <LineChart className="h-4 w-4" strokeWidth={1.75} />,
+  "Monthly Report": <FileText className="h-4 w-4" strokeWidth={1.75} />,
 
   // Distribution
   Distribution: <Share2 className="h-4 w-4" strokeWidth={1.75} />,
@@ -311,6 +315,18 @@ function buildNav(role: Role): NavItem[] {
           title: "Tasks History",
           url: p(r, "/taskHistory"),
           permission: "view_tasks_history",
+        },
+      ],
+    },
+
+    // Reports
+    {
+      title: "Reports",
+      children: [
+        {
+          title: "Monthly Report",
+          url: p(r, "/monthlyReport"),
+          permission: "view_monthly_report",
         },
       ],
     },
