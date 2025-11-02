@@ -767,7 +767,6 @@ export default function DataEntryCompleteTasksPanel({
       if (!r1.ok)
         throw new Error(j1?.message || j1?.error || "Failed to complete task");
 
-      // 2) set completedAt and dataEntryReport
       const r2 = await fetch(`/api/tasks/${selected.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
