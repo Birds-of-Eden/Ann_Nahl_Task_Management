@@ -353,12 +353,11 @@ export function QCReview() {
         approveDialog.task.actualDurationMinutes
       );
 
-    if (!sysRating) {
-      toast.error(
-        "System rating not available (ideal/actual missing). Cannot approve."
-      );
-      return;
-    }
+    // >>>>>>>>> CHANGE: allow approval even if actualDurationMinutes is missing
+    // If we still couldn't compute, fall back to "Average" so approval proceeds.
+    const finalRating: Perf =
+      (sysRating as Perf | undefined) !== undefined ? (sysRating as Perf) : "Average";
+    // <<<<<<<<<<< END CHANGE
 
     setApproveDialog((p) => ({ ...p, loading: true }));
     try {
@@ -368,7 +367,7 @@ export function QCReview() {
       const total =
         Math.min(
           100,
-          timerScoreFromRating(sysRating) +
+          timerScoreFromRating(finalRating) +
             scores.keyword +
             scores.contentQuality +
             scores.image +
@@ -381,7 +380,7 @@ export function QCReview() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          performanceRating: sysRating,
+          performanceRating: finalRating,
           keyword: scores.keyword,
           contentQuality: scores.contentQuality,
           image: scores.image,
@@ -420,7 +419,7 @@ export function QCReview() {
               clientName: approveDialog.task.client?.name ?? null,
               scores,
               total,
-              performanceRating: sysRating,
+              performanceRating: finalRating,
             },
           }),
         });
@@ -429,7 +428,7 @@ export function QCReview() {
       }
 
       toast.success(
-        `Task "${approveDialog.task.name}" approved. Rating: ${sysRating}.`
+        `Task "${approveDialog.task.name}" approved. Rating: ${finalRating}.`
       );
       setApprovedMap((m) => ({ ...m, [approveDialog.task!.id]: true }));
       setQcScoresByTask((m) => {
