@@ -81,12 +81,11 @@ export function Tasks({ clientData }: TasksProps) {
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-3">
-          <KeyStat label="Done By" value={data?.doneByAgentId ?? "—"} />
           <KeyStat label="Completion Date" value={formatDate(data?.completionDate)} />
           <KeyStat label="Sheets" value={sheets.length} />
         </div>
         <div className="space-y-4">
-          {sheets.slice(0, 3).map((s, idx) => (
+          {sheets.map((s, idx) => (
             <div key={s?.id || idx} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
               <SectionTitle icon={<BarChart3 className="h-4 w-4" />} title={s?.name || `Sheet ${idx + 1}`} />
               <div className="overflow-x-auto">
@@ -99,7 +98,7 @@ export function Tasks({ clientData }: TasksProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(s?.rows || []).slice(0, 5).map((r, ri) => (
+                    {(s?.rows || []).map((r, ri) => (
                       <tr key={ri}>
                         {(s?.columns || []).map((c, ci) => (
                           <td key={ci} className="px-2 py-1 border-b">{(r || {})[c] ?? ""}</td>
@@ -109,9 +108,6 @@ export function Tasks({ clientData }: TasksProps) {
                   </tbody>
                 </table>
               </div>
-              {((s?.rows || []).length > 5) && (
-                <div className="mt-1 text-xs text-slate-500">Showing first 5 rows</div>
-              )}
             </div>
           ))}
         </div>
@@ -796,8 +792,8 @@ export function Tasks({ clientData }: TasksProps) {
           </Accordion>
         </CardContent>
       </Card>
+
       <Dialog open={pdfPreview.open} onOpenChange={(o) => setPdfPreview((p) => ({ ...p, open: o }))}>
-        <DialogTitle>PDF Preview</DialogTitle>
         <DialogContent className="max-w-5xl h-[85vh]">
             {pdfPreview.url ? (
             <iframe

@@ -10,6 +10,7 @@ import SummaryReportDialog from "./TaskCompleteDialogs/SummaryReportDialog";
 import BacklinkingModal from "./TaskCompleteDialogs/BacklinkingDialog";
 import ReviewRemovalModal from "./TaskCompleteDialogs/ReviewRemovalDialog";
 import ContentWritingModal from "./TaskCompleteDialogs/contentWritingDialog";
+import MonitoringTask from "./TaskCompleteDialogs/MonitoringTask";
 // import ContentWritingModal from "./TaskCompleteDialogs/ContentWritingDialog";
 
 export default function TaskDialogs({
@@ -35,7 +36,10 @@ export default function TaskDialogs({
   handleCompletionCancel,
   formatTimerDisplay,
   clientId,
+  clientName,
   pausedTimer,
+  refreshTasks,
+  stopTimer,
 }: {
   isStatusModalOpen: boolean;
   setIsStatusModalOpen: (b: boolean) => void;
@@ -69,7 +73,10 @@ export default function TaskDialogs({
   handleBulkCompletionCancel: () => void;
   tasks: Task[];
   clientId: string;
+  clientName: string;
   pausedTimer: TimerState | null;
+  refreshTasks: () => Promise<void>;
+  stopTimer: (taskId: string) => TimerState | undefined;
 }) {
   // ✅ Categories where only completion link should be shown (no credentials)
   const ASSETLESS_SET = new Set([
@@ -175,6 +182,7 @@ export default function TaskDialogs({
         const cat = (taskToComplete?.category?.name ?? "").toLowerCase();
         const isSummary = cat.includes("summary report");
         const isBacklink = cat.includes("backlink");
+        const isMonitoring = cat.includes("monitoring");
         const isContent =
           cat.includes("content writing") || cat.includes("guest posting");
         const isReviewRemoval = cat.includes("review removal");
@@ -237,6 +245,25 @@ export default function TaskDialogs({
               formatTimerDisplay={formatTimerDisplay}
               resetModal={resetAllCompletionModals}
               submit={guardedSubmit}
+            />
+          );
+        }
+        if (isMonitoring) {
+          return (
+            <MonitoringTask
+              open={isCompletionConfirmOpen}
+              onOpenChange={setIsCompletionConfirmOpen}
+              task={taskToComplete as any}
+              clientId={clientId}
+              clientName={clientName}
+              onSuccess={() => setIsCompletionConfirmOpen(false)}
+              timerState={timerState}
+              pausedTimer={pausedTimer}
+              formatTimerDisplay={formatTimerDisplay}
+              resetModal={resetAllCompletionModals}
+              submit={guardedSubmit}
+              refreshTasks={refreshTasks}
+              stopTimer={stopTimer}
             />
           );
         }

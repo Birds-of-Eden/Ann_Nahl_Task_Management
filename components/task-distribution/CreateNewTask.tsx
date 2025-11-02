@@ -207,7 +207,7 @@ export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: Cre
         </div>
 
         <ScrollArea className="max-h-[60vh] px-6 py-4">
-          <form onSubmit={handleSubmit} className="space-y-6 py-2">
+          <form id="create-task-form" onSubmit={handleSubmit} className="space-y-6 py-2">
             <div className="space-y-2">
               <Label htmlFor="dueDate" className="text-sm font-medium">Due Date *</Label>
               <div className="relative">
@@ -215,6 +215,7 @@ export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: Cre
                   id="dueDate"
                   name="dueDate"
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   className={cn(
                     "h-10 pl-3 pr-10",
                     validationErrors.dueDate && "border-destructive"
@@ -296,13 +297,10 @@ export function CreateNewTaskModal({ isOpen, onClose, onSuccess, clientId }: Cre
             Cancel
           </Button>
           <Button 
-            type="submit" 
+            type="submit"
+            form="create-task-form"
             disabled={loading || selectedSiteAssetTypes.length === 0}
             className="min-w-[140px] h-11 font-semibold bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 gap-2"
-            onClick={(e) => {
-              const form = e.currentTarget.closest('form');
-              if (form) form.requestSubmit();
-            }}
           >
             {loading ? (
               <>

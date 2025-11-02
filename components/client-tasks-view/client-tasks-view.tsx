@@ -1321,7 +1321,6 @@ export function ClientTasksView({
             timerState={timerState}
             handleStartTimer={handleStartTimer}
             handlePauseTimer={handlePauseTimer}
-            handleResetTimer={handleResetTimer}
             isTaskDisabled={isTaskDisabled}
             viewMode={viewMode}
             setViewMode={setViewMode}
@@ -1369,7 +1368,10 @@ export function ClientTasksView({
           tasks={tasks}
           formatTimerDisplay={formatTimerDisplay}
           clientId={clientId}
+          clientName={clientName}
           pausedTimer={pausedTimer}
+          refreshTasks={fetchClientTasks}
+          stopTimer={stopTimerNow}
         />
       </div>
     </div>

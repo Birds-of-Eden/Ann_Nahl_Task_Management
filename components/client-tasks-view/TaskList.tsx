@@ -51,8 +51,8 @@ type Task = BaseTask & {
   assetUrl?: string;
   url?: string;
   actualDurationMinutes?: number | null;
-  dueDate?: string;
 };
+
 import { PerformanceBadge } from "./PerformanceBadge";
 import {
   Tooltip,
@@ -75,7 +75,6 @@ export default function TaskList({
   timerState,
   handleStartTimer,
   handlePauseTimer,
-  handleResetTimer,
   isTaskDisabled,
   viewMode,
   setViewMode,
@@ -102,7 +101,6 @@ export default function TaskList({
   timerState: TimerState | null;
   handleStartTimer: (taskId: string) => void;
   handlePauseTimer: (taskId: string) => void;
-  handleResetTimer: (taskId: string) => void;
   isTaskDisabled: (taskId: string) => boolean;
   viewMode: "grid" | "list";
   setViewMode: (v: "grid" | "list") => void;
@@ -736,7 +734,6 @@ export default function TaskList({
                     pausedTimer={pausedTimer}
                     onStartTimer={isLocked(task) ? () => {} : handleStartTimer}
                     onPauseTimer={isLocked(task) ? () => {} : handlePauseTimer}
-                    onResetTimer={isLocked(task) ? () => {} : handleResetTimer}
                     onRequestComplete={onRequestComplete}
                     formatTimerDisplay={formatTimerDisplay}
                   />
@@ -1017,7 +1014,6 @@ export default function TaskList({
                     pausedTimer={pausedTimer}
                     onStartTimer={isLocked(task) ? () => {} : handleStartTimer}
                     onPauseTimer={isLocked(task) ? () => {} : handlePauseTimer}
-                    onResetTimer={isLocked(task) ? () => {} : handleResetTimer}
                     onRequestComplete={onRequestComplete}
                     formatTimerDisplay={formatTimerDisplay}
                   />
