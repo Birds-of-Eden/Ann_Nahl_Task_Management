@@ -41,6 +41,7 @@ interface ContentWritingModalProps {
     name: string;
     category?: { id: string; name: string } | null;
     dueDate?: string | null;
+    idealDurationMinutes?: number | null;
   } | null;
   clientId?: string;
   onSuccess?: () => void;
@@ -154,6 +155,7 @@ export default function ContentWritingModal({
         body: JSON.stringify({
           taskId: task.id,
           status: "completed",
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined, 
           completionLink: "", // Can be empty for content writing tasks
           content: formattedContent,
           contentType: "guest_posting",
@@ -174,6 +176,7 @@ export default function ContentWritingModal({
         body: JSON.stringify({
           status: "completed",
           completedAt: completedAt.toISOString(),
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined, 
           taskCompletionJson: {
             contentWriting: formattedContent,
           },

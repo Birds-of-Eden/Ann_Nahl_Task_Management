@@ -41,6 +41,7 @@ interface ReviewRemovalModalProps {
     id: string;
     name: string;
     dueDate?: string | null;
+    idealDurationMinutes?: number | null;
   } | null;
   clientId?: string;
   onSuccess?: () => void;
@@ -139,6 +140,7 @@ export default function ReviewRemovalModal({
         body: JSON.stringify({
           taskId: task.id,
           status: "completed",
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined,
         }),
       });
       if (!completionResponse.ok)
@@ -151,6 +153,7 @@ export default function ReviewRemovalModal({
         body: JSON.stringify({
           status: "completed",
           completedAt: toLocalMiddayISOString(completedAt),
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined, 
           taskCompletionJson: {
             reviewRemoval: links,
           },

@@ -55,6 +55,7 @@ export type DETask = {
   } | null;
   dueDate?: string | null;
   completedAt?: string | null;
+  idealDurationMinutes?: number | null;
   // Persisted JSON: { completedByUserId, completedByName, completedAt, status }
   dataEntryReport?: any;
   // Persisted JSON: Content writing data with titles and content sections
@@ -755,6 +756,7 @@ export default function DataEntryCompleteTasksPanel({
         body: JSON.stringify({
           taskId: selected.id,
           status: "completed",
+          actualDurationMinutes: selected.idealDurationMinutes ?? undefined,
           completionLink: link.trim(),
           username: username.trim() || undefined,
           email: email.trim() || undefined,
@@ -773,6 +775,7 @@ export default function DataEntryCompleteTasksPanel({
           status: "completed",
           // Agent's actual completion time from DatePicker
           completedAt: completedAt.toISOString(),
+          actualDurationMinutes: selected.idealDurationMinutes ?? undefined,
           // Server will set dataEntryReport.completedAt
           dataEntryReport: {
             completedByUserId: user.id,

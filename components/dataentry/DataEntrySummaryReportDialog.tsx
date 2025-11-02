@@ -143,6 +143,7 @@ const SummaryReportModal: React.FC<SummaryReportModalProps> = ({
         body: JSON.stringify({
           status: "completed",
           completedAt: toLocalMiddayISOString(completedAt),
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined,
           taskCompletionJson: {
             title: title.trim(),
             text,

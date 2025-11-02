@@ -44,6 +44,7 @@ interface BacklinkingModalProps {
     id: string;
     name: string;
     dueDate?: string | null;
+    idealDurationMinutes?: number | null;
   } | null;
   clientId?: string;
   onSuccess?: () => void;
@@ -153,6 +154,7 @@ export default function BacklinkingModal({
         body: JSON.stringify({
           taskId: task.id,
           status: "completed",
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined,
         }),
       });
       if (!completionResponse.ok)
@@ -167,6 +169,7 @@ export default function BacklinkingModal({
           completedAt: completedAt
             ? toLocalMiddayISOString(completedAt)
             : toLocalMiddayISOString(new Date()),
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined, 
           taskCompletionJson: {
             backlinkingLinks: links,
             orderDate: toLocalMiddayISOString(orderDate),

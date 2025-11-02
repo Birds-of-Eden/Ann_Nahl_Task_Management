@@ -31,6 +31,7 @@ interface SheetBuilderDialogProps {
     name: string;
     category?: { id: string; name: string } | null;
     dueDate?: string | null;
+    idealDurationMinutes?: number | null;
   } | null;
   clientId?: string;
   onSuccess?: () => void;
@@ -330,6 +331,7 @@ export default function SheetBuilderDialog({
         body: JSON.stringify({
           taskId: taskId,
           status: "completed",
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined,
           completionLink: "",
         }),
       });
@@ -342,6 +344,7 @@ export default function SheetBuilderDialog({
         body: JSON.stringify({
           status: "completed",
           completedAt: new Date(completionDate).toISOString(),
+          actualDurationMinutes: task?.idealDurationMinutes ?? undefined, 
           taskCompletionJson: {
             monitoringSheets: sections,
             doneByAgentId: selectedAgent,
