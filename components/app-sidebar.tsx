@@ -112,7 +112,7 @@ const ICONS: Record<string, React.ReactNode> = {
   "All Package": <Boxes className="h-4 w-4" strokeWidth={1.75} />,
   Template: <FileText className="h-4 w-4" strokeWidth={1.75} />,
   sales: <LineChart className="h-4 w-4" strokeWidth={1.75} />,
-  
+
   // Reports
   Reports: <LineChart className="h-4 w-4" strokeWidth={1.75} />,
   "Monthly Report": <FileText className="h-4 w-4" strokeWidth={1.75} />,
@@ -486,12 +486,12 @@ export function AppSidebar({ className }: { className?: string }) {
   // Primary role/user is from /api/auth/me; fallback to session
   const actingRole: Role =
     ((me?.user?.role as Role) || null) ?? sessionRole ?? "user";
-  
+
   // 🎭 IMPERSONATION FIX: Extracting the impersonated user's role ID
   // This comes from /api/auth/me where getAuthUser() returns the full impersonated user data
   const actingRoleId: string | null =
     (me?.user?.roleId as string | undefined) ?? null;
-  
+
   const actingUserId: string | null =
     (me?.user?.id as string | undefined) ?? sessionUserId;
 
@@ -732,7 +732,7 @@ export function AppSidebar({ className }: { className?: string }) {
                 <GalleryVerticalEnd className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-bold">Reputation Task</h1>
+                <h1 className="text-sm font-bold">Reputation Prime</h1>
                 <p className="text-xs text-muted-foreground">Enterprise Plan</p>
               </div>
             </div>
