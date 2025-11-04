@@ -6,7 +6,7 @@ import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard
 import type { Client } from "@/types/client";
 
 // Force dynamic rendering for this page (required for production)
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const UNCATEGORIZED = {
@@ -40,39 +40,41 @@ function normalizeClientData(apiData: any): Client {
 }
 
 async function fetchClient(clientId: string): Promise<Client | null> {
-  const h = await headers(); // await headers
+  const h = await headers();
+  const cookieHeader = (await cookies()).toString();
+
+  // ✅ Use NEXTAUTH_URL or NEXT_PUBLIC_BASE_URL fallback
+  const envBase =
+    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || "";
   const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
   const proto =
     h.get("x-forwarded-proto") ||
     (host.startsWith("localhost") ? "http" : "https");
-  const base = `${proto}://${host}`;
 
-  // forward cookies so protected API works
-  const cookieHeader = (await cookies()).toString();
+  const base =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXTAUTH_URL ||
+    `${proto}://${host}`;
 
-  const res = await fetch(
-    `${base}/api/clients/${encodeURIComponent(clientId)}`,
-    {
-      cache: "no-store",
-      headers: {
-        cookie: cookieHeader,
-      },
-    }
-  );
+  const res = await fetch(`${base}/api/clients/${clientId}`, {
+    cache: "no-store",
+    headers: {
+      cookie: cookieHeader,
+    },
+  });
 
   if (!res.ok) return null;
-
   const raw = await res.json();
-  const data = raw?.client ?? raw; // handle {client: {...}} or plain object
+  const data = raw?.client ?? raw;
   return normalizeClientData(data);
 }
 
 export default async function ClientPage({
   params,
 }: {
-  params: Promise<{ clientId: string }>; // <-- এখন Promise
+  params: Promise<{ clientId: string }>;
 }) {
-  const { clientId } = await params; // await params প্রথমে
+  const { clientId } = await params;
   const clientData = await fetchClient(clientId);
 
   if (!clientData) {
