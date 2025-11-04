@@ -5,10 +5,14 @@ import { ClientDashboard } from "@/components/clients/clientsID/client-dashboard
 import type { Client } from "@/types/client";
 
 // Force dynamic rendering for this page (required for production)
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const UNCATEGORIZED = { id: "uncategorized", name: "Uncategorized", description: "" };
+const UNCATEGORIZED = {
+  id: "uncategorized",
+  name: "Uncategorized",
+  description: "",
+};
 
 function normalizeClientData(apiData: any): Client {
   return {
@@ -40,36 +44,38 @@ async function fetchClient(clientId: string): Promise<Client | null> {
   const proto =
     h.get("x-forwarded-proto") ||
     (host.startsWith("localhost") ? "http" : "https");
-  const base = `${proto}://${host}`;
 
-  // forward cookies so protected API works
+  // ✅ always prefer env base for production
+  const base =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXTAUTH_URL ||
+    `${proto}://${host}`;
+
   const cookieHeader = (await cookies()).toString();
 
-  const res = await fetch(`${base}/api/clients/${encodeURIComponent(clientId)}`, {
-    cache: "no-store",
-    headers: {
-      cookie: cookieHeader,
-    },
-  });
+  const res = await fetch(
+    `${base}/api/clients/${encodeURIComponent(clientId)}`,
+    {
+      cache: "no-store",
+      headers: { cookie: cookieHeader },
+    }
+  );
 
   if (!res.ok) return null;
-
   const raw = await res.json();
-  const data = raw?.client ?? raw; // handle {client: {...}} or plain object
+  const data = raw?.client ?? raw;
   return normalizeClientData(data);
 }
 
 export default async function ClientPage({
   params,
 }: {
-  params: Promise<{ clientId: string }>; // <-- Promise type
+  params: Promise<{ clientId: string }>;
 }) {
-  const { clientId } = await params; // await params
+  const { clientId } = await params;
   const clientData = await fetchClient(clientId);
 
-  if (!clientData) {
-    notFound();
-  }
+  if (!clientData) notFound();
 
   return (
     <div className="min-h-screen">
